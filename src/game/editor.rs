@@ -6,6 +6,7 @@ use super::play::Play;
 /// The state of the game
 pub struct Editor {
     pos: Point2,
+    fast: bool,
     level: Level,
     cur_mat: Material,
     current_mat_text: PosText,
@@ -17,6 +18,7 @@ impl Editor {
         let current_mat_text = assets.text(ctx, Point2::new(2., 18.0), "Current material: {:?}")?;
 
         Ok(Editor {
+            fast: false,
             pos: Point2::new(200., 200.),
             cur_mat: Material::Wall,
             current_mat_text,
@@ -33,7 +35,11 @@ impl Editor {
 
 impl GameState for Editor {
     fn update(&mut self, s: &mut State) {
-        let v = 175. * Vector2::new(s.input.hor(), s.input.ver());
+        let speed = match self.fast {
+            false => 175.,
+            true => 315.,
+        };
+        let v = speed * Vector2::new(s.input.hor(), s.input.ver());
         self.pos += v * DELTA;
     }
     fn logic(&mut self, s: &mut State, ctx: &mut Context) {
@@ -72,7 +78,16 @@ impl GameState for Editor {
             Z => save::save("save.lvl", &self.level).unwrap(),
             X => save::load("save.lvl", &mut self.level).unwrap(),
             P => s.switch(Box::new(Play::new(self.level.clone()))),
+            LShift => self.fast = false,
             _ => return,
         }
+    }
+    fn key_down(&mut self, _s: &mut State, keycode: Keycode) {
+        use Keycode::*;
+        match keycode {
+            LShift => self.fast = true,
+            _ => return,
+        }
+
     }
 }
