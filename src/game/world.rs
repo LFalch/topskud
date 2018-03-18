@@ -5,6 +5,7 @@ use ::*;
 pub struct World {
     pub(super) player: Object,
     pub(super) level: Level,
+    pub(super) bullets: Vec<Object>,
 }
 
 #[derive(Debug, Copy, Clone)]

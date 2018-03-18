@@ -19,6 +19,12 @@ pub trait GameState {
     fn key_up(&mut self, &mut State, Keycode) {
 
     }
+    fn mouse_down(&mut self, &mut State, MouseButton) {
+
+    }
+    fn mouse_up(&mut self, &mut State, MouseButton) {
+
+    }
 }
 
 pub struct Master {
@@ -162,7 +168,6 @@ impl EventHandler for Master {
     }
     /// Handle mouse down event
     fn mouse_button_down_event(&mut self, _ctx: &mut Context, btn: MouseButton, _x: i32, _y: i32) {
-        // Set the spawn_coords so we can spawn an asteroid when the button is released
         use MouseButton::*;
         match btn {
             Left => self.state.mouse_down.left = true,
@@ -170,6 +175,7 @@ impl EventHandler for Master {
             Right => self.state.mouse_down.right = true,
             _ => ()
         }
+        self.gs.mouse_down(&mut self.state, btn)
     }
     /// Handle mouse release events
     fn mouse_button_up_event(&mut self, _ctx: &mut Context, btn: MouseButton, _x: i32, _y: i32) {
@@ -180,6 +186,7 @@ impl EventHandler for Master {
             Right => self.state.mouse_down.right = false,
             _ => ()
         }
+        self.gs.mouse_up(&mut self.state, btn)
     }
     /// Handles mouse movement events
     fn mouse_motion_event(&mut self, _: &mut Context, _: MouseState, x: i32, y: i32, _: i32, _: i32) {

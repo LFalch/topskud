@@ -17,7 +17,7 @@ impl Editor {
         let current_mat_text = assets.text(ctx, Point2::new(2., 18.0), "Current material: {:?}")?;
 
         Ok(Editor {
-            pos: Point2::new(0., 0.),
+            pos: Point2::new(200., 200.),
             cur_mat: Material::Wall,
             current_mat_text,
             level: Level::new(),
@@ -30,7 +30,6 @@ impl Editor {
         self.current_mat_text.update_text(&s.assets, ctx, &current_mat_str).unwrap();
     }
 }
-
 
 impl GameState for Editor {
     fn update(&mut self, s: &mut State) {
