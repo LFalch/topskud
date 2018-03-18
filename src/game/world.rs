@@ -4,7 +4,6 @@ use ::*;
 /// All the objects in the current world
 pub struct World {
     pub(super) player: Object,
-    // pub(super) car: Car,
     pub(super) level: Level,
 }
 

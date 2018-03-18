@@ -77,7 +77,6 @@ sprites! {
     Wall, wall, 32., 32.,
     Grass, grass, 32., 32.,
     Floor, floor, 32., 32.,
-    Ferrari, ferrari, 64., 32.,
 }
 
 impl Assets {

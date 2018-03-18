@@ -1,11 +1,6 @@
 use ggez::{Context, GameResult};
-use ggez::graphics::{self, Point2, Vector2, Image};
+use ggez::graphics::{self, Point2, Image};
 // use ggez::nalgebra as na;
-
-#[allow(dead_code)]
-mod car;
-
-pub use self::car::*;
 
 #[derive(Debug, Serialize, Deserialize)]
 /// A simple object that can be drawn to the screen
