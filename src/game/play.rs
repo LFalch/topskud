@@ -14,6 +14,7 @@ impl Play {
             running: false,
             world: World {
                 bullets: Vec::new(),
+                holes: Vec::new(),
                 player: Object::new(Point2::new(500., 500.)),
                 level,
             }
@@ -21,13 +22,13 @@ impl Play {
     }
 }
 
-
 impl GameState for Play {
     fn update(&mut self, s: &mut State) {
         let mut deads = Vec::new();
         for (i, bullet) in self.world.bullets.iter_mut().enumerate().rev() {
             bullet.pos += 500. * DELTA * angle_to_vec(bullet.rot);
             if bullet.is_on_solid(&self.world.level) {
+                self.world.holes.push(bullet.clone());
                 deads.push(i);
             }
         }
@@ -53,6 +54,7 @@ impl GameState for Play {
     }
 
     fn draw(&mut self, s: &State, ctx: &mut Context) -> GameResult<()> {
+        graphics::set_color(ctx, WHITE)?;
         self.world.level.draw(ctx, &s.assets)?;
         graphics::set_color(ctx, Color{r:0.,g:0.,b:0.,a:1.})?;
         self.world.player.draw(ctx, s.assets.get_img(Sprite::Person))?;
@@ -60,11 +62,20 @@ impl GameState for Play {
         for bullet in &self.world.bullets {
             bullet.draw(ctx, s.assets.get_img(Sprite::Bullet))?;
         }
+        for hole in &self.world.holes {
+            hole.draw(ctx, s.assets.get_img(Sprite::Hole))?;
+        }
 
         Ok(())
     }
-    fn draw_hud(&mut self, _s: &State, ctx: &mut Context) -> GameResult<()> {
-        Ok(())
+    fn draw_hud(&mut self, s: &State, ctx: &mut Context) -> GameResult<()> {
+        graphics::set_color(ctx, RED)?;
+        let drawparams = graphics::DrawParam {
+            dest: s.mouse,
+            offset: Point2::new(0.5, 0.5),
+            .. Default::default()
+        };
+        graphics::draw_ex(ctx, s.assets.get_img(Sprite::Crosshair), drawparams)
     }
     fn key_down(&mut self, _s: &mut State, keycode: Keycode) {
         use Keycode::*;
@@ -80,7 +91,7 @@ impl GameState for Play {
             _ => (),
         }
     }
-    fn mouse_up(&mut self, s: &mut State, btn: MouseButton) {
+    fn mouse_up(&mut self, _s: &mut State, btn: MouseButton) {
         if let MouseButton::Left = btn {
             let pos = self.world.player.pos + 16. * angle_to_vec(self.world.player.rot);
             let mut bul = Object::new(pos);

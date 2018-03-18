@@ -67,6 +67,7 @@ impl GameState for Editor {
                 Material::Wall => Material::Floor,
                 Material::Floor => Material::Grass,
                 Material::Grass => Material::Wall,
+                Material::Missing => Material::Wall,
             },
             Z => save::save("save.lvl", &self.level).unwrap(),
             X => save::load("save.lvl", &mut self.level).unwrap(),

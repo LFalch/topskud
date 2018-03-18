@@ -37,14 +37,10 @@ pub fn angle_from_vec(v: &Vector2) -> f32 {
     y.atan2(x)
 }
 
-/// A colour with half transparency
 pub const TRANS: Color = Color{r:1.,g:1.,b:1.,a:0.5};
-/// A half transparent green
-pub const GREEN: Color = Color{r:0.,g:1.,b:0.,a:0.5};
-/// A half transparent red
-pub const RED: Color = Color{r:1.,g:0.,b:0.,a:0.5};
-/// A half transparent blue
-pub const BLUE: Color = Color{r:0.,g:0.,b:1.,a:0.5};
+pub const GREEN: Color = Color{r:0.,g:1.,b:0.,a:1.};
+pub const RED: Color = Color{r:1.,g:0.,b:0.,a:1.};
+pub const BLUE: Color = Color{r:0.,g:0.,b:1.,a:1.};
 
 fn main() {
     // Set window mode

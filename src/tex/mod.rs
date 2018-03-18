@@ -76,7 +76,9 @@ sprites! {
     Wall, wall, 32., 32.,
     Grass, grass, 32., 32.,
     Floor, floor, 32., 32.,
+    Missing, missing, 32., 32.,
     Bullet, bullet, 16., 16.,
+    Hole, hole, 8., 8.,
 }
 
 impl Assets {

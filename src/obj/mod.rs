@@ -5,7 +5,7 @@ use ggez::graphics::{self, Point2, Vector2, Image};
 use game::world::Level;
 use game::DELTA;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize,)]
 /// A simple object that can be drawn to the screen
 pub struct Object {
     #[serde(serialize_with = "::save::point_ser", deserialize_with = "::save::point_des")]

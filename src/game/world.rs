@@ -6,62 +6,17 @@ pub struct World {
     pub(super) player: Object,
     pub(super) level: Level,
     pub(super) bullets: Vec<Object>,
+    pub(super) holes: Vec<Object>,
 }
 
-#[derive(Debug, Copy, Clone)]
-#[repr(u16)]
-pub enum Material {
-    Grass = 0,
-    Wall = 1,
-    Floor = 2,
-}
+include!("material_macro.rs");
 
-use serde::{Serialize, Deserialize, Serializer, Deserializer};
-
-impl Serialize for Material {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where S: Serializer {
-        serializer.serialize_u16(*self as u16)
-    }
-}
-
-impl<'de> Deserialize<'de> for Material {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-        where D: Deserializer<'de> {
-        <u16>::deserialize(deserializer).map(
-            |n| match n {
-                0 => Material::Grass,
-                1 => Material::Wall,
-                2 => Material::Floor,
-                _ => unimplemented!(),
-            }
-        )
-    }
-}
-
-impl Material {
-    pub fn get_spr(&self) -> Sprite {
-        match *self {
-            Material::Grass => Sprite::Grass,
-            Material::Wall => Sprite::Wall,
-            Material::Floor => Sprite::Floor,
-        }
-    }
-    pub fn solid(&self) -> bool {
-        match *self {
-            Material::Grass => false,
-            Material::Wall => true,
-            Material::Floor => false,
-        }
-    }
-    pub fn draw(&self, ctx: &mut Context, assets: &Assets, x: f32, y: f32) -> GameResult<()> {
-        let img = assets.get_img(self.get_spr());
-        let drawparams = graphics::DrawParam {
-            dest: Point2::new(x, y),
-            .. Default::default()
-        };
-        graphics::draw_ex(ctx, img, drawparams)
-    }
+mat!{
+    MISSING = Missing
+    Grass = 0, Grass, false,
+    Wall = 1, Wall, true,
+    Floor = 2, Floor, false,
+    Missing = 404, Missing, true,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
