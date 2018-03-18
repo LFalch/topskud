@@ -12,7 +12,7 @@ impl Play {
         Play {
             world: World {
                 player: Object::new(Point2::new(500., 500.)),
-                // car: Car::new(100., 50., 375., 250.),
+                car: Car::new(100., 50., 375., 250.),
                 level,
             }
         }
@@ -32,7 +32,7 @@ impl GameState for Play {
             self.world.player.pos += v * 175. * DELTA;
         }
 
-        // self.world.car.update(&self.input);
+        self.world.car.update(&s.input);
     }
     fn logic(&mut self, s: &mut State, _ctx: &mut Context) {
         let dist = s.mouse - s.offset - self.world.player.pos;
@@ -45,15 +45,17 @@ impl GameState for Play {
     }
 
     fn draw(&mut self, s: &State, ctx: &mut Context) -> GameResult<()> {
+        graphics::set_color(ctx, WHITE)?;
         self.world.level.draw(ctx, &s.assets)?;
         graphics::set_color(ctx, Color{r:0.,g:0.,b:0.,a:1.})?;
         self.world.player.draw(ctx, s.assets.get_img(Sprite::Person))?;
-        // self.world.car.obj.draw(ctx, self.assets.get_img(Sprite::Ferrari))?;
-        // self.world.car.draw_lines(ctx)?;
+        graphics::set_color(ctx, WHITE)?;
+        self.world.car.obj.draw(ctx, s.assets.get_img(Sprite::Ferrari))?;
+        self.world.car.draw_lines(ctx)?;
 
         Ok(())
     }
-    fn draw_hud(&mut self, _s: &State, ctx: &mut Context) -> GameResult<()> {
-        graphics::set_color(ctx, WHITE)
+    fn draw_hud(&mut self, _s: &State, _ctx: &mut Context) -> GameResult<()> {
+        Ok(())
     }
 }
