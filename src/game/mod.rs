@@ -41,7 +41,6 @@ pub struct State {
 const DESIRED_FPS: u32 = 60;
 
 pub(crate) const DELTA: f32 = 1. / DESIRED_FPS as f32;
-pub(crate) const DDELTA: f64 = 1. / DESIRED_FPS as f64;
 
 impl Master {
     /// Make a new state object

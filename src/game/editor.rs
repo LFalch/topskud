@@ -48,33 +48,19 @@ impl GameState for Editor {
         s.focus_on(self.pos);
     }
 
-    // Draws everything
     fn draw(&mut self, s: &State, ctx: &mut Context) -> GameResult<()> {
         self.level.draw(ctx, &s.assets)?;
 
         Ok(())
     }
-    // Draws everything
     fn draw_hud(&mut self, s: &State, ctx: &mut Context) -> GameResult<()> {
         graphics::set_color(ctx, Color{r: 0.5, g: 0.5, b: 0.5, a: 1.})?;
         graphics::rectangle(ctx, DrawMode::Fill, Rect{x:0.,y:0.,h: 64., w: s.width as f32})?;
         graphics::set_color(ctx, graphics::WHITE)?;
         self.cur_mat.draw(ctx, &s.assets, 186., 16.)?;
 
-        // Draw the text in white
         self.current_mat_text.draw_text(ctx)
     }
-
-    /// Handle key down events
-    fn key_down(&mut self, _s: &mut State, keycode: Keycode) {
-        use Keycode::*;
-        // Update input axes and quit game on Escape
-        match keycode {
-            S => (),
-            _ => return,
-        }
-    }
-    /// Handle key release events
     fn key_up(&mut self, s: &mut State, keycode: Keycode) {
         use Keycode::*;
         match keycode {
@@ -85,7 +71,7 @@ impl GameState for Editor {
             },
             Z => save::save("save.lvl", &self.level).unwrap(),
             X => save::load("save.lvl", &mut self.level).unwrap(),
-            P => s.switch(Box::new(Play::new())),
+            P => s.switch(Box::new(Play::new(self.level.clone()))),
             _ => return,
         }
     }
