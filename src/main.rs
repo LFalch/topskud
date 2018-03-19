@@ -8,6 +8,8 @@ extern crate serde_derive;
 extern crate serde;
 extern crate self_compare;
 
+use std::env::args;
+
 // use ggez::audio;
 use ggez::conf;
 use ggez::event::*;
@@ -60,8 +62,10 @@ fn main() {
         ctx.filesystem.mount(&path, true);
     }
 
+    let p = args().nth(1).unwrap();
+
     // Tries to create a game state and runs it if succesful
-    match Master::new(&mut ctx) {
+    match Master::new(&mut ctx, &p) {
         Err(e) => {
             println!("Couldn't load game {}", e);
         }

@@ -2,10 +2,14 @@ use ggez::{Context, GameResult};
 use ggez::graphics::{self, Point2, Vector2, Image};
 // use ggez::nalgebra as na;
 
+mod enemy;
+
+pub use self::enemy::*;
+
 use game::world::Grid;
 use game::DELTA;
 
-#[derive(Debug, Clone, Serialize, Deserialize,)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 /// A simple object that can be drawn to the screen
 pub struct Object {
     #[serde(serialize_with = "::save::point_ser", deserialize_with = "::save::point_des")]

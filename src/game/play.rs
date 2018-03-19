@@ -13,6 +13,7 @@ impl Play {
         Play {
             running: false,
             world: World {
+                enemies: level.enemies,
                 bullets: Vec::new(),
                 holes: Vec::new(),
                 player: Object::new(level.start_point.unwrap_or(Point2::new(500., 500.))),
@@ -58,6 +59,9 @@ impl GameState for Play {
         self.world.grid.draw(ctx, &s.assets)?;
         graphics::set_color(ctx, Color{r:0.,g:0.,b:0.,a:1.})?;
         self.world.player.draw(ctx, s.assets.get_img(Sprite::Person))?;
+        for enemy in &self.world.enemies {
+            enemy.draw(ctx, &s.assets)?;
+        }
         graphics::set_color(ctx, WHITE)?;
         for bullet in &self.world.bullets {
             bullet.draw(ctx, s.assets.get_img(Sprite::Bullet))?;

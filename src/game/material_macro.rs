@@ -3,7 +3,7 @@ macro_rules! mat {
         MISSING = $missing:ident
         $($mat:ident = $id:expr, $spr:ident, $solid:expr,)+
     ) => (
-        #[derive(Debug, Copy, Clone)]
+        #[derive(Debug, Copy, Clone, PartialEq, Eq)]
         #[repr(u16)]
         pub enum Material {
             $(

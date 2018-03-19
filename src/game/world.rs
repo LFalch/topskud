@@ -13,6 +13,7 @@ use serde::{Serialize, Deserialize, Serializer, Deserializer};
 pub struct World {
     pub(super) player: Object,
     pub(super) grid: Grid,
+    pub(super) enemies: Vec<Enemy>,
     pub(super) bullets: Vec<Object>,
     pub(super) holes: Vec<Object>,
 }
@@ -32,6 +33,7 @@ mat!{
 pub struct Level {
     pub grid: Grid,
     pub start_point: Option<Point2>,
+    pub enemies: Vec<Enemy>,
 }
 
 impl Level {
@@ -39,6 +41,7 @@ impl Level {
         Level {
             grid: Grid::new(),
             start_point: None,
+            enemies: Vec::new(),
         }
     }
     pub fn load<P: AsRef<Path>>(path: P) -> GameResult<Self> {
@@ -62,6 +65,8 @@ impl Level {
                         .map(|(x, y)| Point2::new(x, y))
                         .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?
                 ),
+                "ENEMIES" => ret.enemies = bincode::deserialize_from(&mut reader, bincode::Infinite)
+                    .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?,
                 "END" => break,
                 _ => return Err("Bad section".to_string())?
             }
@@ -76,6 +81,11 @@ impl Level {
         if let Some(start) = self.start_point {
             writeln!(file, "\nSTART")?;
             bincode::serialize_into(&mut file, &(start.x, start.y), bincode::Infinite)
+            .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?;
+        }
+        if !self.enemies.is_empty() {
+            writeln!(file, "\nENEMIES")?;
+            bincode::serialize_into(&mut file, &self.enemies, bincode::Infinite)
             .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?;
         }
 
