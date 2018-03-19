@@ -11,8 +11,6 @@ macro_rules! mat {
             )*
         }
 
-        use serde::{Serialize, Deserialize, Serializer, Deserializer};
-
         impl Serialize for Material {
             fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
                 where S: Serializer {

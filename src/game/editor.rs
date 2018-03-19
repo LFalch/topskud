@@ -44,8 +44,8 @@ impl GameState for Editor {
     }
     fn logic(&mut self, s: &mut State, ctx: &mut Context) {
         if s.mouse_down.left {
-            let (mx, my) = Level::snap(s.mouse - s.offset);
-            self.level.insert(mx, my, self.cur_mat);
+            let (mx, my) = Grid::snap(s.mouse - s.offset);
+            self.level.grid.insert(mx, my, self.cur_mat);
         }
 
         // Update the UI
@@ -54,7 +54,14 @@ impl GameState for Editor {
     }
 
     fn draw(&mut self, s: &State, ctx: &mut Context) -> GameResult<()> {
-        self.level.draw(ctx, &s.assets)?;
+        graphics::set_color(ctx, graphics::WHITE)?;
+        self.level.grid.draw(ctx, &s.assets)?;
+        if let Some(start) = self.level.start_point {
+            graphics::set_color(ctx, GREEN)?;
+            graphics::circle(ctx, DrawMode::Fill, start, 16., 1.)?;
+            graphics::set_color(ctx, BLUE)?;
+            graphics::circle(ctx, DrawMode::Fill, start, 9., 1.)?;
+        }
 
         Ok(())
     }
@@ -72,14 +79,20 @@ impl GameState for Editor {
             Space => self.cur_mat = match self.cur_mat {
                 Material::Wall => Material::Floor,
                 Material::Floor => Material::Grass,
-                Material::Grass => Material::Wall,
+                Material::Grass => Material::Dirt,
+                Material::Dirt => Material::Wall,
                 Material::Missing => Material::Wall,
             },
-            Z => save::save("save.lvl", &self.level).unwrap(),
-            X => save::load("save.lvl", &mut self.level).unwrap(),
+            Z => self.level.save("save.lvl").unwrap(),
+            X => self.level = Level::load("save.lvl").unwrap(),
             P => s.switch(Box::new(Play::new(self.level.clone()))),
             LShift => self.fast = false,
             _ => return,
+        }
+    }
+    fn mouse_up(&mut self, s: &mut State, btn: MouseButton) {
+        if let MouseButton::Right = btn {
+            self.level.start_point = Some(s.mouse - s.offset);
         }
     }
     fn key_down(&mut self, _s: &mut State, keycode: Keycode) {
@@ -88,6 +101,5 @@ impl GameState for Editor {
             LShift => self.fast = true,
             _ => return,
         }
-
     }
 }

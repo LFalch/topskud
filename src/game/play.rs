@@ -15,8 +15,8 @@ impl Play {
             world: World {
                 bullets: Vec::new(),
                 holes: Vec::new(),
-                player: Object::new(Point2::new(500., 500.)),
-                level,
+                player: Object::new(level.start_point.unwrap_or(Point2::new(500., 500.))),
+                grid: level.grid,
             }
         }
     }
@@ -27,7 +27,7 @@ impl GameState for Play {
         let mut deads = Vec::new();
         for (i, bullet) in self.world.bullets.iter_mut().enumerate().rev() {
             bullet.pos += 500. * DELTA * angle_to_vec(bullet.rot);
-            if bullet.is_on_solid(&self.world.level) {
+            if bullet.is_on_solid(&self.world.grid) {
                 self.world.holes.push(bullet.clone());
                 deads.push(i);
             }
@@ -41,7 +41,7 @@ impl GameState for Play {
         } else {
             175.
         };
-        self.world.player.move_on_level(Vector2::new(s.input.hor(), s.input.ver()), speed, &self.world.level);
+        self.world.player.move_on_grid(Vector2::new(s.input.hor(), s.input.ver()), speed, &self.world.grid);
     }
     fn logic(&mut self, s: &mut State, _ctx: &mut Context) {
         let dist = s.mouse - s.offset - self.world.player.pos;
@@ -55,7 +55,7 @@ impl GameState for Play {
 
     fn draw(&mut self, s: &State, ctx: &mut Context) -> GameResult<()> {
         graphics::set_color(ctx, WHITE)?;
-        self.world.level.draw(ctx, &s.assets)?;
+        self.world.grid.draw(ctx, &s.assets)?;
         graphics::set_color(ctx, Color{r:0.,g:0.,b:0.,a:1.})?;
         self.world.player.draw(ctx, s.assets.get_img(Sprite::Person))?;
         graphics::set_color(ctx, WHITE)?;
