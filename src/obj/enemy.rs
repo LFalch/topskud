@@ -6,7 +6,7 @@ use ::{Assets, Sprite, RED};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Enemy {
-    obj: Object,
+    pub obj: Object,
 }
 
 impl Enemy {
