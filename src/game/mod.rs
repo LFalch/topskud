@@ -4,8 +4,9 @@ use ::*;
 pub mod world;
 pub mod editor;
 pub mod play;
+pub mod menu;
 
-use self::editor::*;
+use self::menu::*;
 
 pub trait GameState {
     fn update(&mut self, &mut State);
@@ -13,16 +14,16 @@ pub trait GameState {
     fn draw(&mut self, &State, &mut Context) -> GameResult<()>;
     fn draw_hud(&mut self, &State, &mut Context) -> GameResult<()>;
 
-    fn key_down(&mut self, &mut State, Keycode) {
+    fn key_down(&mut self, &mut State, &mut Context, Keycode) {
 
     }
-    fn key_up(&mut self, &mut State, Keycode) {
+    fn key_up(&mut self, &mut State, &mut Context, Keycode) {
 
     }
-    fn mouse_down(&mut self, &mut State, MouseButton) {
+    fn mouse_down(&mut self, &mut State, &mut Context, MouseButton) {
 
     }
-    fn mouse_up(&mut self, &mut State, MouseButton) {
+    fn mouse_up(&mut self, &mut State, &mut Context, MouseButton) {
 
     }
 }
@@ -61,7 +62,7 @@ impl Master {
         let height = ctx.conf.window_mode.height;
 
         Ok(Master {
-            gs: Box::new(Editor::new(ctx, &assets, p, dims)?),
+            gs: Box::new(Menu::new(ctx, &assets, p, dims)?),
             state: State {
                 switch_state: None,
                 input: Default::default(),
@@ -147,10 +148,10 @@ impl EventHandler for Master {
             Escape => ctx.quit().unwrap(),
             _ => (),
         }
-        self.gs.key_down(&mut self.state, keycode)
+        self.gs.key_down(&mut self.state, ctx, keycode)
     }
     /// Handle key release events
-    fn key_up_event(&mut self, _ctx: &mut Context, keycode: Keycode, _: Mod, repeat: bool) {
+    fn key_up_event(&mut self, ctx: &mut Context, keycode: Keycode, _: Mod, repeat: bool) {
         // Still don't care about repeats
         if repeat {
             return
@@ -164,10 +165,10 @@ impl EventHandler for Master {
             D | Right => self.state.input.hor -= 1,
             _ => (),
         }
-        self.gs.key_up(&mut self.state, keycode)
+        self.gs.key_up(&mut self.state, ctx, keycode)
     }
     /// Handle mouse down event
-    fn mouse_button_down_event(&mut self, _ctx: &mut Context, btn: MouseButton, _x: i32, _y: i32) {
+    fn mouse_button_down_event(&mut self, ctx: &mut Context, btn: MouseButton, _x: i32, _y: i32) {
         use MouseButton::*;
         match btn {
             Left => self.state.mouse_down.left = true,
@@ -175,10 +176,10 @@ impl EventHandler for Master {
             Right => self.state.mouse_down.right = true,
             _ => ()
         }
-        self.gs.mouse_down(&mut self.state, btn)
+        self.gs.mouse_down(&mut self.state, ctx, btn)
     }
     /// Handle mouse release events
-    fn mouse_button_up_event(&mut self, _ctx: &mut Context, btn: MouseButton, _x: i32, _y: i32) {
+    fn mouse_button_up_event(&mut self, ctx: &mut Context, btn: MouseButton, _x: i32, _y: i32) {
         use MouseButton::*;
         match btn {
             Left => self.state.mouse_down.left = false,
@@ -186,7 +187,7 @@ impl EventHandler for Master {
             Right => self.state.mouse_down.right = false,
             _ => ()
         }
-        self.gs.mouse_up(&mut self.state, btn)
+        self.gs.mouse_up(&mut self.state, ctx, btn)
     }
     /// Handles mouse movement events
     fn mouse_motion_event(&mut self, _: &mut Context, _: MouseState, x: i32, y: i32, _: i32, _: i32) {

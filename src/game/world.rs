@@ -26,6 +26,7 @@ mat!{
     Wall = 1, Wall, true,
     Floor = 2, Floor, false,
     Dirt = 3, Dirt, false,
+    Concrete = 4, Concrete, false,
     Missing = 404, Missing, true,
 }
 
@@ -134,8 +135,8 @@ impl Grid {
         x.saturating_add(y.saturating_mul(self.width))
     }
     pub fn snap_coords(x: f32, y: f32) -> (usize, usize) {
-        let x = ((x) / 32.) as usize;
-        let y = ((y) / 32.) as usize;
+        let x = (x / 32.) as usize;
+        let y = (y / 32.) as usize;
 
         (x, y)
     }

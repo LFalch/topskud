@@ -81,21 +81,21 @@ impl GameState for Play {
         };
         graphics::draw_ex(ctx, s.assets.get_img(Sprite::Crosshair), drawparams)
     }
-    fn key_down(&mut self, _s: &mut State, keycode: Keycode) {
+    fn key_down(&mut self, _s: &mut State, _ctx: &mut Context, keycode: Keycode) {
         use Keycode::*;
         match keycode {
             LShift => self.running = true,
             _ => (),
         }
     }
-    fn key_up(&mut self, _s: &mut State, keycode: Keycode) {
+    fn key_up(&mut self, _s: &mut State, _ctx: &mut Context, keycode: Keycode) {
         use Keycode::*;
         match keycode {
             LShift => self.running = false,
             _ => (),
         }
     }
-    fn mouse_up(&mut self, _s: &mut State, btn: MouseButton) {
+    fn mouse_up(&mut self, _s: &mut State, _ctx: &mut Context, btn: MouseButton) {
         if let MouseButton::Left = btn {
             let pos = self.world.player.pos + 16. * angle_to_vec(self.world.player.rot);
             let mut bul = Object::new(pos);

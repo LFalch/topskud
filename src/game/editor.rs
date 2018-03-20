@@ -11,21 +11,24 @@ pub struct Editor {
     fast: bool,
     level: Level,
     cur_mat: Material,
-    current_mat_text: PosText,
+    mat_text: PosText,
+    ent_text: PosText,
     save: PathBuf,
 }
 
-const PALETTE: [Material; 4] = [
+const PALETTE: [Material; 5] = [
     Material::Grass,
     Material::Dirt,
     Material::Floor,
     Material::Wall,
+    Material::Concrete,
 ];
 
 impl Editor {
     pub fn new<P: AsRef<Path>>(ctx: &mut Context, assets: &Assets, save: P, dims: Option<(usize, usize)>) -> GameResult<Self> {
         // Initialise the text objects
-        let current_mat_text = assets.text(ctx, Point2::new(2., 18.0), "Materials:")?;
+        let mat_text = assets.text(ctx, Point2::new(2., 18.0), "Materials:")?;
+        let ent_text = assets.text(ctx, Point2::new(302., 18.0), "Entities:")?;
         let level = if let Some((w, h)) = dims {
             Level::new(w, h)
         } else {
@@ -36,16 +39,11 @@ impl Editor {
             fast: false,
             pos: Point2::new(200., 200.),
             cur_mat: Material::Wall,
-            current_mat_text,
+            mat_text,
+            ent_text,
             level,
             save: save.as_ref().to_path_buf(),
         })
-    }
-    /// Update the text objects
-    fn update_ui(&mut self, s: &State, ctx: &mut Context) {
-        let current_mat_str = format!("Materials:");
-
-        self.current_mat_text.update_text(&s.assets, ctx, &current_mat_str).unwrap();
     }
 }
 const START_X: f32 = 103.;
@@ -59,14 +57,12 @@ impl GameState for Editor {
         let v = speed * Vector2::new(s.input.hor(), s.input.ver());
         self.pos += v * DELTA;
     }
-    fn logic(&mut self, s: &mut State, ctx: &mut Context) {
+    fn logic(&mut self, s: &mut State, _ctx: &mut Context) {
         if s.mouse_down.left && s.mouse.y > 64. {
             let (mx, my) = Grid::snap(s.mouse - s.offset);
             self.level.grid.insert(mx, my, self.cur_mat);
         }
 
-        // Update the UI
-        self.update_ui(&s, ctx);
         s.focus_on(self.pos);
     }
 
@@ -100,9 +96,10 @@ impl GameState for Editor {
             mat.draw(ctx, &s.assets, x, 16.)?;
         }
 
-        self.current_mat_text.draw_text(ctx)
+        self.mat_text.draw_text(ctx)?;
+        self.ent_text.draw_text(ctx)
     }
-    fn key_up(&mut self, s: &mut State, keycode: Keycode) {
+    fn key_up(&mut self, s: &mut State, _ctx: &mut Context, keycode: Keycode) {
         use Keycode::*;
         match keycode {
             Z => self.level.save(&self.save).unwrap(),
@@ -112,7 +109,7 @@ impl GameState for Editor {
             _ => return,
         }
     }
-    fn mouse_up(&mut self, s: &mut State, btn: MouseButton) {
+    fn mouse_up(&mut self, s: &mut State, _ctx: &mut Context, btn: MouseButton) {
         use MouseButton::*;
         match btn {
             Left if s.mouse.y <= 64. => {
@@ -127,7 +124,7 @@ impl GameState for Editor {
             _ => ()
         }
     }
-    fn key_down(&mut self, _s: &mut State, keycode: Keycode) {
+    fn key_down(&mut self, _s: &mut State,_ctx: &mut Context,  keycode: Keycode) {
         use Keycode::*;
         match keycode {
             LShift => self.fast = true,
