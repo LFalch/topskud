@@ -23,10 +23,14 @@ const PALETTE: [Material; 4] = [
 ];
 
 impl Editor {
-    pub fn new<P: AsRef<Path>>(assets: &Assets, save: P, ctx: &mut Context) -> GameResult<Self> {
+    pub fn new<P: AsRef<Path>>(ctx: &mut Context, assets: &Assets, save: P, dims: Option<(usize, usize)>) -> GameResult<Self> {
         // Initialise the text objects
         let current_mat_text = assets.text(ctx, Point2::new(2., 18.0), "Materials:")?;
-        let level = Level::load(save.as_ref()).unwrap_or_else(|_| Level::new());
+        let level = if let Some((w, h)) = dims {
+            Level::new(w, h)
+        } else {
+            Level::load(save.as_ref()).unwrap_or_else(|_| Level::new(32, 32))
+        };
 
         Ok(Editor {
             fast: false,

@@ -50,7 +50,7 @@ pub(crate) const DELTA: f32 = 1. / DESIRED_FPS as f32;
 
 impl Master {
     /// Make a new state object
-    pub fn new(ctx: &mut Context, p: &str) -> GameResult<Self> {
+    pub fn new(ctx: &mut Context, p: &str, dims: Option<(usize, usize)>) -> GameResult<Self> {
         // Background colour is black
         graphics::set_background_color(ctx, (33, 33, 255, 255).into());
         // Initialise assets
@@ -61,7 +61,7 @@ impl Master {
         let height = ctx.conf.window_mode.height;
 
         Ok(Master {
-            gs: Box::new(Editor::new(&assets, p, ctx)?),
+            gs: Box::new(Editor::new(ctx, &assets, p, dims)?),
             state: State {
                 switch_state: None,
                 input: Default::default(),

@@ -37,16 +37,16 @@ pub struct Level {
 }
 
 impl Level {
-    pub fn new() -> Self {
+    pub fn new(width: usize, height: usize) -> Self {
         Level {
-            grid: Grid::new(32, 32),
+            grid: Grid::new(width, height),
             start_point: None,
             enemies: Vec::new(),
         }
     }
     pub fn load<P: AsRef<Path>>(path: P) -> GameResult<Self> {
         let mut reader = BufReader::new(File::open(path)?);
-        let mut ret = Level::new();
+        let mut ret = Level::new(0, 0);
 
         loop {
             let mut buf = String::with_capacity(16);

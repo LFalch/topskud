@@ -48,6 +48,37 @@ pub const RED: Color = Color{r:1.,g:0.,b:0.,a:1.};
 pub const BLUE: Color = Color{r:0.,g:0.,b:1.,a:1.};
 
 fn main() {
+    let mut args = args().skip(1);
+
+    let mut p = if let Some(p) = args.next() {
+        p
+    } else {
+        eprintln!("No level to load!");
+        return
+    };
+    let mut dims = None;
+
+    if &p == "--convert" {
+        let p = args.next().unwrap();
+        let o = args.next().unwrap();
+
+        let grid: [[Material; 32]; 32];
+        {
+            let mut file = File::open(&p).unwrap();
+            grid = bincode::deserialize_from(&mut file, bincode::Infinite).unwrap();
+        }
+        let level = Level::from_32x32_transposed_grid(grid);
+
+        level.save(&o).unwrap();
+        return
+    } else if &p == "--new" {
+        p = args.next().unwrap();
+        let w: usize = args.next().unwrap().parse().unwrap();
+        let h: usize = args.next().unwrap().parse().unwrap();
+
+        dims = Some((w, h));
+    }
+
     // Set window mode
     let window_mode = conf::WindowMode::default().dimensions(1000, 750);
 
@@ -65,24 +96,8 @@ fn main() {
         ctx.filesystem.mount(&path, true);
     }
 
-    let p = args().nth(1).unwrap();
-    if &p == "--convert" {
-        let p = args().nth(2).unwrap();
-        let o = args().nth(3).unwrap();
-
-        let grid: [[Material; 32]; 32];
-        {
-            let mut file = File::open(&p).unwrap();
-            grid = bincode::deserialize_from(&mut file, bincode::Infinite).unwrap();
-        }
-        let level = Level::from_32x32_transposed_grid(grid);
-
-        level.save(&o).unwrap();
-        return
-    }
-
     // Tries to create a game state and runs it if succesful
-    match Master::new(&mut ctx, &p) {
+    match Master::new(&mut ctx, &p, dims) {
         Err(e) => {
             println!("Couldn't load game {}", e);
         }
