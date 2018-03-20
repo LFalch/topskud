@@ -55,14 +55,14 @@ impl Level {
                 continue
             }
             match &*buf.trim_right() {
-                "GRID" => ret.grid = bincode::deserialize_from(&mut reader, bincode::Infinite)
+                "GRID" => ret.grid = bincode::deserialize_from(&mut reader)
                     .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?,
                 "START" => ret.start_point = Some(
-                    bincode::deserialize_from(&mut reader, bincode::Infinite)
+                    bincode::deserialize_from(&mut reader)
                         .map(|(x, y)| Point2::new(x, y))
                         .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?
                 ),
-                "ENEMIES" => ret.enemies = bincode::deserialize_from(&mut reader, bincode::Infinite)
+                "ENEMIES" => ret.enemies = bincode::deserialize_from(&mut reader)
                     .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?,
                 "END" => break,
                 _ => return Err("Bad section".to_string())?
@@ -75,16 +75,16 @@ impl Level {
         let mut file = File::create(path)?;
 
         writeln!(file, "GRID")?;
-        bincode::serialize_into(&mut file, &self.grid, bincode::Infinite)
+        bincode::serialize_into(&mut file, &self.grid)
             .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?;
         if let Some(start) = self.start_point {
             writeln!(file, "\nSTART")?;
-            bincode::serialize_into(&mut file, &(start.x, start.y), bincode::Infinite)
+            bincode::serialize_into(&mut file, &(start.x, start.y))
             .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?;
         }
         if !self.enemies.is_empty() {
             writeln!(file, "\nENEMIES")?;
-            bincode::serialize_into(&mut file, &self.enemies, bincode::Infinite)
+            bincode::serialize_into(&mut file, &self.enemies)
             .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?;
         }
 

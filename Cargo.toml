@@ -5,7 +5,7 @@ authors = ["LFalch <lucas@wasd.dk>"]
 
 [dependencies]
 ggez = "0.4"
-bincode = "0.9.2"
+bincode = "~1"
 serde_derive = "~1"
 serde = "~1"
 self-compare = "0.2"

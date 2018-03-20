@@ -65,7 +65,7 @@ fn main() {
         let grid: [[Material; 32]; 32];
         {
             let mut file = File::open(&p).unwrap();
-            grid = bincode::deserialize_from(&mut file, bincode::Infinite).unwrap();
+            grid = bincode::deserialize_from(&mut file).unwrap();
         }
         let level = Level::from_32x32_transposed_grid(grid);
 
