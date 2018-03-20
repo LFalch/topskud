@@ -5,12 +5,19 @@ use super::play::Play;
 
 use std::path::{Path, PathBuf};
 
+#[derive(Debug, PartialEq, Copy, Clone)]
+enum Tool {
+    Material(Material),
+    Selector,
+    Enemy,
+}
+
 /// The state of the game
 pub struct Editor {
     pos: Point2,
     fast: bool,
     level: Level,
-    cur_mat: Material,
+    current: Tool,
     mat_text: PosText,
     ent_text: PosText,
     save: PathBuf,
@@ -29,16 +36,21 @@ impl Editor {
         // Initialise the text objects
         let mat_text = assets.text(ctx, Point2::new(2., 18.0), "Materials:")?;
         let ent_text = assets.text(ctx, Point2::new(302., 18.0), "Entities:")?;
+        let (x, y);
         let level = if let Some((w, h)) = dims {
+            x = w as f32 * 16.;
+            y = h as f32 * 16.;
             Level::new(w, h)
         } else {
+            x = 16. * 32.;
+            y = 16. * 32.;
             Level::load(save.as_ref()).unwrap_or_else(|_| Level::new(32, 32))
         };
 
         Ok(Editor {
             fast: false,
-            pos: Point2::new(200., 200.),
-            cur_mat: Material::Wall,
+            pos: Point2::new(x, y),
+            current: Tool::Material(Material::Wall),
             mat_text,
             ent_text,
             level,
@@ -59,8 +71,10 @@ impl GameState for Editor {
     }
     fn logic(&mut self, s: &mut State, _ctx: &mut Context) {
         if s.mouse_down.left && s.mouse.y > 64. {
-            let (mx, my) = Grid::snap(s.mouse - s.offset);
-            self.level.grid.insert(mx, my, self.cur_mat);
+            if let Tool::Material(mat) = self.current {
+                let (mx, my) = Grid::snap(s.mouse - s.offset);
+                self.level.grid.insert(mx, my, mat);
+            }
         }
 
         s.focus_on(self.pos);
@@ -88,7 +102,7 @@ impl GameState for Editor {
 
         for (i, mat) in PALETTE.iter().enumerate() {
             let x = START_X + i as f32 * 36.;
-            if *mat == self.cur_mat {
+            if Tool::Material(*mat) == self.current {
                 graphics::set_color(ctx, Color{r: 1., g: 1., b: 0., a: 1.})?;
                 graphics::rectangle(ctx, DrawMode::Fill, Rect{x: x - 1., y: 15., w: 34., h: 34.})?;
                 graphics::set_color(ctx, graphics::WHITE)?;
@@ -116,7 +130,7 @@ impl GameState for Editor {
                 if s.mouse.x > START_X && s.mouse.x < START_X + PALETTE.len() as f32 * 36. {
                     let i = ((s.mouse.x - START_X) / 36.) as usize;
 
-                    self.cur_mat = PALETTE[i];
+                    self.current = Tool::Material(PALETTE[i]);
                 }
             }
             Right => self.level.start_point = Some(s.mouse - s.offset),
