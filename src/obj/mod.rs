@@ -39,18 +39,18 @@ impl Object {
     }
     pub fn is_on_solid(&self, grid: &Grid) -> bool {
         let (x, y) = Grid::snap(self.pos);
-        grid.get(x, y).solid()
+        grid.is_solid(x, y)
     }
     pub fn move_on_grid(&mut self, mut v: Vector2, speed: f32, grid: &Grid) {
         if v.x != 0. {
             let (xx, xy) = Grid::snap(self.pos + Vector2::new(16. * v.x, 0.));
-            if grid.get(xx, xy).solid() {
+            if grid.is_solid(xx, xy) {
                 v.x = 0.;
             }
         }
         if v.y != 0. {
             let (yx, yy) = Grid::snap(self.pos + Vector2::new(0., 16. * v.y));
-            if grid.get(yx, yy).solid() {
+            if grid.is_solid(yx, yy) {
                 v.y = 0.;
             }
         }

@@ -9,6 +9,7 @@ extern crate serde;
 extern crate self_compare;
 
 use std::env::args;
+use std::fs::File;
 
 // use ggez::audio;
 use ggez::conf;
@@ -25,6 +26,8 @@ mod ext;
 pub use ext::*;
 mod game;
 pub use game::*;
+
+use game::world::{Level, Material};
 
 /// Makes a unit vector from a given direction angle
 fn angle_to_vec(angle: f32) -> Vector2 {
@@ -63,6 +66,20 @@ fn main() {
     }
 
     let p = args().nth(1).unwrap();
+    if &p == "--convert" {
+        let p = args().nth(2).unwrap();
+        let o = args().nth(3).unwrap();
+
+        let grid: [[Material; 32]; 32];
+        {
+            let mut file = File::open(&p).unwrap();
+            grid = bincode::deserialize_from(&mut file, bincode::Infinite).unwrap();
+        }
+        let level = Level::from_32x32_transposed_grid(grid);
+
+        level.save(&o).unwrap();
+        return
+    }
 
     // Tries to create a game state and runs it if succesful
     match Master::new(&mut ctx, &p) {

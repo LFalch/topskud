@@ -39,7 +39,7 @@ pub struct Level {
 impl Level {
     pub fn new() -> Self {
         Level {
-            grid: Grid::new(),
+            grid: Grid::new(32, 32),
             start_point: None,
             enemies: Vec::new(),
         }
@@ -47,19 +47,16 @@ impl Level {
     pub fn load<P: AsRef<Path>>(path: P) -> GameResult<Self> {
         let mut reader = BufReader::new(File::open(path)?);
         let mut ret = Level::new();
-        ret.grid = bincode::deserialize_from(&mut reader, bincode::Infinite)
-            .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?;
 
         loop {
             let mut buf = String::with_capacity(16);
             reader.read_line(&mut buf)?;
-            if buf.is_empty() {
-                break
-            }
             if buf == "\n" {
                 continue
             }
             match &*buf.trim_right() {
+                "GRID" => ret.grid = bincode::deserialize_from(&mut reader, bincode::Infinite)
+                    .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?,
                 "START" => ret.start_point = Some(
                     bincode::deserialize_from(&mut reader, bincode::Infinite)
                         .map(|(x, y)| Point2::new(x, y))
@@ -76,6 +73,8 @@ impl Level {
     }
     pub fn save<P: AsRef<Path>>(&self, path: P) -> GameResult<()> {
         let mut file = File::create(path)?;
+
+        writeln!(file, "GRID")?;
         bincode::serialize_into(&mut file, &self.grid, bincode::Infinite)
             .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?;
         if let Some(start) = self.start_point {
@@ -92,18 +91,47 @@ impl Level {
         writeln!(file, "\nEND")?;
         Ok(())
     }
+    pub fn from_32x32_transposed_grid(mats: [[Material; 32]; 32]) -> Self {
+        let mut vec = Vec::with_capacity(1024);
+        for y in 0..32 {
+            for x in 0..32 {
+                vec.push(mats[x][y]);
+            }
+        }
+
+        let grid = Grid {
+            width: 32,
+            mats: vec,
+        };
+
+        Level {
+            grid,
+            start_point: None,
+            enemies: Vec::new(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Grid([[Material; 32]; 32]);
+pub struct Grid{
+    width: usize,
+    mats: Vec<Material>,
+}
 
 impl Grid {
-    pub fn new() -> Self {
-        Grid([[Material::Grass; 32]; 32])
+    pub fn new(width: usize, height: usize) -> Self {
+        Grid {
+            width: width,
+            mats: vec![Material::Grass; width*height],
+        }
     }
     #[inline]
     pub fn snap(c: Point2) -> (usize, usize) {
         Self::snap_coords(c.x, c.y)
+    }
+    #[inline]
+    fn idx(&self, x: usize, y: usize) -> usize {
+        x.saturating_add(y.saturating_mul(self.width))
     }
     pub fn snap_coords(x: f32, y: f32) -> (usize, usize) {
         let x = ((x) / 32.) as usize;
@@ -111,20 +139,30 @@ impl Grid {
 
         (x, y)
     }
-    pub fn get(&self, x: usize, y: usize) -> Material {
-        self.0[x][y]
+    pub fn get(&self, x: usize, y: usize) -> Option<Material> {
+        if x < self.width {
+            self.mats.get(self.idx(x, y)).cloned()
+        } else {
+            None
+        }
+    }
+    pub fn is_solid(&self, x: usize, y: usize) -> bool {
+        self.get(x, y).map(|m| m.solid()).unwrap_or(true)
     }
     pub fn insert(&mut self, x: usize, y: usize, mat: Material) {
-        self.0[x][y] = mat;
+        if x < self.width {
+            let i = self.idx(x, y);
+            if let Some(m) = self.mats.get_mut(i) {
+                *m = mat;
+            }
+        }
     }
     pub fn draw(&self, ctx: &mut Context, assets: &Assets) -> GameResult<()> {
-        for (i, vert) in self.0.iter().enumerate() {
-            for (j, mat) in vert.iter().enumerate() {
-                let x = i as f32 * 32.;
-                let y = j as f32 * 32.;
+        for (i, mat) in self.mats.iter().enumerate() {
+            let x = (i % self.width) as f32 * 32.;
+            let y = (i / self.width) as f32 * 32.;
 
-                mat.draw(ctx, assets, x, y)?;
-            }
+            mat.draw(ctx, assets, x, y)?;
         }
         Ok(())
     }
