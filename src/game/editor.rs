@@ -21,6 +21,7 @@ pub struct Editor {
     mat_text: PosText,
     ent_text: PosText,
     save: PathBuf,
+    draw_visibility_cones: bool,
     rotation_speed: f32,
 }
 
@@ -53,6 +54,7 @@ impl Editor {
         Ok(Editor {
             pos: Point2::new(x, y),
             current: Tool::Material(Material::Wall),
+            draw_visibility_cones: false,
             mat_text,
             ent_text,
             level,
@@ -114,6 +116,10 @@ impl GameState for Editor {
                     graphics::circle(ctx, DrawMode::Fill, enemy.obj.pos, 17., 0.5)?;
                 }
             }
+            if self.draw_visibility_cones {
+                graphics::set_color(ctx, BLUE)?;
+                enemy.draw_visibility_cone(ctx, 512.)?;
+            }
             enemy.draw(ctx, &s.assets)?;
         }
 
@@ -169,6 +175,7 @@ impl GameState for Editor {
         match keycode {
             Z => self.level.save(&self.save).unwrap(),
             X => self.level = Level::load(&self.save).unwrap(),
+            C => self.draw_visibility_cones.toggle(),
             P => {
                 let e = Box::new(Play::new(self.level.clone(), &s.assets));
                 s.switch(e)
