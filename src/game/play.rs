@@ -1,5 +1,6 @@
 use ::*;
 use super::world::*;
+use obj::enemy::Chaser;
 use ggez::graphics::{Drawable, DrawMode, Color, WHITE, Rect};
 use ggez::graphics::spritebatch::SpriteBatch;
 
@@ -45,7 +46,7 @@ impl GameState for Play {
         let mut deads = Vec::new();
         for (e, enemy) in self.world.enemies.iter_mut().enumerate().rev() {
             if enemy.can_see(self.world.player.pos, &self.world.grid) {
-                enemy.last_known_player_position = Some(self.world.player.pos);
+                enemy.behaviour = Chaser::LastKnown(self.world.player.pos);
             }
             enemy.update();
             let mut dead = None;
