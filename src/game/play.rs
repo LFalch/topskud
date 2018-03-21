@@ -1,10 +1,11 @@
 use ::*;
 use super::world::*;
-use ggez::graphics::{Drawable, Color, WHITE};
+use ggez::graphics::{Drawable, DrawMode, Color, WHITE, Rect};
 use ggez::graphics::spritebatch::SpriteBatch;
 
 /// The state of the game
 pub struct Play {
+    health: u8,
     world: World,
     holes: SpriteBatch,
 }
@@ -12,6 +13,7 @@ pub struct Play {
 impl Play {
     pub fn new(level: Level, a: &Assets) -> Self {
         Play {
+            health: 10,
             world: World {
                 enemies: level.enemies,
                 bullets: Vec::new(),
@@ -31,10 +33,38 @@ impl GameState for Play {
             if bullet.is_on_solid(&self.world.grid) {
                 self.holes.add(bullet.drawparams());
                 deads.push(i);
+            } else if (bullet.pos-self.world.player.pos).norm() <= 16. {
+                deads.push(i);
+                self.health -= 1;
             }
         }
         for i in deads {
             self.world.bullets.remove(i);
+        }
+
+        let mut deads = Vec::new();
+        for (e, enemy) in self.world.enemies.iter_mut().enumerate().rev() {
+            if enemy.can_see(self.world.player.pos, &self.world.grid) {
+                enemy.last_known_player_position = Some(self.world.player.pos);
+            }
+            enemy.update();
+            let mut dead = None;
+            for (i, bullet) in self.world.bullets.iter().enumerate().rev() {
+                if (bullet.pos - enemy.obj.pos).norm() <= 16. {
+                    dead = Some(i);
+                    enemy.health -= 1;
+                    if enemy.health == 0 {
+                        deads.push(e);
+                    }
+                    break
+                }
+            }
+            if let Some(i) = dead {
+                self.world.bullets.remove(i);
+            }
+        }
+        for i in deads {
+            self.world.enemies.remove(i);
         }
 
         let speed = if s.modifiers.shift {
@@ -78,6 +108,11 @@ impl GameState for Play {
         Ok(())
     }
     fn draw_hud(&mut self, s: &State, ctx: &mut Context) -> GameResult<()> {
+        graphics::set_color(ctx, graphics::BLACK)?;
+        graphics::rectangle(ctx, DrawMode::Fill, Rect{x: 1., y: 1., w: 102., h: 26.})?;
+        graphics::set_color(ctx, GREEN)?;
+        graphics::rectangle(ctx, DrawMode::Fill, Rect{x: 2., y: 2., w: self.health as f32 * 10., h: 24.})?;
+
         graphics::set_color(ctx, RED)?;
         let drawparams = graphics::DrawParam {
             dest: s.mouse,

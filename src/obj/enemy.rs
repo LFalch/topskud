@@ -3,21 +3,29 @@ use ggez::graphics::{self, Point2};
 
 use obj::Object;
 use game::world::Grid;
-use ::{angle_to_vec, Assets, Sprite, RED};
+use ::{angle_from_vec, angle_to_vec, Assets, Sprite, RED, DELTA};
 
 use ggez::nalgebra as na;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Enemy {
     pub obj: Object,
+    #[serde(skip)]
+    pub last_known_player_position: Option<Point2>,
+    #[serde(skip, default = "three")]
+    pub health: u8,
 }
+
+fn three() -> u8 { 3 }
 
 pub const VISIBILITY: f32 = ::std::f32::consts::FRAC_PI_4;
 
 impl Enemy {
     pub fn new(obj: Object) -> Enemy {
         Enemy {
-            obj
+            obj,
+            health: 3,
+            last_known_player_position: None,
         }
     }
     pub fn draw_visibility_cone(&self, ctx: &mut Context, length: f32) -> GameResult<()> {
@@ -29,6 +37,26 @@ impl Enemy {
     pub fn draw(&self, ctx: &mut Context, a: &Assets) -> GameResult<()> {
         graphics::set_color(ctx, RED)?;
         self.obj.draw(ctx, a.get_img(Sprite::Person))
+    }
+    pub fn update(&mut self) {
+        if let Some(player_pos) = self.last_known_player_position {
+            let dist = player_pos-self.obj.pos;
+            let dir = angle_to_vec(self.obj.rot);
+
+            let rotation = na::angle(&dir, &dist);
+
+            const ROTATION: f32 = 3. * DELTA;
+
+            if rotation > ROTATION {
+                if dir.perp(&dist) > 0. {
+                    self.obj.rot += ROTATION;
+                } else {
+                    self.obj.rot -= ROTATION;
+                }
+            } else {
+                self.obj.rot = angle_from_vec(&dist);
+            }
+        }
     }
     pub fn can_see(&self, p: Point2, grid: &Grid) -> bool {
         let dist = p-self.obj.pos;
