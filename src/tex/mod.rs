@@ -80,7 +80,9 @@ sprites! {
     Missing, missing, 32., 32.,
     Bullet, bullet, 16., 16.,
     Hole, hole, 8., 8.,
+    Asphalt, asphalt, 32., 32.,
     Concrete, concrete, 32., 32.,
+    Sand, sand, 32., 32.,
 }
 
 impl Assets {

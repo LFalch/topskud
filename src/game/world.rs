@@ -25,7 +25,9 @@ mat!{
     Wall = 1, Wall, true,
     Floor = 2, Floor, false,
     Dirt = 3, Dirt, false,
-    Concrete = 4, Concrete, false,
+    Asphalt = 4, Asphalt, false,
+    Sand = 5, Sand, false,
+    Concrete = 6, Concrete, true,
     Missing = 404, Missing, true,
 }
 

@@ -24,11 +24,13 @@ pub struct Editor {
     rotation_speed: f32,
 }
 
-const PALETTE: [Material; 5] = [
+const PALETTE: [Material; 7] = [
     Material::Grass,
     Material::Dirt,
     Material::Floor,
     Material::Wall,
+    Material::Asphalt,
+    Material::Sand,
     Material::Concrete,
 ];
 
