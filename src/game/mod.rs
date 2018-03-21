@@ -37,6 +37,7 @@ pub struct Master {
 pub struct State {
     mouse_down: MouseDown,
     input: InputState,
+    modifiers: Modifiers,
     assets: Assets,
     width: u32,
     height: u32,
@@ -67,6 +68,7 @@ impl Master {
                 switch_state: None,
                 input: Default::default(),
                 mouse_down: Default::default(),
+                modifiers: Default::default(),
                 assets,
                 width,
                 height,
@@ -145,6 +147,9 @@ impl EventHandler for Master {
             S | Down => self.state.input.ver += 1,
             A | Left => self.state.input.hor -= 1,
             D | Right => self.state.input.hor += 1,
+            LShift => self.state.modifiers.shift = true,
+            LCtrl => self.state.modifiers.ctrl = true,
+            LAlt => self.state.modifiers.alt = true,
             Escape => ctx.quit().unwrap(),
             _ => (),
         }
@@ -163,6 +168,9 @@ impl EventHandler for Master {
             S | Down => self.state.input.ver -= 1,
             A | Left => self.state.input.hor += 1,
             D | Right => self.state.input.hor -= 1,
+            LShift => self.state.modifiers.shift = false,
+            LCtrl => self.state.modifiers.ctrl = false,
+            LAlt => self.state.modifiers.alt = false,
             _ => (),
         }
         self.gs.key_up(&mut self.state, ctx, keycode)

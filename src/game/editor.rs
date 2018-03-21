@@ -16,7 +16,6 @@ enum Tool {
 /// The state of the game
 pub struct Editor {
     pos: Point2,
-    fast: bool,
     level: Level,
     current: Tool,
     mat_text: PosText,
@@ -50,7 +49,6 @@ impl Editor {
         };
 
         Ok(Editor {
-            fast: false,
             pos: Point2::new(x, y),
             current: Tool::Material(Material::Wall),
             mat_text,
@@ -67,7 +65,7 @@ const RED_HALF: Color = Color{r: 1., g: 0., b: 0., a: 0.5};
 
 impl GameState for Editor {
     fn update(&mut self, s: &mut State) {
-        let speed = match self.fast {
+        let speed = match s.modifiers.shift {
             false => 175.,
             true => 315.,
         };
@@ -177,7 +175,6 @@ impl GameState for Editor {
             }
             Comma => self.rotation_speed += 10.,
             Period => self.rotation_speed -= 10.,
-            LShift => self.fast = false,
             _ => return,
         }
     }
@@ -220,7 +217,6 @@ impl GameState for Editor {
         match keycode {
             Comma => self.rotation_speed -= 10.,
             Period => self.rotation_speed += 10.,
-            LShift => self.fast = true,
             _ => return,
         }
     }

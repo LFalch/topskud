@@ -5,13 +5,11 @@ use ggez::graphics::{Color, WHITE};
 /// The state of the game
 pub struct Play {
     world: World,
-    running: bool,
 }
 
 impl Play {
     pub fn new(level: Level) -> Self {
         Play {
-            running: false,
             world: World {
                 enemies: level.enemies,
                 bullets: Vec::new(),
@@ -37,7 +35,7 @@ impl GameState for Play {
             self.world.bullets.remove(i);
         }
 
-        let speed = if self.running {
+        let speed = if s.modifiers.shift {
             300.
         } else {
             175.
@@ -80,20 +78,6 @@ impl GameState for Play {
             .. Default::default()
         };
         graphics::draw_ex(ctx, s.assets.get_img(Sprite::Crosshair), drawparams)
-    }
-    fn key_down(&mut self, _s: &mut State, _ctx: &mut Context, keycode: Keycode) {
-        use Keycode::*;
-        match keycode {
-            LShift => self.running = true,
-            _ => (),
-        }
-    }
-    fn key_up(&mut self, _s: &mut State, _ctx: &mut Context, keycode: Keycode) {
-        use Keycode::*;
-        match keycode {
-            LShift => self.running = false,
-            _ => (),
-        }
     }
     fn mouse_up(&mut self, _s: &mut State, _ctx: &mut Context, btn: MouseButton) {
         if let MouseButton::Left = btn {
