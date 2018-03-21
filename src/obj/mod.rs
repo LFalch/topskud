@@ -27,14 +27,18 @@ impl Object {
             rot: 0.,
         }
     }
-    /// Draw the object
-    pub fn draw(&self, ctx: &mut Context, img: &Image) -> GameResult<()> {
-        let drawparams = graphics::DrawParam {
+    #[inline]
+    pub fn drawparams(&self) -> graphics::DrawParam {
+        graphics::DrawParam {
             dest: self.pos,
             rotation: self.rot,
             offset: Point2::new(0.5, 0.5),
             .. Default::default()
-        };
+        }
+    }
+    /// Draw the object
+    pub fn draw(&self, ctx: &mut Context, img: &Image) -> GameResult<()> {
+        let drawparams = self.drawparams();
         graphics::draw_ex(ctx, img, drawparams)
     }
     pub fn is_on_solid(&self, grid: &Grid) -> bool {

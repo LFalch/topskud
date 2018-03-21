@@ -167,7 +167,10 @@ impl GameState for Editor {
         match keycode {
             Z => self.level.save(&self.save).unwrap(),
             X => self.level = Level::load(&self.save).unwrap(),
-            P => s.switch(Box::new(Play::new(self.level.clone()))),
+            P => {
+                let e = Box::new(Play::new(self.level.clone(), &s.assets));
+                s.switch(e)
+            },
             T => self.current = Tool::Selector,
             Delete | Backspace => if let Tool::SelectedEnemy(i) = self.current {
                 self.level.enemies.remove(i);

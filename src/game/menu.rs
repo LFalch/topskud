@@ -35,8 +35,9 @@ impl Menu {
     pub fn switch_play(&self, s: &mut State) {
         if self.dims.is_none() {
             let level = Level::load(&self.save).unwrap_or_else(|_| Level::new(1, 1));
+            let e = Box::new(Play::new(level, &s.assets));
 
-            s.switch(Box::new(Play::new(level)));
+            s.switch(e);
         }
     }
     pub fn switch_editor(&self, ctx: &mut Context, s: &mut State) -> GameResult<()> {

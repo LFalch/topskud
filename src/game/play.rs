@@ -1,22 +1,24 @@
 use ::*;
 use super::world::*;
-use ggez::graphics::{Color, WHITE};
+use ggez::graphics::{Drawable, Color, WHITE};
+use ggez::graphics::spritebatch::SpriteBatch;
 
 /// The state of the game
 pub struct Play {
     world: World,
+    holes: SpriteBatch,
 }
 
 impl Play {
-    pub fn new(level: Level) -> Self {
+    pub fn new(level: Level, a: &Assets) -> Self {
         Play {
             world: World {
                 enemies: level.enemies,
                 bullets: Vec::new(),
-                holes: Vec::new(),
                 player: Object::new(level.start_point.unwrap_or(Point2::new(500., 500.))),
                 grid: level.grid,
-            }
+            },
+            holes: SpriteBatch::new(a.get_img(Sprite::Hole).clone()),
         }
     }
 }
@@ -27,7 +29,7 @@ impl GameState for Play {
         for (i, bullet) in self.world.bullets.iter_mut().enumerate().rev() {
             bullet.pos += 500. * DELTA * angle_to_vec(bullet.rot);
             if bullet.is_on_solid(&self.world.grid) {
-                self.world.holes.push(bullet.clone());
+                self.holes.add(bullet.drawparams());
                 deads.push(i);
             }
         }
@@ -64,9 +66,7 @@ impl GameState for Play {
         for bullet in &self.world.bullets {
             bullet.draw(ctx, s.assets.get_img(Sprite::Bullet))?;
         }
-        for hole in &self.world.holes {
-            hole.draw(ctx, s.assets.get_img(Sprite::Hole))?;
-        }
+        self.holes.draw_ex(ctx, Default::default())?;
 
         Ok(())
     }

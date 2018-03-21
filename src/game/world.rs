@@ -15,7 +15,6 @@ pub struct World {
     pub(super) grid: Grid,
     pub(super) enemies: Vec<Enemy>,
     pub(super) bullets: Vec<Object>,
-    pub(super) holes: Vec<Object>,
 }
 
 include!("material_macro.rs");
