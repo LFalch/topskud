@@ -2,7 +2,7 @@ use ggez::{Context, GameResult};
 use ggez::graphics::{self, Point2, Vector2, Image};
 // use ggez::nalgebra as na;
 
-mod enemy;
+pub mod enemy;
 
 pub use self::enemy::*;
 

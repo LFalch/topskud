@@ -60,6 +60,13 @@ impl GameState for Play {
         graphics::set_color(ctx, Color{r:0.,g:0.,b:0.,a:1.})?;
         self.world.player.draw(ctx, s.assets.get_img(Sprite::Person))?;
         for enemy in &self.world.enemies {
+            graphics::set_color(ctx, BLUE)?;
+            enemy.draw_visibility_cone(ctx, 400.)?;
+
+            if enemy.can_see(self.world.player.pos, &self.world.grid) {
+                graphics::set_color(ctx, GREEN)?;
+                graphics::line(ctx, &[enemy.obj.pos, self.world.player.pos], 3.)?;
+            }
             enemy.draw(ctx, &s.assets)?;
         }
         graphics::set_color(ctx, WHITE)?;
