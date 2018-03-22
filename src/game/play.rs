@@ -177,7 +177,7 @@ impl GameState for Play {
 
         let mut deads = Vec::new();
         for (e, enemy) in self.world.enemies.iter_mut().enumerate().rev() {
-            if enemy.can_see(self.world.player.pos, &self.world.grid).0 {
+            if enemy.can_see(self.world.player.pos, &self.world.grid) {
                 enemy.behaviour = Chaser::LastKnown{
                     pos: self.world.player.pos,
                     vel: player_vel,
@@ -279,14 +279,6 @@ impl GameState for Play {
         for enemy in &self.world.enemies {
             graphics::set_color(ctx, BLUE)?;
 
-            let (can_see, ray_end) = enemy.can_see(self.world.player.pos, &self.world.grid);
-            if can_see {
-                graphics::set_color(ctx, GREEN)?;
-                graphics::line(ctx, &[enemy.obj.pos, self.world.player.pos], 1.)?;
-            } else if let Some(ray_end) = ray_end {
-                graphics::set_color(ctx, RED)?;
-                graphics::line(ctx, &[enemy.obj.pos, ray_end], 3.)?;
-            }
             enemy.draw(ctx, &s.assets)?;
         }
         graphics::set_color(ctx, WHITE)?;

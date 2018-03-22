@@ -114,7 +114,7 @@ impl Enemy {
             }
         }
     }
-    pub fn can_see(&self, p: Point2, grid: &Grid) -> (bool, Option<Point2>) {
+    pub fn can_see(&self, p: Point2, grid: &Grid) -> bool {
         let dist = p-self.obj.pos;
         let dir = angle_to_vec(self.obj.rot);
 
@@ -129,14 +129,14 @@ impl Enemy {
             for _ in 0..intervals {
                 let (x, y) = Grid::snap(ray_end);
                 if grid.is_solid(x, y) {
-                    return (false, Some(ray_end))
+                    return false
                 }
 
                 ray_end += ray;
             }
-            (true, Some(ray_end))
+            true
         } else {
-            (false, None)
+            false
         }
     }
 }
