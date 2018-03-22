@@ -60,4 +60,5 @@ sounds! {
     Hit, hit, WAV,
     Hurt, hurt, WAV,
     Death, death, WAV,
+    Victory, victory, OGG,
 }

@@ -79,6 +79,23 @@ pub struct Play {
     hurt: Source,
     impact: MultiSource,
     death: Source,
+    victory: Source,
+    victory_time: f32,
+}
+
+impl Drop for Play {
+    fn drop(&mut self) {
+        for s in &*self.shot.srcs {
+            s.stop();
+        }
+        for s in &*self.impact.srcs {
+            s.stop();
+        }
+        self.hit.stop();
+        self.hurt.stop();
+        self.death.stop();
+        self.victory.stop();
+    }
 }
 
 impl Play {
@@ -91,9 +108,11 @@ impl Play {
         let impact1 = s.sounds.make_source(ctx, Sound::Impact)?;
         let impact2 = s.sounds.make_source(ctx, Sound::Impact)?;
         let death = s.sounds.make_source(ctx, Sound::Death)?;
+        let victory = s.sounds.make_source(ctx, Sound::Victory)?;
 
         Ok(Box::new(
             Play {
+                victory_time: 0.,
                 health: 10,
                 bloods: Vec::new(),
                 world: World {
@@ -101,11 +120,13 @@ impl Play {
                     bullets: Vec::new(),
                     player: Object::new(level.start_point.unwrap_or(Point2::new(500., 500.))),
                     grid: level.grid,
+                    goal: level.goal,
                 },
                 shot: MultiSource::new(Box::new([s1, s2])),
                 hit,
                 hurt,
                 impact: MultiSource::new(Box::new([impact, impact1, impact2])),
+                victory,
                 death,
                 holes: SpriteBatch::new(s.assets.get_img(Sprite::Hole).clone()),
             }
@@ -129,7 +150,9 @@ impl GameState for Play {
                 self.hit.play()?;
 
                 if self.health == 0 {
-                    self.death.play()?;
+                    self.hurt.stop();
+                    self.death.stop();
+                    self.hit.stop();
                     s.switch(StateSwitch::Menu{
                         save: "".to_owned().into(),
                         dims: None,
@@ -208,6 +231,24 @@ impl GameState for Play {
             100.
         };
         self.world.player.move_on_grid(player_vel, speed, &self.world.grid);
+
+        let game_won = match self.world.goal {
+            Goal::Point(p) => (p - self.world.player.pos).norm() < 32.,
+            Goal::KillAll => self.world.enemies.is_empty(),
+        };
+
+        if game_won && self.victory_time <= 0. {
+            self.victory.play()?;
+            self.victory_time += DELTA;
+        } else if self.victory_time > 0. {
+            self.victory_time += DELTA;
+        }
+        if self.victory_time >= 2. {
+            s.switch(StateSwitch::Menu{
+                save: "".to_owned().into(),
+                dims: None,
+            });
+        }
         Ok(())
     }
     fn logic(&mut self, s: &mut State, _ctx: &mut Context) -> GameResult<()> {
@@ -234,7 +275,6 @@ impl GameState for Play {
 
         for enemy in &self.world.enemies {
             graphics::set_color(ctx, BLUE)?;
-            enemy.draw_visibility_cone(ctx, 400.)?;
 
             let (can_see, ray_end) = enemy.can_see(self.world.player.pos, &self.world.grid);
             if can_see {

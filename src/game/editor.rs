@@ -9,6 +9,8 @@ enum Tool {
     Material(Material),
     Selector,
     SelectedEnemy(usize),
+    SelectedGoal,
+    GoalPost,
     Enemy,
 }
 
@@ -115,6 +117,19 @@ impl GameState for Editor {
             graphics::set_color(ctx, BLUE)?;
             graphics::circle(ctx, DrawMode::Fill, start, 9., 1.)?;
         }
+        if let Goal::Point(end) = self.level.goal {
+            if let Tool::SelectedGoal = self.current {
+                graphics::set_color(ctx, YELLOW)?;
+                graphics::circle(ctx, DrawMode::Fill, end, 17., 0.5)?;
+            }
+            let drawparams = graphics::DrawParam {
+                dest: end,
+                offset: Point2::new(0.5, 0.5),
+                color: Some(graphics::WHITE),
+                .. Default::default()
+            };
+            graphics::draw_ex(ctx, s.assets.get_img(Sprite::Goal), drawparams)?;
+        }
         for (i, enemy) in self.level.enemies.iter().enumerate() {
             if let Tool::SelectedEnemy(j) = self.current {
                 if i == j {
@@ -133,7 +148,7 @@ impl GameState for Editor {
     }
     fn draw_hud(&mut self, s: &State, ctx: &mut Context) -> GameResult<()> {
         match self.current {
-            Tool::SelectedEnemy(_) | Tool::Selector => (),
+            Tool::SelectedEnemy(_) | Tool::SelectedGoal | Tool::Selector => (),
             Tool::Material(_) => (),
             Tool::Enemy => {
                 let drawparams = graphics::DrawParam {
@@ -143,6 +158,15 @@ impl GameState for Editor {
                     .. Default::default()
                 };
                 graphics::draw_ex(ctx, s.assets.get_img(Sprite::Person), drawparams)?;
+            }
+            Tool::GoalPost => {
+                let drawparams = graphics::DrawParam {
+                    dest: s.mouse,
+                    offset: Point2::new(0.5, 0.5),
+                    color: Some(TRANS),
+                    .. Default::default()
+                };
+                graphics::draw_ex(ctx, s.assets.get_img(Sprite::Goal), drawparams)?;
             }
         }
 
@@ -172,6 +196,18 @@ impl GameState for Editor {
         };
         graphics::draw_ex(ctx, s.assets.get_img(Sprite::Person), drawparams)?;
 
+        if let Tool::GoalPost = self.current {
+            graphics::set_color(ctx, YELLOW)?;
+            graphics::circle(ctx, DrawMode::Fill, Point2::new(434., 34.), 17., 0.5)?;
+        }
+        let drawparams = graphics::DrawParam {
+            dest: Point2::new(434., 34.),
+            offset: Point2::new(0.5, 0.5),
+            color: Some(graphics::WHITE),
+            .. Default::default()
+        };
+        graphics::draw_ex(ctx, s.assets.get_img(Sprite::Goal), drawparams)?;
+
         graphics::set_color(ctx, graphics::WHITE)?;
         self.mat_text.draw_text(ctx)?;
         self.ent_text.draw_text(ctx)
@@ -184,12 +220,19 @@ impl GameState for Editor {
             C => self.draw_visibility_cones.toggle(),
             P => s.switch(StateSwitch::Play(self.level.clone())),
             T => self.current = Tool::Selector,
-            Delete | Backspace => if let Tool::SelectedEnemy(i) = self.current {
-                self.level.enemies.remove(i);
-                self.current = Tool::Selector;
+            Delete | Backspace => match self.current {
+                Tool::SelectedEnemy(i) => {
+                    self.level.enemies.remove(i);
+                    self.current = Tool::Selector;
+                }
+                Tool::SelectedGoal => {
+                    self.level.goal = Goal::KillAll;
+                    self.current = Tool::Selector;
+                }
+                _ => ()
             }
-            Comma => self.rotation_speed += 10.,
-            Period => self.rotation_speed -= 10.,
+            Comma => self.rotation_speed += 6.,
+            Period => self.rotation_speed -= 6.,
             _ => return,
         }
     }
@@ -202,23 +245,39 @@ impl GameState for Editor {
 
                     self.current = Tool::Material(PALETTE[i]);
                 }
-                if s.mouse.x >= 384. && s.mouse.x < 416. {
-                    if s.mouse.y >= 18. && s.mouse.y < 50. {
+                if s.mouse.y >= 18. && s.mouse.y < 50. {
+                    if s.mouse.x >= 384. && s.mouse.x < 416. {
                         self.current = Tool::Enemy;
+                    }
+                    if s.mouse.x >= 418. && s.mouse.x < 450. {
+                        self.current = Tool::GoalPost;
                     }
                 }
             } else {
                 match self.current {
                     Tool::Material(_) => (),
                     Tool::Selector => {
+                        let mousepos = s.mouse - s.offset;
                         for (i, enemy) in self.level.enemies.iter().enumerate() {
-                            if (enemy.obj.pos - (s.mouse - s.offset)).norm() <= 16. {
+                            if (enemy.obj.pos - mousepos).norm() <= 16. {
                                 self.current = Tool::SelectedEnemy(i)
+                            }
+                        }
+                        if let Goal::Point(g) = self.level.goal {
+                            if (g - mousepos).norm() <= 16. {
+                                self.current = Tool::SelectedGoal;
                             }
                         }
                     }
                     Tool::SelectedEnemy(i) => {
                         self.level.enemies[i].obj.pos = s.mouse - s.offset;
+                    }
+                    Tool::SelectedGoal => {
+                        self.level.goal = Goal::Point(s.mouse - s.offset);
+                    }
+                    Tool::GoalPost => {
+                        self.level.goal = Goal::Point(s.mouse - s.offset);
+                        self.current = Tool::SelectedGoal;
                     }
                     Tool::Enemy => self.level.enemies.push(Enemy::new(Object::new(s.mouse - s.offset))),
                 }
@@ -230,8 +289,8 @@ impl GameState for Editor {
     fn key_down(&mut self, _s: &mut State,_ctx: &mut Context,  keycode: Keycode) {
         use Keycode::*;
         match keycode {
-            Comma => self.rotation_speed -= 10.,
-            Period => self.rotation_speed += 10.,
+            Comma => self.rotation_speed -= 6.,
+            Period => self.rotation_speed += 6.,
             _ => return,
         }
     }

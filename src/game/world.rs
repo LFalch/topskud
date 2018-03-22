@@ -8,11 +8,12 @@ use ggez::error::GameError;
 use ::bincode;
 use serde::{Serialize, Deserialize, Serializer, Deserializer};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug)]
 /// All the objects in the current world
 pub struct World {
     pub(super) player: Object,
     pub(super) grid: Grid,
+    pub(super) goal: Goal,
     pub(super) enemies: Vec<Enemy>,
     pub(super) bullets: Vec<Object>,
 }
@@ -31,10 +32,17 @@ mat!{
     Missing = 404, Missing, true,
 }
 
+#[derive(Debug, Copy, Clone)]
+pub enum Goal {
+    KillAll,
+    Point(Point2),
+}
+
 #[derive(Debug, Clone)]
 pub struct Level {
     pub grid: Grid,
     pub start_point: Option<Point2>,
+    pub goal: Goal,
     pub enemies: Vec<Enemy>,
 }
 
@@ -44,6 +52,7 @@ impl Level {
             grid: Grid::new(width, height),
             start_point: None,
             enemies: Vec::new(),
+            goal: Goal::KillAll,
         }
     }
     pub fn load<P: AsRef<Path>>(path: P) -> GameResult<Self> {
@@ -66,6 +75,9 @@ impl Level {
                 ),
                 "ENEMIES" => ret.enemies = bincode::deserialize_from(&mut reader)
                     .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?,
+                "POINT GOAL" => ret.goal = Goal::Point(bincode::deserialize_from(&mut reader)
+                    .map(|(x, y)| Point2::new(x, y))
+                    .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?),
                 "END" => break,
                 _ => return Err("Bad section".to_string())?
             }
@@ -89,6 +101,14 @@ impl Level {
             bincode::serialize_into(&mut file, &self.enemies)
             .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?;
         }
+        match self.goal {
+            Goal::Point(p) => {
+                writeln!(file, "\nPOINT GOAL")?;
+                bincode::serialize_into(&mut file, &(p.x, p.y))
+                .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?;
+            },
+            Goal::KillAll => (),
+        }
 
         writeln!(file, "\nEND")?;
         Ok(())
@@ -108,6 +128,7 @@ impl Level {
 
         Level {
             grid,
+            goal: Goal::KillAll,
             start_point: None,
             enemies: Vec::new(),
         }
