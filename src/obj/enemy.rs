@@ -10,9 +10,12 @@ use ggez::nalgebra as na;
 #[derive(Debug, Clone)]
 pub enum Chaser {
     NoIntel,
-    LastKnown(Point2),
+    LastKnown{
+        pos: Point2,
+        vel: Vector2,
+    },
     LookAround {
-        turn: f32,
+        dir: Vector2,
     }
 }
 
@@ -56,7 +59,7 @@ impl Enemy {
         graphics::set_color(ctx, RED)?;
         self.obj.draw(ctx, a.get_img(Sprite::Person))
     }
-    fn look_towards(&mut self, dist: Vector2) {
+    fn look_towards(&mut self, dist: Vector2) -> bool{
         let dir = angle_to_vec(self.obj.rot);
 
         let rotation = na::angle(&dir, &dist);
@@ -69,14 +72,19 @@ impl Enemy {
             } else {
                 self.obj.rot -= ROTATION;
             }
+            false
         } else {
             self.obj.rot = angle_from_vec(&dist);
+            true
         }
     }
     pub fn update(&mut self) {
         match self.behaviour {
             Chaser::NoIntel => (),
-            Chaser::LastKnown(player_pos) => {
+            Chaser::LastKnown{
+                pos: player_pos,
+                vel
+            } => {
                 let dist = player_pos-self.obj.pos;
                 self.look_towards(dist);
 
@@ -87,17 +95,11 @@ impl Enemy {
                     let displace = CHASE_SPEED * dist / distance;
                     self.obj.pos += displace;
                 } else {
-                    self.behaviour = Chaser::LookAround{turn: ::std::f32::consts::PI};
+                    self.behaviour = Chaser::LookAround{dir: vel};
                 }
             }
-            Chaser::LookAround{turn} => {
-                const ROTATION: f32 = ::std::f32::consts::FRAC_PI_6 * DELTA;
-
-                if turn > ROTATION {
-                    self.obj.rot += ROTATION;
-                    self.behaviour = Chaser::LookAround{turn: turn - ROTATION};
-                } else {
-                    self.obj.rot += turn;
+            Chaser::LookAround{dir} => {
+                if self.look_towards(dir) {
                     self.behaviour = Chaser::NoIntel;
                 }
             }

@@ -43,10 +43,17 @@ impl GameState for Play {
             self.world.bullets.remove(i);
         }
 
+
+        // Define player velocity here already because enemies need it
+        let player_vel = Vector2::new(s.input.hor(), s.input.ver());
+
         let mut deads = Vec::new();
         for (e, enemy) in self.world.enemies.iter_mut().enumerate().rev() {
             if enemy.can_see(self.world.player.pos, &self.world.grid) {
-                enemy.behaviour = Chaser::LastKnown(self.world.player.pos);
+                enemy.behaviour = Chaser::LastKnown{
+                    pos: self.world.player.pos,
+                    vel: player_vel,
+                };
 
                 if enemy.shoot == 0 {
                     let pos = enemy.obj.pos + 20. * angle_to_vec(enemy.obj.rot);
@@ -87,7 +94,7 @@ impl GameState for Play {
         } else {
             175.
         };
-        self.world.player.move_on_grid(Vector2::new(s.input.hor(), s.input.ver()), speed, &self.world.grid);
+        self.world.player.move_on_grid(player_vel, speed, &self.world.grid);
     }
     fn logic(&mut self, s: &mut State, _ctx: &mut Context) {
         let dist = s.mouse - s.offset - self.world.player.pos;
