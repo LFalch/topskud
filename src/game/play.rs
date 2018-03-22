@@ -4,17 +4,49 @@ use obj::enemy::Chaser;
 use ggez::graphics::{Drawable, DrawMode, Color, WHITE, Rect};
 use ggez::graphics::spritebatch::SpriteBatch;
 
+use game::Menu;
+
+enum Blood {
+    B1,
+    B2,
+    B3,
+}
+
+struct BloodSplatter {
+    ty: Blood,
+    o: Object,
+}
+
+impl BloodSplatter {
+    fn new(o: Object) -> Self {
+        BloodSplatter {
+            o,
+            ty: Blood::B3,
+        }
+    }
+    fn draw(&self, a: &Assets, ctx: &mut Context) -> GameResult<()> {
+        let spr = match self.ty {
+            Blood::B1 => Sprite::Blood1,
+            Blood::B2 => Sprite::Blood2,
+            Blood::B3 => Sprite::Blood3,
+        };
+        self.o.draw(ctx, a.get_img(spr))
+    }
+}
+
 /// The state of the game
 pub struct Play {
     health: u8,
     world: World,
     holes: SpriteBatch,
+    bloods: Vec<BloodSplatter>,
 }
 
 impl Play {
     pub fn new(level: Level, a: &Assets) -> Self {
         Play {
             health: 10,
+            bloods: Vec::new(),
             world: World {
                 enemies: level.enemies,
                 bullets: Vec::new(),
@@ -36,7 +68,7 @@ impl GameState for Play {
                 deads.push(i);
             } else if (bullet.pos-self.world.player.pos).norm() <= 16. {
                 deads.push(i);
-                self.health -= 1;
+                self.health = self.health.saturating_sub(1);
             }
         }
         for i in deads {
@@ -90,15 +122,19 @@ impl GameState for Play {
         }
 
         let speed = if s.modifiers.shift {
-            300.
+            200.
         } else {
-            175.
+            100.
         };
         self.world.player.move_on_grid(player_vel, speed, &self.world.grid);
     }
-    fn logic(&mut self, s: &mut State, _ctx: &mut Context) {
+    fn logic(&mut self, s: &mut State, ctx: &mut Context) {
         let dist = s.mouse - s.offset - self.world.player.pos;
 
+        if self.health == 0 {
+            let e = Box::new(Menu::new(ctx, &s.assets, "", None).unwrap());
+            s.switch(e);
+        }
         self.world.player.rot = angle_from_vec(&dist);
 
         // Center the camera on the player
@@ -118,7 +154,7 @@ impl GameState for Play {
             let (can_see, ray_end) = enemy.can_see(self.world.player.pos, &self.world.grid);
             if can_see {
                 graphics::set_color(ctx, GREEN)?;
-                graphics::line(ctx, &[enemy.obj.pos, self.world.player.pos], 3.)?;
+                graphics::line(ctx, &[enemy.obj.pos, self.world.player.pos], 1.)?;
             } else if let Some(ray_end) = ray_end {
                 graphics::set_color(ctx, RED)?;
                 graphics::line(ctx, &[enemy.obj.pos, ray_end], 3.)?;
