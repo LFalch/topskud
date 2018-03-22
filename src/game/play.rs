@@ -1,12 +1,14 @@
 use ::*;
 use super::world::*;
+use io::snd::Sound;
 use obj::enemy::Chaser;
 use ggez::graphics::{Drawable, DrawMode, WHITE, Rect};
 use ggez::graphics::spritebatch::SpriteBatch;
+use ggez::audio::Source;
 
 use rand::{thread_rng, Rng};
 
-use game::Menu;
+use game::StateSwitch;
 
 #[derive(Debug, Copy, Clone)]
 enum Blood {
@@ -44,48 +46,102 @@ impl BloodSplatter {
     }
 }
 
+pub struct MultiSource {
+    srcs: Box<[Source]>,
+    idx: usize
+}
+
+impl MultiSource {
+    fn new(srcs: Box<[Source]>) -> Self {
+        MultiSource {
+            srcs,
+            idx: 0,
+        }
+    }
+    fn play(&mut self) -> GameResult<()> {
+        self.srcs[self.idx].play()?;
+        self.idx += 1;
+        if self.idx >= self.srcs.len() {
+            self.idx = 0;
+        }
+        Ok(())
+    }
+}
+
 /// The state of the game
 pub struct Play {
     health: u8,
     world: World,
     holes: SpriteBatch,
     bloods: Vec<BloodSplatter>,
+    shot: MultiSource,
+    hit: Source,
+    hurt: Source,
+    impact: MultiSource,
+    death: Source,
 }
 
 impl Play {
-    pub fn new(level: Level, a: &Assets) -> Self {
-        Play {
-            health: 10,
-            bloods: Vec::new(),
-            world: World {
-                enemies: level.enemies,
-                bullets: Vec::new(),
-                player: Object::new(level.start_point.unwrap_or(Point2::new(500., 500.))),
-                grid: level.grid,
-            },
-            holes: SpriteBatch::new(a.get_img(Sprite::Hole).clone()),
-        }
+    pub fn new(ctx: &mut Context, s: &State, level: Level) -> GameResult<Box<GameState>> {
+        let s1 = s.sounds.make_source(ctx, Sound::Shot1)?;
+        let s2 = s.sounds.make_source(ctx, Sound::Shot2)?;
+        let hit = s.sounds.make_source(ctx, Sound::Hit)?;
+        let hurt = s.sounds.make_source(ctx, Sound::Hurt)?;
+        let impact = s.sounds.make_source(ctx, Sound::Impact)?;
+        let impact1 = s.sounds.make_source(ctx, Sound::Impact)?;
+        let impact2 = s.sounds.make_source(ctx, Sound::Impact)?;
+        let death = s.sounds.make_source(ctx, Sound::Death)?;
+
+        Ok(Box::new(
+            Play {
+                health: 10,
+                bloods: Vec::new(),
+                world: World {
+                    enemies: level.enemies,
+                    bullets: Vec::new(),
+                    player: Object::new(level.start_point.unwrap_or(Point2::new(500., 500.))),
+                    grid: level.grid,
+                },
+                shot: MultiSource::new(Box::new([s1, s2])),
+                hit,
+                hurt,
+                impact: MultiSource::new(Box::new([impact, impact1, impact2])),
+                death,
+                holes: SpriteBatch::new(s.assets.get_img(Sprite::Hole).clone()),
+            }
+        ))
     }
 }
 
 impl GameState for Play {
-    fn update(&mut self, s: &mut State) {
+    fn update(&mut self, s: &mut State) -> GameResult<()> {
         let mut deads = Vec::new();
         for (i, bullet) in self.world.bullets.iter_mut().enumerate().rev() {
             bullet.pos += 500. * DELTA * angle_to_vec(bullet.rot);
             if bullet.is_on_solid(&self.world.grid) {
+                self.impact.play()?;
                 self.holes.add(bullet.drawparams());
                 deads.push(i);
             } else if (bullet.pos-self.world.player.pos).norm() <= 16. {
                 deads.push(i);
                 self.bloods.push(BloodSplatter::new(bullet.clone()));
                 self.health = self.health.saturating_sub(1);
+                self.hit.play()?;
+
+                if self.health == 0 {
+                    self.death.play()?;
+                    s.switch(StateSwitch::Menu{
+                        save: "".to_owned().into(),
+                        dims: None,
+                    });
+                } else {
+                    self.hurt.play()?;
+                }
             }
         }
         for i in deads {
             self.world.bullets.remove(i);
         }
-
 
         // Define player velocity here already because enemies need it
         let player_vel = Vector2::new(s.input.hor(), s.input.ver());
@@ -103,6 +159,7 @@ impl GameState for Play {
                     let mut bul = Object::new(pos);
                     bul.rot = enemy.obj.rot;
 
+                    self.shot.play()?;
                     self.world.bullets.push(bul);
 
                     enemy.shoot = 10;
@@ -125,10 +182,14 @@ impl GameState for Play {
                             dir: dist
                         };
                     }
+                    self.hit.play()?;
 
                     self.bloods.push(BloodSplatter::new(bullet.clone()));
                     if enemy.health == 0 {
+                        self.hurt.play()?;
                         deads.push(e);
+                    } else {
+                        self.death.play()?;
                     }
                     break
                 }
@@ -147,19 +208,17 @@ impl GameState for Play {
             100.
         };
         self.world.player.move_on_grid(player_vel, speed, &self.world.grid);
+        Ok(())
     }
-    fn logic(&mut self, s: &mut State, ctx: &mut Context) {
+    fn logic(&mut self, s: &mut State, _ctx: &mut Context) -> GameResult<()> {
         let dist = s.mouse - s.offset - self.world.player.pos;
 
-        if self.health == 0 {
-            let e = Box::new(Menu::new(ctx, &s.assets, "", None).unwrap());
-            s.switch(e);
-        }
         self.world.player.rot = angle_from_vec(&dist);
 
         // Center the camera on the player
         let p = self.world.player.pos;
         s.focus_on(p);
+        Ok(())
     }
 
     fn draw(&mut self, s: &State, ctx: &mut Context) -> GameResult<()> {
@@ -215,6 +274,7 @@ impl GameState for Play {
             let mut bul = Object::new(pos);
             bul.rot = self.world.player.rot;
 
+            self.shot.play().unwrap();
             self.world.bullets.push(bul);
         }
     }

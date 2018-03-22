@@ -1,9 +1,8 @@
 use ::*;
 use graphics::{Rect, DrawMode};
 use super::world::*;
-use super::play::Play;
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 enum Tool {
@@ -36,10 +35,9 @@ const PALETTE: [Material; 7] = [
 ];
 
 impl Editor {
-    pub fn new<P: AsRef<Path>>(ctx: &mut Context, assets: &Assets, save: P, dims: Option<(usize, usize)>) -> GameResult<Self> {
-        // Initialise the text objects
-        let mat_text = assets.text(ctx, Point2::new(2., 18.0), "Materials:")?;
-        let ent_text = assets.text(ctx, Point2::new(302., 18.0), "Entities:")?;
+    pub fn new(ctx: &mut Context, s: &State, save: PathBuf, dims: Option<(usize, usize)>) -> GameResult<Box<GameState>> {
+        let mat_text = s.assets.text(ctx, Point2::new(2., 18.0), "Materials:")?;
+        let ent_text = s.assets.text(ctx, Point2::new(302., 18.0), "Entities:")?;
         let (x, y);
         let level = if let Some((w, h)) = dims {
             x = w as f32 * 16.;
@@ -48,10 +46,10 @@ impl Editor {
         } else {
             x = 16. * 32.;
             y = 16. * 32.;
-            Level::load(save.as_ref()).unwrap_or_else(|_| Level::new(32, 32))
+            Level::load(&save).unwrap_or_else(|_| Level::new(32, 32))
         };
 
-        Ok(Editor {
+        Ok(Box::new(Editor {
             pos: Point2::new(x, y),
             current: Tool::Material(Material::Wall),
             draw_visibility_cones: false,
@@ -59,16 +57,22 @@ impl Editor {
             ent_text,
             level,
             rotation_speed: 0.,
-            save: save.as_ref().to_path_buf(),
-        })
+            save,
+        }))
     }
 }
+
+pub struct EditorBuilder {
+    pub save: PathBuf,
+    pub dims: Option<(usize, usize)>
+}
+
 const START_X: f32 = 103.;
 const YELLOW: Color = Color{r: 1., g: 1., b: 0., a: 1.};
 const RED_HALF: Color = Color{r: 1., g: 0., b: 0., a: 0.5};
 
 impl GameState for Editor {
-    fn update(&mut self, s: &mut State) {
+    fn update(&mut self, s: &mut State) -> GameResult<()> {
         let speed = match s.modifiers.shift {
             false => 175.,
             true => 315.,
@@ -79,8 +83,9 @@ impl GameState for Editor {
         if let Tool::SelectedEnemy(i) = self.current {
             self.level.enemies[i].obj.rot += self.rotation_speed * DELTA;
         }
+        Ok(())
     }
-    fn logic(&mut self, s: &mut State, _ctx: &mut Context) {
+    fn logic(&mut self, s: &mut State, _ctx: &mut Context) -> GameResult<()> {
         if s.mouse_down.left && s.mouse.y > 64. {
             if let Tool::Material(mat) = self.current {
                 let (mx, my) = Grid::snap(s.mouse - s.offset);
@@ -89,6 +94,7 @@ impl GameState for Editor {
         }
 
         s.focus_on(self.pos);
+        Ok(())
     }
 
     fn draw(&mut self, s: &State, ctx: &mut Context) -> GameResult<()> {
@@ -176,10 +182,7 @@ impl GameState for Editor {
             Z => self.level.save(&self.save).unwrap(),
             X => self.level = Level::load(&self.save).unwrap(),
             C => self.draw_visibility_cones.toggle(),
-            P => {
-                let e = Box::new(Play::new(self.level.clone(), &s.assets));
-                s.switch(e)
-            },
+            P => s.switch(StateSwitch::Play(self.level.clone())),
             T => self.current = Tool::Selector,
             Delete | Backspace => if let Tool::SelectedEnemy(i) = self.current {
                 self.level.enemies.remove(i);

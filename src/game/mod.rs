@@ -1,4 +1,7 @@
+use io::snd::SoundAssets;
 use ::*;
+
+use std::path::PathBuf;
 
 /// Stuff related to things in the world
 pub mod world;
@@ -6,12 +9,30 @@ pub mod editor;
 pub mod play;
 pub mod menu;
 
-use self::menu::*;
+use menu::Menu;
+
+pub enum StateSwitch {
+    Menu {
+        dims: Option<(usize, usize)>,
+        save: PathBuf,
+    },
+    Editor {
+        dims: Option<(usize, usize)>,
+        save: PathBuf,
+    },
+    Play(Level),
+}
 
 pub trait GameState {
-    fn update(&mut self, &mut State);
-    fn logic(&mut self, &mut State, &mut Context);
-    fn draw(&mut self, &State, &mut Context) -> GameResult<()>;
+    fn update(&mut self, &mut State) -> GameResult<()> {
+        Ok(())
+    }
+    fn logic(&mut self, &mut State, &mut Context) -> GameResult<()> {
+        Ok(())
+    }
+    fn draw(&mut self, &State, &mut Context) -> GameResult<()> {
+        Ok(())
+    }
     fn draw_hud(&mut self, &State, &mut Context) -> GameResult<()>;
 
     fn key_down(&mut self, &mut State, &mut Context, Keycode) {
@@ -39,11 +60,12 @@ pub struct State {
     input: InputState,
     modifiers: Modifiers,
     assets: Assets,
+    sounds: SoundAssets,
     width: u32,
     height: u32,
     mouse: Point2,
     offset: Vector2,
-    switch_state: Option<Box<GameState>>,
+    switch_state: Option<StateSwitch>,
 }
 
 const DESIRED_FPS: u32 = 60;
@@ -57,24 +79,28 @@ impl Master {
         graphics::set_background_color(ctx, (33, 33, 255, 255).into());
         // Initialise assets
         let assets = Assets::new(ctx)?;
+        let sounds = SoundAssets::new(ctx)?;
 
         // Get the window's dimensions
         let width = ctx.conf.window_mode.width;
         let height = ctx.conf.window_mode.height;
 
+        let state = State {
+            switch_state: None,
+            input: Default::default(),
+            mouse_down: Default::default(),
+            modifiers: Default::default(),
+            assets,
+            sounds,
+            width,
+            height,
+            mouse: Point2::new(0., 0.),
+            offset: Vector2::new(0., 0.),
+        };
+
         Ok(Master {
-            gs: Box::new(Menu::new(ctx, &assets, p, dims)?),
-            state: State {
-                switch_state: None,
-                input: Default::default(),
-                mouse_down: Default::default(),
-                modifiers: Default::default(),
-                assets,
-                width,
-                height,
-                mouse: Point2::new(0., 0.),
-                offset: Vector2::new(0., 0.),
-            },
+            gs: Menu::new(ctx, &state, p.to_owned().into(), dims)?,
+            state,
         })
     }
 }
@@ -84,8 +110,8 @@ impl State {
     fn focus_on(&mut self, p: Point2) {
         self.offset = -p.coords + 0.5 * Vector2::new(self.width as f32, self.height as f32);
     }
-    fn switch(&mut self, gs: Box<GameState>) {
-        self.switch_state = Some(gs);
+    fn switch(&mut self, ss: StateSwitch) {
+        self.switch_state = Some(ss);
     }
 }
 
@@ -94,19 +120,22 @@ use std::mem;
 impl EventHandler for Master {
     // Handle the game logic
     fn update(&mut self, ctx: &mut Context) -> GameResult<()> {
-        if let Some(gs) = mem::replace(&mut self.state.switch_state, None) {
-            self.gs = gs;
+        if let Some(gsb) = mem::replace(&mut self.state.switch_state, None) {
+            use StateSwitch::*;
+            self.gs = match gsb {
+                Play(l) => play::Play::new(ctx, &self.state, l),
+                Menu{save, dims} => menu::Menu::new(ctx, &self.state, save, dims),
+                Editor{save, dims} => editor::Editor::new(ctx, &self.state, save, dims),
+            }?;
             println!("Switched!");
         }
 
         // Run this for every 1/60 of a second has passed since last update
         // Can in theory become slow
         while timer::check_update_time(ctx, DESIRED_FPS) {
-            self.gs.update(&mut self.state);
+            self.gs.update(&mut self.state)?;
         }
-        self.gs.logic(&mut self.state, ctx);
-
-        Ok(())
+        self.gs.logic(&mut self.state, ctx)
     }
 
     // Draws everything
