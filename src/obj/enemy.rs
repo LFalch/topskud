@@ -1,5 +1,5 @@
 use ggez::{Context, GameResult};
-use ggez::graphics::{self, Point2};
+use ggez::graphics::{self, Point2, Vector2};
 
 use obj::Object;
 use game::world::Grid;
@@ -29,6 +29,8 @@ pub struct Enemy {
     pub behaviour: Chaser,
     #[serde(skip, default = "three")]
     pub health: u8,
+    #[serde(skip)]
+    pub shoot: u8,
 }
 
 fn three() -> u8 { 3 }
@@ -38,6 +40,7 @@ pub const VISIBILITY: f32 = ::std::f32::consts::FRAC_PI_4;
 impl Enemy {
     pub fn new(obj: Object) -> Enemy {
         Enemy {
+            shoot: 0,
             obj,
             health: 3,
             behaviour: Chaser::NoIntel,
@@ -53,26 +56,29 @@ impl Enemy {
         graphics::set_color(ctx, RED)?;
         self.obj.draw(ctx, a.get_img(Sprite::Person))
     }
+    fn look_towards(&mut self, dist: Vector2) {
+        let dir = angle_to_vec(self.obj.rot);
+
+        let rotation = na::angle(&dir, &dist);
+
+        const ROTATION: f32 = 3. * DELTA;
+
+        if rotation > ROTATION {
+            if dir.perp(&dist) > 0. {
+                self.obj.rot += ROTATION;
+            } else {
+                self.obj.rot -= ROTATION;
+            }
+        } else {
+            self.obj.rot = angle_from_vec(&dist);
+        }
+    }
     pub fn update(&mut self) {
         match self.behaviour {
             Chaser::NoIntel => (),
             Chaser::LastKnown(player_pos) => {
                 let dist = player_pos-self.obj.pos;
-                let dir = angle_to_vec(self.obj.rot);
-
-                let rotation = na::angle(&dir, &dist);
-
-                const ROTATION: f32 = 3. * DELTA;
-
-                if rotation > ROTATION {
-                    if dir.perp(&dist) > 0. {
-                        self.obj.rot += ROTATION;
-                    } else {
-                        self.obj.rot -= ROTATION;
-                    }
-                } else {
-                    self.obj.rot = angle_from_vec(&dist);
-                }
+                self.look_towards(dist);
 
                 let distance = dist.norm();
                 const CHASE_SPEED: f32 = 100. * DELTA;

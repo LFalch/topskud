@@ -47,11 +47,25 @@ impl GameState for Play {
         for (e, enemy) in self.world.enemies.iter_mut().enumerate().rev() {
             if enemy.can_see(self.world.player.pos, &self.world.grid) {
                 enemy.behaviour = Chaser::LastKnown(self.world.player.pos);
+
+                if enemy.shoot == 0 {
+                    let pos = enemy.obj.pos + 20. * angle_to_vec(enemy.obj.rot);
+                    let mut bul = Object::new(pos);
+                    bul.rot = enemy.obj.rot;
+
+                    self.world.bullets.push(bul);
+
+                    enemy.shoot = 10;
+                } else {
+                    enemy.shoot -= 1;
+                }
+            } else {
+                enemy.shoot = 10;
             }
             enemy.update();
             let mut dead = None;
             for (i, bullet) in self.world.bullets.iter().enumerate().rev() {
-                if (bullet.pos - enemy.obj.pos).norm() <= 16. {
+                if (bullet.pos - enemy.obj.pos).norm() < 16. {
                     dead = Some(i);
                     enemy.health -= 1;
                     if enemy.health == 0 {
