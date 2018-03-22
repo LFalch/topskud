@@ -7,6 +7,7 @@ extern crate bincode;
 extern crate serde_derive;
 extern crate serde;
 extern crate self_compare;
+extern crate rand;
 
 use std::env::args;
 use std::fs::File;
@@ -18,10 +19,11 @@ use ggez::{Context, ContextBuilder, GameResult};
 use ggez::timer;
 use ggez::graphics::{self, Vector2, Point2, Matrix4, Color};
 
+mod io;
+pub use io::tex::*;
+
 mod obj;
 pub use obj::*;
-mod tex;
-pub use tex::*;
 mod ext;
 pub use ext::*;
 mod game;

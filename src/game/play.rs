@@ -1,11 +1,14 @@
 use ::*;
 use super::world::*;
 use obj::enemy::Chaser;
-use ggez::graphics::{Drawable, DrawMode, Color, WHITE, Rect};
+use ggez::graphics::{Drawable, DrawMode, WHITE, Rect};
 use ggez::graphics::spritebatch::SpriteBatch;
+
+use rand::{thread_rng, Rng};
 
 use game::Menu;
 
+#[derive(Debug, Copy, Clone)]
 enum Blood {
     B1,
     B2,
@@ -18,13 +21,20 @@ struct BloodSplatter {
 }
 
 impl BloodSplatter {
-    fn new(o: Object) -> Self {
+    fn new(mut o: Object) -> Self {
+        o.pos += 16. * angle_to_vec(o.rot);
         BloodSplatter {
             o,
-            ty: Blood::B3,
+            ty: *thread_rng().choose(&[
+                Blood::B1,
+                Blood::B2,
+                Blood::B2,
+                Blood::B3,
+                Blood::B3,
+            ]).unwrap(),
         }
     }
-    fn draw(&self, a: &Assets, ctx: &mut Context) -> GameResult<()> {
+    fn draw(&self, ctx: &mut Context, a: &Assets) -> GameResult<()> {
         let spr = match self.ty {
             Blood::B1 => Sprite::Blood1,
             Blood::B2 => Sprite::Blood2,
@@ -68,6 +78,7 @@ impl GameState for Play {
                 deads.push(i);
             } else if (bullet.pos-self.world.player.pos).norm() <= 16. {
                 deads.push(i);
+                self.bloods.push(BloodSplatter::new(bullet.clone()));
                 self.health = self.health.saturating_sub(1);
             }
         }
@@ -104,9 +115,18 @@ impl GameState for Play {
             enemy.update();
             let mut dead = None;
             for (i, bullet) in self.world.bullets.iter().enumerate().rev() {
-                if (bullet.pos - enemy.obj.pos).norm() < 16. {
+                let dist = bullet.pos - enemy.obj.pos;
+                if dist.norm() < 16. {
                     dead = Some(i);
                     enemy.health -= 1;
+
+                    if !enemy.behaviour.chasing() {
+                        enemy.behaviour = Chaser::LookAround{
+                            dir: dist
+                        };
+                    }
+
+                    self.bloods.push(BloodSplatter::new(bullet.clone()));
                     if enemy.health == 0 {
                         deads.push(e);
                     }
@@ -145,8 +165,14 @@ impl GameState for Play {
     fn draw(&mut self, s: &State, ctx: &mut Context) -> GameResult<()> {
         graphics::set_color(ctx, WHITE)?;
         self.world.grid.draw(ctx, &s.assets)?;
-        graphics::set_color(ctx, Color{r:0.,g:0.,b:0.,a:1.})?;
+
+        for blood in &self.bloods {
+            blood.draw(ctx, &s.assets)?;
+        }
+
+        graphics::set_color(ctx, graphics::BLACK)?;
         self.world.player.draw(ctx, s.assets.get_img(Sprite::Person))?;
+
         for enemy in &self.world.enemies {
             graphics::set_color(ctx, BLUE)?;
             enemy.draw_visibility_cone(ctx, 400.)?;

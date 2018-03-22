@@ -12,7 +12,7 @@ use game::DELTA;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 /// A simple object that can be drawn to the screen
 pub struct Object {
-    #[serde(serialize_with = "::save::point_ser", deserialize_with = "::save::point_des")]
+    #[serde(serialize_with = "::io::save::point_ser", deserialize_with = "::io::save::point_des")]
     /// The position of the object
     pub pos: Point2,
     /// The rotation of the obejct in radians

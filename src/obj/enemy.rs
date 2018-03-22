@@ -19,6 +19,15 @@ pub enum Chaser {
     }
 }
 
+impl Chaser {
+    pub fn chasing(&self) -> bool {
+        match *self {
+            Chaser::LastKnown{..} => true,
+            _ => false,
+        }
+    }
+}
+
 impl Default for Chaser {
     fn default() -> Self {
         Chaser::NoIntel
@@ -64,7 +73,7 @@ impl Enemy {
 
         let rotation = na::angle(&dir, &dist);
 
-        const ROTATION: f32 = 3. * DELTA;
+        const ROTATION: f32 = 6. * DELTA;
 
         if rotation > ROTATION {
             if dir.perp(&dist) > 0. {
