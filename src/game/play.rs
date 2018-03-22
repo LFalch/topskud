@@ -99,7 +99,7 @@ impl Drop for Play {
 }
 
 impl Play {
-    pub fn new(ctx: &mut Context, s: &State, level: Level) -> GameResult<Box<GameState>> {
+    pub fn new(ctx: &mut Context, s: &mut State) -> GameResult<Box<GameState>> {
         let s1 = s.sounds.make_source(ctx, Sound::Shot1)?;
         let s2 = s.sounds.make_source(ctx, Sound::Shot2)?;
         let hit = s.sounds.make_source(ctx, Sound::Hit)?;
@@ -109,6 +109,15 @@ impl Play {
         let impact2 = s.sounds.make_source(ctx, Sound::Impact)?;
         let death = s.sounds.make_source(ctx, Sound::Death)?;
         let victory = s.sounds.make_source(ctx, Sound::Victory)?;
+
+
+        let level = if let Some(lvl) = s.level.clone() {
+            lvl
+        } else {
+            let lvl = Level::load(&s.save)?;
+            s.level = Some(lvl.clone());
+            lvl
+        };
 
         Ok(Box::new(
             Play {
@@ -153,10 +162,7 @@ impl GameState for Play {
                     self.hurt.stop();
                     self.death.stop();
                     self.hit.stop();
-                    s.switch(StateSwitch::Menu{
-                        save: "".to_owned().into(),
-                        dims: None,
-                    });
+                    s.switch(StateSwitch::Menu);
                 } else {
                     self.hurt.play()?;
                 }
@@ -244,10 +250,7 @@ impl GameState for Play {
             self.victory_time += DELTA;
         }
         if self.victory_time >= 2. {
-            s.switch(StateSwitch::Menu{
-                save: "".to_owned().into(),
-                dims: None,
-            });
+            s.switch(StateSwitch::Menu);
         }
         Ok(())
     }

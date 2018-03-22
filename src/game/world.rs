@@ -149,6 +149,13 @@ impl Grid {
         }
     }
     #[inline]
+    pub fn width(&self) -> usize {
+        self.width
+    }
+    pub fn height(&self) -> usize {
+        self.mats.len() / self.width
+    }
+    #[inline]
     pub fn snap(c: Point2) -> (usize, usize) {
         Self::snap_coords(c.x, c.y)
     }

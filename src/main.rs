@@ -58,7 +58,7 @@ fn main() {
         eprintln!("No level to load!");
         return
     };
-    let mut dims = None;
+    let mut level = None;
 
     if &p == "--convert" {
         let p = args.next().unwrap();
@@ -78,7 +78,7 @@ fn main() {
         let w: usize = args.next().unwrap().parse().unwrap();
         let h: usize = args.next().unwrap().parse().unwrap();
 
-        dims = Some((w, h));
+        level = Some(Level::new(w, h));
     }
 
     // Set window mode
@@ -99,7 +99,7 @@ fn main() {
     }
 
     // Tries to create a game state and runs it if succesful
-    match Master::new(&mut ctx, &p, dims) {
+    match Master::new(&mut ctx, &p, level) {
         Err(e) => {
             println!("Couldn't load game {}", e);
         }

@@ -1,45 +1,39 @@
 use ::*;
 use graphics::{Rect, DrawMode};
-use super::world::*;
-
-use std::path::PathBuf;
+use ggez::audio::Source;
+use io::snd::Sound;
 
 /// The state of the game
 pub struct Menu {
-    save: PathBuf,
-    dims: Option<(usize, usize)>,
+    music: Source,
     play_text: PosText,
     editor_text: PosText,
     cur_lvl_text: PosText,
 }
 
 impl Menu {
-    pub fn new(ctx: &mut Context, s: &State, save: PathBuf, dims: Option<(usize, usize)>) -> GameResult<Box<GameState>> {
+    pub fn new(ctx: &mut Context, s: &State) -> GameResult<Box<GameState>> {
         let w = ctx.conf.window_mode.width as f32 / 2.;
 
         let play_text = s.assets.text(ctx, Point2::new(w-2.*10., 80.), "Play")?;
         let editor_text = s.assets.text(ctx, Point2::new(w-3.*10., 146.), "Editor")?;
-        let cur_lvl_text = s.assets.text(ctx, Point2::new(2., 2.0), &format!("Current level: {}", save.display()))?;
+        let cur_lvl_text = s.assets.text(ctx, Point2::new(2., 2.0), &format!("Current level: {}", s.save.display()))?;
+        let mut music = s.sounds.make_source(ctx, Sound::Music)?;
+        music.set_repeat(true);
+        music.play()?;
 
         Ok(Box::new(Menu {
-            save,
-            dims,
+            music,
             play_text,
             editor_text,
             cur_lvl_text,
         }))
     }
     pub fn switch_play(&self, s: &mut State) {
-        if self.dims.is_none() {
-            let level = Level::load(&self.save).unwrap_or_else(|_| Level::new(1, 1));
-            s.switch(StateSwitch::Play(level));
-        }
+        s.switch(StateSwitch::Play);
     }
     pub fn switch_editor(&self, s: &mut State) {
-        s.switch(StateSwitch::Editor {
-            save: self.save.clone(),
-            dims: self.dims,
-        });
+        s.switch(StateSwitch::Editor);
     }
     pub fn rect(ctx: &mut Context, x: f32, y: f32, w: f32, h: f32) -> GameResult<()> {
         graphics::rectangle(ctx, DrawMode::Fill, Rect{x, y, h, w})
@@ -61,11 +55,6 @@ impl GameState for Menu {
         graphics::set_color(ctx, graphics::WHITE)?;
         self.editor_text.draw_text(ctx)?;
         self.cur_lvl_text.draw_text(ctx)?;
-
-        if self.dims.is_some() {
-            graphics::set_color(ctx, Color{r: 0.5, g: 0.5, b: 0.5, a: 1.})?;
-        }
-
         self.play_text.draw_text(ctx)
     }
     fn key_up(&mut self, s: &mut State, _ctx: &mut Context, keycode: Keycode) {

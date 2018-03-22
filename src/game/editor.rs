@@ -21,7 +21,6 @@ pub struct Editor {
     current: Tool,
     mat_text: PosText,
     ent_text: PosText,
-    save: PathBuf,
     draw_visibility_cones: bool,
     rotation_speed: f32,
 }
@@ -37,19 +36,15 @@ const PALETTE: [Material; 7] = [
 ];
 
 impl Editor {
-    pub fn new(ctx: &mut Context, s: &State, save: PathBuf, dims: Option<(usize, usize)>) -> GameResult<Box<GameState>> {
+    pub fn new(ctx: &mut Context, s: &State) -> GameResult<Box<GameState>> {
         let mat_text = s.assets.text(ctx, Point2::new(2., 18.0), "Materials:")?;
         let ent_text = s.assets.text(ctx, Point2::new(302., 18.0), "Entities:")?;
-        let (x, y);
-        let level = if let Some((w, h)) = dims {
-            x = w as f32 * 16.;
-            y = h as f32 * 16.;
-            Level::new(w, h)
-        } else {
-            x = 16. * 32.;
-            y = 16. * 32.;
-            Level::load(&save).unwrap_or_else(|_| Level::new(32, 32))
-        };
+        let level = s.level.clone().unwrap_or_else(|| {
+            Level::load(&s.save).unwrap_or_else(|_| Level::new(32, 32))
+        });
+
+        let x = level.grid.width() as f32 * 16.;
+        let y = level.grid.height() as f32 * 16.;
 
         Ok(Box::new(Editor {
             pos: Point2::new(x, y),
@@ -59,7 +54,6 @@ impl Editor {
             ent_text,
             level,
             rotation_speed: 0.,
-            save,
         }))
     }
 }
@@ -215,10 +209,13 @@ impl GameState for Editor {
     fn key_up(&mut self, s: &mut State, _ctx: &mut Context, keycode: Keycode) {
         use Keycode::*;
         match keycode {
-            Z => self.level.save(&self.save).unwrap(),
-            X => self.level = Level::load(&self.save).unwrap(),
+            Z => self.level.save(&s.save).unwrap(),
+            X => self.level = Level::load(&s.save).unwrap(),
             C => self.draw_visibility_cones.toggle(),
-            P => s.switch(StateSwitch::Play(self.level.clone())),
+            P => {
+                s.level = Some(self.level.clone());
+                s.switch(StateSwitch::Play)
+            }
             T => self.current = Tool::Selector,
             Delete | Backspace => match self.current {
                 Tool::SelectedEnemy(i) => {

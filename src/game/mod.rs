@@ -12,15 +12,9 @@ pub mod menu;
 use menu::Menu;
 
 pub enum StateSwitch {
-    Menu {
-        dims: Option<(usize, usize)>,
-        save: PathBuf,
-    },
-    Editor {
-        dims: Option<(usize, usize)>,
-        save: PathBuf,
-    },
-    Play(Level),
+    Menu,
+    Editor,
+    Play,
 }
 
 pub trait GameState {
@@ -66,6 +60,8 @@ pub struct State {
     mouse: Point2,
     offset: Vector2,
     switch_state: Option<StateSwitch>,
+    save: PathBuf,
+    level: Option<Level>,
 }
 
 const DESIRED_FPS: u32 = 60;
@@ -74,7 +70,7 @@ pub(crate) const DELTA: f32 = 1. / DESIRED_FPS as f32;
 
 impl Master {
     /// Make a new state object
-    pub fn new(ctx: &mut Context, p: &str, dims: Option<(usize, usize)>) -> GameResult<Self> {
+    pub fn new(ctx: &mut Context, p: &str, level: Option<Level>) -> GameResult<Self> {
         // Background colour is black
         graphics::set_background_color(ctx, (33, 33, 255, 255).into());
         // Initialise assets
@@ -86,6 +82,8 @@ impl Master {
         let height = ctx.conf.window_mode.height;
 
         let state = State {
+            save: p.to_owned().into(),
+            level,
             switch_state: None,
             input: Default::default(),
             mouse_down: Default::default(),
@@ -99,7 +97,7 @@ impl Master {
         };
 
         Ok(Master {
-            gs: Menu::new(ctx, &state, p.to_owned().into(), dims)?,
+            gs: Menu::new(ctx, &state)?,
             state,
         })
     }
@@ -123,9 +121,9 @@ impl EventHandler for Master {
         if let Some(gsb) = mem::replace(&mut self.state.switch_state, None) {
             use StateSwitch::*;
             self.gs = match gsb {
-                Play(l) => play::Play::new(ctx, &self.state, l),
-                Menu{save, dims} => menu::Menu::new(ctx, &self.state, save, dims),
-                Editor{save, dims} => editor::Editor::new(ctx, &self.state, save, dims),
+                Play => play::Play::new(ctx, &mut self.state),
+                Menu => menu::Menu::new(ctx, &self.state),
+                Editor => editor::Editor::new(ctx, &self.state),
             }?;
             println!("Switched!");
         }
