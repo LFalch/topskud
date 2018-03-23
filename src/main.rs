@@ -52,12 +52,7 @@ pub const BLUE: Color = Color{r:0.,g:0.,b:1.,a:1.};
 fn main() {
     let mut args = args().skip(1);
 
-    let mut p = if let Some(p) = args.next() {
-        p
-    } else {
-        eprintln!("No level to load!");
-        return
-    };
+    let mut p = args.next().unwrap_or_else(|| "save.lvl".to_owned());
     let mut level = None;
 
     if &p == "--convert" {
