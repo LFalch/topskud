@@ -2,6 +2,7 @@ use ::*;
 use graphics::{Rect, DrawMode};
 use super::world::*;
 
+use io::snd::Sound;
 use std::path::PathBuf;
 
 #[derive(Debug, PartialEq, Copy, Clone)]
@@ -233,7 +234,7 @@ impl GameState for Editor {
             _ => return,
         }
     }
-    fn mouse_up(&mut self, s: &mut State, _ctx: &mut Context, btn: MouseButton) {
+    fn mouse_up(&mut self, s: &mut State, ctx: &mut Context, btn: MouseButton) {
         use MouseButton::*;
         match btn {
             Left => if s.mouse.y <= 64. {
@@ -276,7 +277,10 @@ impl GameState for Editor {
                         self.level.goal = Goal::Point(s.mouse - s.offset);
                         self.current = Tool::SelectedGoal;
                     }
-                    Tool::Enemy => self.level.enemies.push(Enemy::new(Object::new(s.mouse - s.offset))),
+                    Tool::Enemy => {
+                        s.mplayer.play(ctx, Sound::Reload).unwrap();
+                        self.level.enemies.push(Enemy::new(Object::new(s.mouse - s.offset)));
+                    },
                 }
             }
             Middle => self.level.start_point = Some(s.mouse - s.offset),

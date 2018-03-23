@@ -125,7 +125,6 @@ impl EventHandler for Master {
                 Menu => menu::Menu::new(ctx, &mut self.state),
                 Editor => editor::Editor::new(ctx, &self.state),
             }?;
-            println!("Switched!");
         }
 
         // Run this for every 1/60 of a second has passed since last update

@@ -8,9 +8,11 @@ macro_rules! ending {
     (FLAC) => (".flac");
 }
 
+const EFFECTS_LIMIT: usize = 25;
+
 macro_rules! media_type {
-    (WAV) => (Vec<Source>);
-    (FLAC) => (Vec<Source>);
+    (WAV) => (());
+    (FLAC) => (());
     (OGG) => (Source);
     (LOOP_OGG) => (Source);
 }
@@ -21,15 +23,15 @@ macro_rules! play {
         src.play()?;
 
         let deads: Vec<_> =
-        $self.$snd.iter().enumerate().rev().filter_map(|(i, src)| if !src.playing() {
+        $self.effects.iter().enumerate().rev().filter_map(|(i, src)| if !src.playing() {
             Some(i)
         } else {None}).collect();
 
         for i in deads {
-            $self.$snd.remove(i);
+            $self.effects.remove(i);
         }
-        if $self.$snd.len() < 10 {
-            $self.$snd.push(src);
+        if $self.effects.len() < EFFECTS_LIMIT {
+            $self.effects.push(src);
         }
     });
     (FLAC, $ctx:expr, $self:expr, $snd:ident) => (
@@ -51,14 +53,12 @@ macro_rules! new_cache {
     });
     (OGG, $ctx:expr, $data:expr) => (Source::from_data($ctx, $data)?);
     (FLAC, $ctx:expr, $data:expr) => (new_cache!(FLAC, $ctx, $data));
-    (WAV, $ctx:expr, $data:expr) => (Vec::new());
+    (WAV, $ctx:expr, $data:expr) => (());
 }
 
 macro_rules! stop {
     (WAV, $ctx:expr, $self:ident, $snd:ident) => (
-        for src in &$self.$snd {
-            src.stop();
-        }
+        unreachable!()
     );
     (FLAC, $ctx:expr, $self:ident, $snd:ident) => (
         stop!(WAV, $ctx, $self, $snd)
@@ -105,7 +105,9 @@ macro_rules! sounds {
 
         pub struct MediaPlayer {
             data: SoundAssets,
+            effects: Vec<Source>,
             $(
+                #[allow(dead_code)]
                 $snd: media_type!($ty),
             )*
         }
@@ -121,6 +123,7 @@ macro_rules! sounds {
             pub fn new(ctx: &mut Context) -> GameResult<Self> {
                 let data = SoundAssets::new(ctx)?;
                 Ok(MediaPlayer {
+                    effects: Vec::with_capacity(10),
                     $(
                         $snd: new_cache!($ty, ctx, data.$snd.clone()),
                     )*
@@ -142,11 +145,6 @@ macro_rules! sounds {
                     )*
                 }
                 Ok(())
-            }
-            pub fn print_info(&self) {
-                $(
-                    println!("{}: {:?}", stringify!($snd), self.$snd);
-                )*
             }
         }
     );

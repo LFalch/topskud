@@ -54,7 +54,7 @@ pub struct Play {
 }
 
 impl Play {
-    pub fn new(_ctx: &mut Context, s: &mut State) -> GameResult<Box<GameState>> {
+    pub fn new(ctx: &mut Context, s: &mut State) -> GameResult<Box<GameState>> {
         let level = if let Some(lvl) = s.level.clone() {
             lvl
         } else {
@@ -62,6 +62,8 @@ impl Play {
             s.level = Some(lvl.clone());
             lvl
         };
+
+        s.mplayer.play(ctx, Sound::Cock)?;
 
         Ok(Box::new(
             Play {
@@ -204,6 +206,7 @@ impl GameState for Play {
         graphics::set_color(ctx, WHITE)?;
         self.world.grid.draw(ctx, &s.assets)?;
 
+        self.holes.draw_ex(ctx, Default::default())?;
         for blood in &self.bloods {
             blood.draw(ctx, &s.assets)?;
         }
@@ -218,7 +221,6 @@ impl GameState for Play {
         for bullet in &self.world.bullets {
             bullet.draw(ctx, s.assets.get_img(Sprite::Bullet))?;
         }
-        self.holes.draw_ex(ctx, Default::default())?;
 
         Ok(())
     }
@@ -244,9 +246,6 @@ impl GameState for Play {
 
             s.mplayer.play(ctx, Sound::Shot2).unwrap();
             self.world.bullets.push(bul);
-        }
-        if let MouseButton::Middle = btn {
-            s.mplayer.print_info();
         }
     }
 }

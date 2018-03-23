@@ -101,12 +101,12 @@ fn main() {
     // Tries to create a game state and runs it if succesful
     match Master::new(&mut ctx, &p, level) {
         Err(e) => {
-            println!("Couldn't load game {}", e);
+            eprintln!("Couldn't load game {}", e);
         }
         Ok(mut game) => {
             // Run the game loop
             match run(&mut ctx, &mut game) {
-                Ok(_) => println!("Clean exit"),
+                Ok(_) => (),
                 Err(e) => eprintln!("Error occured: {}", e)
             }
         }
