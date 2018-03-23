@@ -4,7 +4,6 @@ use io::snd::Sound;
 use obj::enemy::Chaser;
 use ggez::graphics::{Drawable, DrawMode, WHITE, Rect};
 use ggez::graphics::spritebatch::SpriteBatch;
-use ggez::audio::Source;
 
 use rand::{thread_rng, Rng};
 
@@ -45,72 +44,17 @@ impl BloodSplatter {
         self.o.draw(ctx, a.get_img(spr))
     }
 }
-
-pub struct MultiSource {
-    srcs: Box<[Source]>,
-    idx: usize
-}
-
-impl MultiSource {
-    fn new(srcs: Box<[Source]>) -> Self {
-        MultiSource {
-            srcs,
-            idx: 0,
-        }
-    }
-    fn play(&mut self) -> GameResult<()> {
-        self.srcs[self.idx].play()?;
-        self.idx += 1;
-        if self.idx >= self.srcs.len() {
-            self.idx = 0;
-        }
-        Ok(())
-    }
-}
-
 /// The state of the game
 pub struct Play {
     health: u8,
     world: World,
     holes: SpriteBatch,
     bloods: Vec<BloodSplatter>,
-    shot: MultiSource,
-    hit: Source,
-    hurt: Source,
-    impact: MultiSource,
-    death: Source,
-    victory: Source,
     victory_time: f32,
 }
 
-impl Drop for Play {
-    fn drop(&mut self) {
-        for s in &*self.shot.srcs {
-            s.stop();
-        }
-        for s in &*self.impact.srcs {
-            s.stop();
-        }
-        self.hit.stop();
-        self.hurt.stop();
-        self.death.stop();
-        self.victory.stop();
-    }
-}
-
 impl Play {
-    pub fn new(ctx: &mut Context, s: &mut State) -> GameResult<Box<GameState>> {
-        let s1 = s.sounds.make_source(ctx, Sound::Shot1)?;
-        let s2 = s.sounds.make_source(ctx, Sound::Shot2)?;
-        let hit = s.sounds.make_source(ctx, Sound::Hit)?;
-        let hurt = s.sounds.make_source(ctx, Sound::Hurt)?;
-        let impact = s.sounds.make_source(ctx, Sound::Impact)?;
-        let impact1 = s.sounds.make_source(ctx, Sound::Impact)?;
-        let impact2 = s.sounds.make_source(ctx, Sound::Impact)?;
-        let death = s.sounds.make_source(ctx, Sound::Death)?;
-        let victory = s.sounds.make_source(ctx, Sound::Victory)?;
-
-
+    pub fn new(_ctx: &mut Context, s: &mut State) -> GameResult<Box<GameState>> {
         let level = if let Some(lvl) = s.level.clone() {
             lvl
         } else {
@@ -131,12 +75,6 @@ impl Play {
                     grid: level.grid,
                     goal: level.goal,
                 },
-                shot: MultiSource::new(Box::new([s1, s2])),
-                hit,
-                hurt,
-                impact: MultiSource::new(Box::new([impact, impact1, impact2])),
-                victory,
-                death,
                 holes: SpriteBatch::new(s.assets.get_img(Sprite::Hole).clone()),
             }
         ))
@@ -144,27 +82,24 @@ impl Play {
 }
 
 impl GameState for Play {
-    fn update(&mut self, s: &mut State) -> GameResult<()> {
+    fn update(&mut self, s: &mut State, ctx: &mut Context) -> GameResult<()> {
         let mut deads = Vec::new();
         for (i, bullet) in self.world.bullets.iter_mut().enumerate().rev() {
             bullet.pos += 500. * DELTA * angle_to_vec(bullet.rot);
             if bullet.is_on_solid(&self.world.grid) {
-                self.impact.play()?;
+                s.mplayer.play(ctx, Sound::Impact)?;
                 self.holes.add(bullet.drawparams());
                 deads.push(i);
             } else if (bullet.pos-self.world.player.pos).norm() <= 16. {
                 deads.push(i);
                 self.bloods.push(BloodSplatter::new(bullet.clone()));
                 self.health = self.health.saturating_sub(1);
-                self.hit.play()?;
+                s.mplayer.play(ctx, Sound::Hit)?;
 
                 if self.health == 0 {
-                    self.hurt.stop();
-                    self.death.stop();
-                    self.hit.stop();
                     s.switch(StateSwitch::Menu);
                 } else {
-                    self.hurt.play()?;
+                    s.mplayer.play(ctx, Sound::Hurt)?;
                 }
             }
         }
@@ -188,7 +123,7 @@ impl GameState for Play {
                     let mut bul = Object::new(pos);
                     bul.rot = enemy.obj.rot;
 
-                    self.shot.play()?;
+                    s.mplayer.play(ctx, Sound::Shot1)?;
                     self.world.bullets.push(bul);
 
                     enemy.shoot = 10;
@@ -211,14 +146,14 @@ impl GameState for Play {
                             dir: dist
                         };
                     }
-                    self.hit.play()?;
+                    s.mplayer.play(ctx, Sound::Hit)?;
 
                     self.bloods.push(BloodSplatter::new(bullet.clone()));
                     if enemy.health == 0 {
-                        self.hurt.play()?;
+                        s.mplayer.play(ctx, Sound::Hurt)?;
                         deads.push(e);
                     } else {
-                        self.death.play()?;
+                        s.mplayer.play(ctx, Sound::Death)?;
                     }
                     break
                 }
@@ -244,7 +179,7 @@ impl GameState for Play {
         };
 
         if game_won && self.victory_time <= 0. {
-            self.victory.play()?;
+            s.mplayer.play(ctx, Sound::Victory)?;
             self.victory_time += DELTA;
         } else if self.victory_time > 0. {
             self.victory_time += DELTA;
@@ -277,8 +212,6 @@ impl GameState for Play {
         self.world.player.draw(ctx, s.assets.get_img(Sprite::Person))?;
 
         for enemy in &self.world.enemies {
-            graphics::set_color(ctx, BLUE)?;
-
             enemy.draw(ctx, &s.assets)?;
         }
         graphics::set_color(ctx, WHITE)?;
@@ -303,14 +236,17 @@ impl GameState for Play {
         };
         graphics::draw_ex(ctx, s.assets.get_img(Sprite::Crosshair), drawparams)
     }
-    fn mouse_up(&mut self, _s: &mut State, _ctx: &mut Context, btn: MouseButton) {
+    fn mouse_up(&mut self, s: &mut State, ctx: &mut Context, btn: MouseButton) {
         if let MouseButton::Left = btn {
             let pos = self.world.player.pos + 16. * angle_to_vec(self.world.player.rot);
             let mut bul = Object::new(pos);
             bul.rot = self.world.player.rot;
 
-            self.shot.play().unwrap();
+            s.mplayer.play(ctx, Sound::Shot2).unwrap();
             self.world.bullets.push(bul);
+        }
+        if let MouseButton::Middle = btn {
+            s.mplayer.print_info();
         }
     }
 }

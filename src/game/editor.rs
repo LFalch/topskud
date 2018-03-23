@@ -68,7 +68,7 @@ const YELLOW: Color = Color{r: 1., g: 1., b: 0., a: 1.};
 const RED_HALF: Color = Color{r: 1., g: 0., b: 0., a: 0.5};
 
 impl GameState for Editor {
-    fn update(&mut self, s: &mut State) -> GameResult<()> {
+    fn update(&mut self, s: &mut State, _ctx: &mut Context) -> GameResult<()> {
         let speed = match s.modifiers.shift {
             false => 175.,
             true => 315.,

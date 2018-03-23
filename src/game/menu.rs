@@ -1,38 +1,35 @@
 use ::*;
 use graphics::{Rect, DrawMode};
-use ggez::audio::Source;
 use io::snd::Sound;
 
 /// The state of the game
 pub struct Menu {
-    music: Source,
     play_text: PosText,
     editor_text: PosText,
     cur_lvl_text: PosText,
 }
 
 impl Menu {
-    pub fn new(ctx: &mut Context, s: &State) -> GameResult<Box<GameState>> {
+    pub fn new(ctx: &mut Context, s: &mut State) -> GameResult<Box<GameState>> {
         let w = ctx.conf.window_mode.width as f32 / 2.;
 
         let play_text = s.assets.text(ctx, Point2::new(w-2.*10., 80.), "Play")?;
         let editor_text = s.assets.text(ctx, Point2::new(w-3.*10., 146.), "Editor")?;
         let cur_lvl_text = s.assets.text(ctx, Point2::new(2., 2.0), &format!("Current level: {}", s.save.display()))?;
-        let mut music = s.sounds.make_source(ctx, Sound::Music)?;
-        music.set_repeat(true);
-        music.play()?;
+        s.mplayer.play(ctx, Sound::Music)?;
 
         Ok(Box::new(Menu {
-            music,
             play_text,
             editor_text,
             cur_lvl_text,
         }))
     }
-    pub fn switch_play(&self, s: &mut State) {
+    pub fn switch_play(&self, ctx: &mut Context, s: &mut State) {
+        s.mplayer.stop(ctx, Sound::Music).unwrap();
         s.switch(StateSwitch::Play);
     }
-    pub fn switch_editor(&self, s: &mut State) {
+    pub fn switch_editor(&self, ctx: &mut Context, s: &mut State) {
+        s.mplayer.stop(ctx, Sound::Music).unwrap();
         s.switch(StateSwitch::Editor);
     }
     pub fn rect(ctx: &mut Context, x: f32, y: f32, w: f32, h: f32) -> GameResult<()> {
@@ -57,15 +54,15 @@ impl GameState for Menu {
         self.cur_lvl_text.draw_text(ctx)?;
         self.play_text.draw_text(ctx)
     }
-    fn key_up(&mut self, s: &mut State, _ctx: &mut Context, keycode: Keycode) {
+    fn key_up(&mut self, s: &mut State, ctx: &mut Context, keycode: Keycode) {
         use Keycode::*;
         match keycode {
-            P => self.switch_play(s),
-            E => self.switch_editor(s),
+            P => self.switch_play(ctx, s),
+            E => self.switch_editor(ctx, s),
             _ => (),
         }
     }
-    fn mouse_up(&mut self, s: &mut State, _ctx: &mut Context, btn: MouseButton) {
+    fn mouse_up(&mut self, s: &mut State, ctx: &mut Context, btn: MouseButton) {
         let w = s.width as f32;
         let x = 3. * w / 7.;
         let w = w / 7.;
@@ -74,10 +71,10 @@ impl GameState for Menu {
             Left => {
                 if s.mouse.x >= x && s.mouse.x < x + w{
                     if s.mouse.y >= PLAY_Y && s.mouse.y < PLAY_Y + 64. {
-                        self.switch_play(s);
+                        self.switch_play(ctx, s);
                     }
                     if s.mouse.y >= EDITOR_Y && s.mouse.y < EDITOR_Y + 64. {
-                        self.switch_editor(s);
+                        self.switch_editor(ctx, s);
                     }
                 }
             }

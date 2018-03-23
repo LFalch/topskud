@@ -1,4 +1,4 @@
-use io::snd::SoundAssets;
+use io::snd::MediaPlayer;
 use ::*;
 
 use std::path::PathBuf;
@@ -18,7 +18,7 @@ pub enum StateSwitch {
 }
 
 pub trait GameState {
-    fn update(&mut self, &mut State) -> GameResult<()> {
+    fn update(&mut self, &mut State, &mut Context) -> GameResult<()> {
         Ok(())
     }
     fn logic(&mut self, &mut State, &mut Context) -> GameResult<()> {
@@ -54,7 +54,7 @@ pub struct State {
     input: InputState,
     modifiers: Modifiers,
     assets: Assets,
-    sounds: SoundAssets,
+    mplayer: MediaPlayer,
     width: u32,
     height: u32,
     mouse: Point2,
@@ -75,13 +75,13 @@ impl Master {
         graphics::set_background_color(ctx, (33, 33, 255, 255).into());
         // Initialise assets
         let assets = Assets::new(ctx)?;
-        let sounds = SoundAssets::new(ctx)?;
+        let mplayer = MediaPlayer::new(ctx)?;
 
         // Get the window's dimensions
         let width = ctx.conf.window_mode.width;
         let height = ctx.conf.window_mode.height;
 
-        let state = State {
+        let mut state = State {
             save: p.to_owned().into(),
             level,
             switch_state: None,
@@ -89,7 +89,7 @@ impl Master {
             mouse_down: Default::default(),
             modifiers: Default::default(),
             assets,
-            sounds,
+            mplayer,
             width,
             height,
             mouse: Point2::new(0., 0.),
@@ -97,7 +97,7 @@ impl Master {
         };
 
         Ok(Master {
-            gs: Menu::new(ctx, &state)?,
+            gs: Menu::new(ctx, &mut state)?,
             state,
         })
     }
@@ -122,7 +122,7 @@ impl EventHandler for Master {
             use StateSwitch::*;
             self.gs = match gsb {
                 Play => play::Play::new(ctx, &mut self.state),
-                Menu => menu::Menu::new(ctx, &self.state),
+                Menu => menu::Menu::new(ctx, &mut self.state),
                 Editor => editor::Editor::new(ctx, &self.state),
             }?;
             println!("Switched!");
@@ -131,7 +131,7 @@ impl EventHandler for Master {
         // Run this for every 1/60 of a second has passed since last update
         // Can in theory become slow
         while timer::check_update_time(ctx, DESIRED_FPS) {
-            self.gs.update(&mut self.state)?;
+            self.gs.update(&mut self.state, ctx)?;
         }
         self.gs.logic(&mut self.state, ctx)
     }
