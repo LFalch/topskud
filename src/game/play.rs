@@ -234,13 +234,11 @@ impl GameState for Play {
             blood.draw(ctx, &s.assets)?;
         }
 
-        graphics::set_color(ctx, graphics::BLACK)?;
-        self.world.player.draw(ctx, s.assets.get_img(Sprite::Person))?;
+        self.world.player.draw(ctx, s.assets.get_img(Sprite::Player))?;
 
         for enemy in &self.world.enemies {
             enemy.draw(ctx, &s.assets)?;
         }
-        graphics::set_color(ctx, WHITE)?;
         for bullet in &self.world.bullets {
             bullet.draw(ctx, s.assets.get_img(Sprite::Bullet))?;
         }

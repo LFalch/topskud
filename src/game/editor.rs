@@ -62,7 +62,6 @@ impl Editor {
 
 const START_X: f32 = 103.;
 const YELLOW: Color = Color{r: 1., g: 1., b: 0., a: 1.};
-const RED_HALF: Color = Color{r: 1., g: 0., b: 0., a: 0.5};
 
 impl GameState for Editor {
     fn update(&mut self, s: &mut State, _ctx: &mut Context) -> GameResult<()> {
@@ -149,6 +148,7 @@ impl GameState for Editor {
                 graphics::set_color(ctx, BLUE)?;
                 enemy.draw_visibility_cone(ctx, 512.)?;
             }
+            graphics::set_color(ctx, graphics::WHITE)?;
             enemy.draw(ctx, &s.assets)?;
         }
 
@@ -162,10 +162,10 @@ impl GameState for Editor {
                 let drawparams = graphics::DrawParam {
                     dest: s.mouse,
                     offset: Point2::new(0.5, 0.5),
-                    color: Some(RED_HALF),
+                    color: Some(TRANS),
                     .. Default::default()
                 };
-                graphics::draw_ex(ctx, s.assets.get_img(Sprite::Person), drawparams)?;
+                graphics::draw_ex(ctx, s.assets.get_img(Sprite::Enemy), drawparams)?;
             }
             Tool::GoalPost => {
                 let drawparams = graphics::DrawParam {
@@ -208,10 +208,10 @@ impl GameState for Editor {
         let drawparams = graphics::DrawParam {
             dest: Point2::new(400., 34.),
             offset: Point2::new(0.5, 0.5),
-            color: Some(RED),
+            color: Some(graphics::WHITE),
             .. Default::default()
         };
-        graphics::draw_ex(ctx, s.assets.get_img(Sprite::Person), drawparams)?;
+        graphics::draw_ex(ctx, s.assets.get_img(Sprite::Enemy), drawparams)?;
 
         if let Tool::GoalPost = self.current {
             graphics::set_color(ctx, YELLOW)?;

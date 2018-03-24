@@ -3,7 +3,7 @@ use ggez::graphics::{self, Point2, Vector2};
 
 use obj::Object;
 use game::world::Grid;
-use ::{angle_from_vec, angle_to_vec, Assets, Sprite, RED, DELTA};
+use ::{angle_from_vec, angle_to_vec, Assets, Sprite, DELTA};
 
 use ggez::nalgebra as na;
 
@@ -65,8 +65,7 @@ impl Enemy {
         graphics::line(ctx, &[self.obj.pos, self.obj.pos + (length * dir2)], 1.5)
     }
     pub fn draw(&self, ctx: &mut Context, a: &Assets) -> GameResult<()> {
-        graphics::set_color(ctx, RED)?;
-        self.obj.draw(ctx, a.get_img(Sprite::Person))
+        self.obj.draw(ctx, a.get_img(Sprite::Enemy))
     }
     fn look_towards(&mut self, dist: Vector2) -> bool{
         let dir = angle_to_vec(self.obj.rot);

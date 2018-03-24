@@ -71,7 +71,7 @@ macro_rules! sprites {
 /// Load all assets and specify their dimensions
 sprites! {
     Player, player, 32., 32.,
-    Person, person, 32., 32.,
+    Enemy, enemy, 32., 32.,
     Crosshair, crosshair, 32., 32.,
     Wall, wall, 32., 32.,
     Grass, grass, 32., 32.,
