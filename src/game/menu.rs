@@ -11,10 +11,10 @@ pub struct Menu {
 
 impl Menu {
     pub fn new(ctx: &mut Context, s: &mut State) -> GameResult<Box<GameState>> {
-        let w = ctx.conf.window_mode.width as f32 / 2.;
+        let w = s.width as f32 / 2.;
 
-        let play_text = s.assets.text(ctx, Point2::new(w-2.*10., 80.), "Play")?;
-        let editor_text = s.assets.text(ctx, Point2::new(w-3.*10., 146.), "Editor")?;
+        let play_text = s.assets.text(ctx, Point2::new(w, PLAY_Y+32.), "Play")?;
+        let editor_text = s.assets.text(ctx, Point2::new(w, EDITOR_Y+32.), "Editor")?;
         let cur_lvl_text = if let Content::File(ref f) = s.content {
             Some(s.assets.text(ctx, Point2::new(2., 2.0), &format!("Current level: {}", f.display()))?)
         } else {
@@ -54,11 +54,11 @@ impl GameState for Menu {
         Menu::rect(ctx, x, EDITOR_Y, w, 64.)?;
 
         graphics::set_color(ctx, graphics::WHITE)?;
-        self.editor_text.draw_text(ctx)?;
+        self.editor_text.draw_center(ctx)?;
         if let Some(ref txt) = self.cur_lvl_text {
-            txt.draw_text(ctx)?;
+            txt.draw_center(ctx)?;
         }
-        self.play_text.draw_text(ctx)
+        self.play_text.draw_center(ctx)
     }
     fn key_up(&mut self, s: &mut State, ctx: &mut Context, keycode: Keycode) {
         use Keycode::*;

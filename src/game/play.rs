@@ -51,6 +51,7 @@ pub struct Play {
     holes: SpriteBatch,
     bloods: Vec<BloodSplatter>,
     victory_time: f32,
+    misses: usize,
 }
 
 impl Play {
@@ -67,6 +68,7 @@ impl Play {
 
         Ok(Box::new(
             Play {
+                misses: 0,
                 victory_time: 0.,
                 health: 10,
                 bloods: Vec::new(),
@@ -92,6 +94,7 @@ impl GameState for Play {
             if bullet.is_on_solid(&self.world.grid) {
                 s.mplayer.play(ctx, Sound::Impact)?;
                 self.holes.add(bullet.drawparams());
+                self.misses += 1;
                 deads.push(i);
             } else if (bullet.pos-self.world.player.pos).norm() <= 16. {
                 deads.push(i);
@@ -100,7 +103,13 @@ impl GameState for Play {
                 s.mplayer.play(ctx, Sound::Hit)?;
 
                 if self.health == 0 {
-                    s.switch(StateSwitch::Menu);
+                    s.switch(StateSwitch::Lose(Statistics{
+                        hits: self.bloods.len(),
+                        misses: self.misses,
+                        enemies_left: self.world.enemies.len(),
+                        health_left: self.health,
+                    }));
+                    s.mplayer.play(ctx, Sound::Death)?;
                 } else {
                     s.mplayer.play(ctx, Sound::Hurt)?;
                 }
@@ -164,10 +173,10 @@ impl GameState for Play {
 
                     self.bloods.push(BloodSplatter::new(bullet.clone()));
                     if enemy.health == 0 {
-                        s.mplayer.play(ctx, Sound::Hurt)?;
+                        s.mplayer.play(ctx, Sound::Death)?;
                         deads.push(e);
                     } else {
-                        s.mplayer.play(ctx, Sound::Death)?;
+                        s.mplayer.play(ctx, Sound::Hurt)?;
                     }
                     break
                 }
@@ -200,7 +209,12 @@ impl GameState for Play {
         }
         if self.victory_time >= 2. {
             s.level = None;
-            s.switch(StateSwitch::Menu);
+            s.switch(StateSwitch::Win(Statistics{
+                hits: self.bloods.len(),
+                misses: self.misses,
+                enemies_left: self.world.enemies.len(),
+                health_left: self.health,
+            }));
         }
         Ok(())
     }

@@ -1,5 +1,5 @@
 use ggez::{Context, GameResult};
-use ggez::graphics::{Image, Font, Text, Point2, Drawable};
+use ggez::graphics::{Image, Font, Text, Point2, Drawable, DrawParam};
 
 macro_rules! sprites {
     ($(
@@ -122,6 +122,14 @@ impl PosText {
     /// Draw the text
     pub fn draw_text(&self, ctx: &mut Context) -> GameResult<()> {
         self.text.draw(ctx, self.pos, 0.)
+    }
+    pub fn draw_center(&self, ctx: &mut Context) -> GameResult<()> {
+        let drawparams = DrawParam {
+            dest: self.pos,
+            offset: Point2::new(0.5, 0.5),
+            .. Default::default()
+        };
+        self.text.draw_ex(ctx, drawparams)
     }
     /// Update the text
     pub fn update_text(&mut self, a: &Assets, ctx: &mut Context, text: &str) -> GameResult<()> {

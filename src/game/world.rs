@@ -19,6 +19,13 @@ pub struct World {
     pub(super) bullets: Vec<Object>,
 }
 
+pub struct Statistics {
+    pub hits: usize,
+    pub misses: usize,
+    pub enemies_left: usize,
+    pub health_left: u8,
+}
+
 include!("material_macro.rs");
 
 mat!{

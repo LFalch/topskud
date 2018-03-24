@@ -8,13 +8,18 @@ pub mod world;
 pub mod editor;
 pub mod play;
 pub mod menu;
+pub mod lose;
+pub mod win;
 
 use menu::Menu;
+use world::Statistics;
 
 pub enum StateSwitch {
     Menu,
     Editor,
     Play,
+    Lose(Statistics),
+    Win(Statistics),
 }
 
 pub trait GameState {
@@ -144,6 +149,8 @@ impl EventHandler for Master {
                 Play => play::Play::new(ctx, &mut self.state),
                 Menu => menu::Menu::new(ctx, &mut self.state),
                 Editor => editor::Editor::new(ctx, &self.state),
+                Win(stats) => win::Win::new(ctx, &mut self.state, stats),
+                Lose(stats) => lose::Lose::new(ctx, &mut self.state, stats),
             }?;
         }
 
