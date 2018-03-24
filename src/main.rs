@@ -80,7 +80,7 @@ fn main() {
     };
 
     // Set window mode
-    let window_mode = conf::WindowMode::default().dimensions(1000, 750);
+    let window_mode = conf::WindowMode::default().dimensions(1152, 648);
 
     // Create a context (the part that runs the game loop)
     let mut ctx = ContextBuilder::new("tds", "LFalch")
