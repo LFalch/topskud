@@ -56,7 +56,7 @@ impl GameState for Menu {
         graphics::set_color(ctx, graphics::WHITE)?;
         self.editor_text.draw_center(ctx)?;
         if let Some(ref txt) = self.cur_lvl_text {
-            txt.draw_center(ctx)?;
+            txt.draw_text(ctx)?;
         }
         self.play_text.draw_center(ctx)
     }

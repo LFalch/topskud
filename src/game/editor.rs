@@ -7,16 +7,26 @@ use std::path::PathBuf;
 
 use io::snd::Sound;
 
-#[derive(Debug, PartialEq, Copy, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 enum Tool {
+    Inserter(Insertion),
+    Selector(Selection),
+}
+
+#[derive(Debug, PartialEq, Clone, Copy)]
+enum Insertion {
     Material(Material),
-    Selector,
-    SelectedEnemy(usize),
-    SelectedIntel(usize),
-    SelectedGoal,
-    GoalPost,
     Intel,
-    Enemy,
+    Enemy{rot: f32},
+    Exit,
+}
+
+#[derive(Default, Debug, PartialEq, Clone)]
+struct Selection {
+    exit: bool,
+    enemies: Vec<usize>,
+    intels: Vec<usize>,
+    moving: Option<Point2>,
 }
 
 /// The state of the game
@@ -63,7 +73,7 @@ impl Editor {
         Ok(Box::new(Editor {
             save,
             pos: Point2::new(x, y),
-            current: Tool::Material(Material::Wall),
+            current: Tool::Selector(Selection::default()),
             draw_visibility_cones: false,
             mat_text,
             ent_text,
@@ -85,14 +95,14 @@ impl GameState for Editor {
         let v = speed * Vector2::new(s.input.hor(), s.input.ver());
         self.pos += v * DELTA;
 
-        if let Tool::SelectedEnemy(i) = self.current {
-            self.level.enemies[i].obj.rot += self.rotation_speed * DELTA;
+        if let Tool::Inserter(Insertion::Enemy{ref mut rot}) = self.current {
+            *rot += self.rotation_speed * DELTA;
         }
         Ok(())
     }
     fn logic(&mut self, s: &mut State, _ctx: &mut Context) -> GameResult<()> {
         if s.mouse_down.left && s.mouse.y > 64. {
-            if let Tool::Material(mat) = self.current {
+            if let Tool::Inserter(Insertion::Material(mat)) = self.current {
                 let (mx, my) = Grid::snap(s.mouse - s.offset);
                 self.level.grid.insert(mx, my, mat);
             }
@@ -106,7 +116,7 @@ impl GameState for Editor {
         graphics::set_color(ctx, graphics::WHITE)?;
         self.level.grid.draw(ctx, &s.assets)?;
 
-        if let Tool::Material(mat) = self.current {
+        if let Tool::Inserter(Insertion::Material(mat)) = self.current {
             let (x, y) = Grid::snap(s.mouse-s.offset);
             let x = x as f32 * 32.;
             let y = y as f32 * 32.;
@@ -121,7 +131,7 @@ impl GameState for Editor {
             graphics::circle(ctx, DrawMode::Fill, start, 9., 1.)?;
         }
         if let Some(exit) = self.level.exit {
-            if let Tool::SelectedGoal = self.current {
+            if let Tool::Selector(Selection{exit: true, ..}) = self.current {
                 graphics::set_color(ctx, YELLOW)?;
                 graphics::circle(ctx, DrawMode::Fill, exit, 17., 0.5)?;
             }
@@ -135,8 +145,8 @@ impl GameState for Editor {
         }
 
         for (i, &intel) in self.level.intels.iter().enumerate() {
-            if let Tool::SelectedIntel(j) = self.current {
-                if i == j {
+            if let Tool::Selector(Selection{ref intels, ..}) = self.current {
+                if intels.contains(&i) {
                     graphics::set_color(ctx, YELLOW)?;
                     graphics::circle(ctx, DrawMode::Fill, intel, 17., 0.5)?;
                 }
@@ -151,8 +161,8 @@ impl GameState for Editor {
         }
 
         for (i, enemy) in self.level.enemies.iter().enumerate() {
-            if let Tool::SelectedEnemy(j) = self.current {
-                if i == j {
+            if let Tool::Selector(Selection{ref enemies, ..})= self.current {
+                if enemies.contains(&i) {
                     graphics::set_color(ctx, YELLOW)?;
                     graphics::circle(ctx, DrawMode::Fill, enemy.obj.pos, 17., 0.5)?;
                 }
@@ -165,22 +175,53 @@ impl GameState for Editor {
             enemy.draw(ctx, &s.assets)?;
         }
 
+        if let Tool::Selector(ref selection @ Selection{moving: Some(_), ..}) = self.current {
+            let mousepos = s.mouse - s.offset;
+            let dist = mousepos - selection.moving.unwrap();
+
+            graphics::set_color(ctx, TRANS)?;
+            for &i in &selection.enemies {
+                let mut enem = self.level.enemies[i].clone();
+                enem.obj.pos += dist;
+                enem.draw(ctx, &s.assets)?;
+            }
+            for &i in &selection.intels {
+                let drawparams = graphics::DrawParam {
+                    dest: self.level.intels[i] + dist,
+                    offset: Point2::new(0.5, 0.5),
+                    .. Default::default()
+                };
+                graphics::draw_ex(ctx, s.assets.get_img(Sprite::Intel), drawparams)?;
+            }
+            if selection.exit {
+                if let Some(exit) = self.level.exit {
+                    let drawparams = graphics::DrawParam {
+                        dest: exit + dist,
+                        offset: Point2::new(0.5, 0.5),
+                        .. Default::default()
+                    };
+                    graphics::draw_ex(ctx, s.assets.get_img(Sprite::Goal), drawparams)?;
+                }
+            }
+        }
+
         Ok(())
     }
     fn draw_hud(&mut self, s: &State, ctx: &mut Context) -> GameResult<()> {
         match self.current {
-            Tool::SelectedIntel(_) | Tool::SelectedEnemy(_) | Tool::SelectedGoal | Tool::Selector => (),
-            Tool::Material(_) => (),
-            Tool::Enemy => {
+            Tool::Selector(_) => (),
+            Tool::Inserter(Insertion::Material(_)) => (),
+            Tool::Inserter(Insertion::Enemy{rot}) => {
                 let drawparams = graphics::DrawParam {
                     dest: s.mouse,
+                    rotation: rot,
                     offset: Point2::new(0.5, 0.5),
                     color: Some(TRANS),
                     .. Default::default()
                 };
                 graphics::draw_ex(ctx, s.assets.get_img(Sprite::Enemy), drawparams)?;
             }
-            Tool::GoalPost => {
+            Tool::Inserter(Insertion::Exit) => {
                 let drawparams = graphics::DrawParam {
                     dest: s.mouse,
                     offset: Point2::new(0.5, 0.5),
@@ -189,7 +230,7 @@ impl GameState for Editor {
                 };
                 graphics::draw_ex(ctx, s.assets.get_img(Sprite::Goal), drawparams)?;
             }
-            Tool::Intel => {
+            Tool::Inserter(Insertion::Intel) => {
                 let drawparams = graphics::DrawParam {
                     dest: s.mouse,
                     offset: Point2::new(0.5, 0.5),
@@ -206,7 +247,7 @@ impl GameState for Editor {
 
         for (i, mat) in PALETTE.iter().enumerate() {
             let x = START_X + i as f32 * 36.;
-            if Tool::Material(*mat) == self.current {
+            if Tool::Inserter(Insertion::Material(*mat)) == self.current {
                 graphics::set_color(ctx, YELLOW)?;
                 graphics::rectangle(ctx, DrawMode::Fill, Rect{x: x - 1., y: 15., w: 34., h: 34.})?;
                 graphics::set_color(ctx, graphics::WHITE)?;
@@ -214,7 +255,7 @@ impl GameState for Editor {
             mat.draw(ctx, &s.assets, x, 16.)?;
         }
 
-        if let Tool::Enemy = self.current {
+        if let Tool::Inserter(Insertion::Enemy{..}) = self.current {
             graphics::set_color(ctx, YELLOW)?;
             graphics::circle(ctx, DrawMode::Fill, Point2::new(400., 34.), 17., 0.5)?;
         }
@@ -226,7 +267,7 @@ impl GameState for Editor {
         };
         graphics::draw_ex(ctx, s.assets.get_img(Sprite::Enemy), drawparams)?;
 
-        if let Tool::GoalPost = self.current {
+        if let Tool::Inserter(Insertion::Exit) = self.current {
             graphics::set_color(ctx, YELLOW)?;
             graphics::circle(ctx, DrawMode::Fill, Point2::new(434., 34.), 17., 0.5)?;
         }
@@ -238,7 +279,7 @@ impl GameState for Editor {
         };
         graphics::draw_ex(ctx, s.assets.get_img(Sprite::Goal), drawparams)?;
 
-        if let Tool::Intel = self.current {
+        if let Tool::Inserter(Insertion::Intel) = self.current {
             graphics::set_color(ctx, YELLOW)?;
             graphics::circle(ctx, DrawMode::Fill, Point2::new(468., 34.), 17., 0.5)?;
         }
@@ -264,25 +305,56 @@ impl GameState for Editor {
                 s.level = Some(self.level.clone());
                 s.switch(StateSwitch::Play)
             }
-            T => self.current = Tool::Selector,
-            Delete | Backspace => match self.current {
-                Tool::SelectedEnemy(i) => {
-                    self.level.enemies.remove(i);
-                    self.current = Tool::Selector;
-                }
-                Tool::SelectedGoal => {
+            T => self.current = Tool::Selector(Selection::default()),
+            Delete | Backspace => if let Tool::Selector(ref mut selection) = self.current {
+                let Selection {
+                    mut enemies,
+                    mut intels,
+                    exit, moving: _,
+                } = ::std::mem::replace(selection, Selection::default());
+
+                if exit {
                     self.level.exit = None;
-                    self.current = Tool::Selector;
                 }
-                Tool::SelectedIntel(i) => {
-                    self.level.intels.remove(i);
-                    self.current = Tool::Selector;
+                enemies.sort();
+                for enemy in enemies.into_iter().rev() {
+                    self.level.enemies.remove(enemy);
                 }
-                _ => ()
+                intels.sort();
+                for intel in intels.into_iter().rev() {
+                    self.level.intels.remove(intel);
+                }
             }
             Comma => self.rotation_speed += 6.,
             Period => self.rotation_speed -= 6.,
             _ => return,
+        }
+    }
+    fn mouse_down(&mut self, s: &mut State, _ctx: &mut Context, btn: MouseButton) {
+        use MouseButton::*;
+        match btn {
+            Left => if let Tool::Selector(ref mut selection) = self.current {
+                let mousepos = s.mouse - s.offset;
+
+                for &i in &selection.enemies {
+                    if (self.level.enemies[i].obj.pos - mousepos).norm() <= 16. {
+                        return selection.moving = Some(mousepos);
+                    }
+                }
+                for &i in &selection.intels {
+                    if (self.level.intels[i] - mousepos).norm() <= 16. {
+                        return selection.moving = Some(mousepos);
+                    }
+                }
+                if selection.exit {
+                    if let Some(exit) = self.level.exit {
+                        if (exit - mousepos).norm() <= 16. {
+                            return selection.moving = Some(mousepos);
+                        }
+                    }
+                }
+            }
+            _ => ()
         }
     }
     fn mouse_up(&mut self, s: &mut State, ctx: &mut Context, btn: MouseButton) {
@@ -292,58 +364,89 @@ impl GameState for Editor {
                 if s.mouse.x > START_X && s.mouse.x < START_X + PALETTE.len() as f32 * 36. {
                     let i = ((s.mouse.x - START_X) / 36.) as usize;
 
-                    self.current = Tool::Material(PALETTE[i]);
+                    self.current = Tool::Inserter(Insertion::Material(PALETTE[i]));
                 }
                 if s.mouse.y >= 18. && s.mouse.y < 50. {
                     if s.mouse.x >= 384. && s.mouse.x < 416. {
-                        self.current = Tool::Enemy;
+                        self.current = Tool::Inserter(Insertion::Enemy{rot: 0.});
                     }
                     if s.mouse.x >= 418. && s.mouse.x < 450. {
-                        self.current = Tool::GoalPost;
+                        self.current = Tool::Inserter(Insertion::Exit);
                     }
                     if s.mouse.x >= 452. && s.mouse.x < 484. {
-                        self.current = Tool::Intel;
+                        self.current = Tool::Inserter(Insertion::Intel);
                     }
                 }
             } else {
                 match self.current {
-                    Tool::Material(_) => (),
-                    Tool::Selector => {
+                    Tool::Inserter(Insertion::Material(_)) => (),
+                    Tool::Selector(ref mut selection) => {
                         let mousepos = s.mouse - s.offset;
-                        for (i, enemy) in self.level.enemies.iter().enumerate() {
-                            if (enemy.obj.pos - mousepos).norm() <= 16. {
-                                return self.current = Tool::SelectedEnemy(i);
+
+                        if let Some(moved_from) = selection.moving {
+                            let dist = mousepos - moved_from;
+
+                            if selection.exit {
+                                if let Some(ref mut exit) = self.level.exit {
+                                    *exit += dist;
+                                }
                             }
-                        }
-                        if let Some(exit) = self.level.exit {
-                            if (exit - mousepos).norm() <= 16. {
-                                return self.current = Tool::SelectedGoal;
+                            for i in selection.enemies.iter().rev() {
+                                self.level.enemies[*i].obj.pos += dist;
                             }
-                        }
-                        for (i, &intel) in self.level.intels.iter().enumerate() {
-                            if (intel - mousepos).norm() <= 16. {
-                                return self.current = Tool::SelectedIntel(i);
+                            for i in selection.intels.iter().rev() {
+                                self.level.intels[*i] += dist;
                             }
+                            selection.moving = None;
+                        } else {
+                            for (i, enemy) in self.level.enemies.iter().enumerate() {
+                                if (enemy.obj.pos - mousepos).norm() <= 16. {
+                                    if !selection.enemies.contains(&i) {
+                                        if s.modifiers.ctrl {
+                                            selection.enemies.push(i);
+                                        } else {
+                                            *selection = Selection{enemies: vec![i], .. Default::default()};
+                                        }
+                                        return
+                                    }
+                                }
+                            }
+                            if let Some(exit) = self.level.exit {
+                                if (exit - mousepos).norm() <= 16. {
+                                    if !selection.exit {
+                                        if s.modifiers.ctrl {
+                                            selection.exit = true;
+                                        } else {
+                                            *selection = Selection{exit: true, .. Default::default()};
+                                        }
+                                        return
+                                    }
+                                }
+                            }
+                            for (i, &intel) in self.level.intels.iter().enumerate() {
+                                if (intel - mousepos).norm() <= 16. {
+                                    if !selection.intels.contains(&i) {
+                                        if s.modifiers.ctrl {
+                                            selection.intels.push(i);
+                                        } else {
+                                            *selection = Selection{intels: vec![i], .. Default::default()};
+                                        }
+                                        return
+                                    }
+                                }
+                            }
+                            *selection = Selection::default();
                         }
                     }
-                    Tool::SelectedEnemy(i) => {
-                        self.level.enemies[i].obj.pos = s.mouse - s.offset;
-                    }
-                    Tool::SelectedGoal => {
+                    Tool::Inserter(Insertion::Exit) => {
                         self.level.exit = Some(s.mouse - s.offset);
+                        self.current = Tool::Selector(Selection{exit: true, .. Default::default()});
                     }
-                    Tool::SelectedIntel(i) => {
-                        self.level.intels[i] = s.mouse - s.offset;
-                    }
-                    Tool::GoalPost => {
-                        self.level.exit = Some(s.mouse - s.offset);
-                        self.current = Tool::SelectedGoal;
-                    }
-                    Tool::Enemy => {
+                    Tool::Inserter(Insertion::Enemy{rot}) => {
                         s.mplayer.play(ctx, Sound::Reload).unwrap();
-                        self.level.enemies.push(Enemy::new(Object::new(s.mouse - s.offset)));
+                        self.level.enemies.push(Enemy::new(Object::with_rot(s.mouse - s.offset, rot)));
                     },
-                    Tool::Intel => self.level.intels.push(s.mouse - s.offset),
+                    Tool::Inserter(Insertion::Intel) => self.level.intels.push(s.mouse - s.offset),
                 }
             }
             Middle => self.level.start_point = Some(s.mouse - s.offset),

@@ -27,6 +27,12 @@ impl Object {
             rot: 0.,
         }
     }
+    pub fn with_rot(pos: Point2, rot: f32) -> Self {
+        Object {
+            pos,
+            rot,
+        }
+    }
     #[inline]
     pub fn drawparams(&self) -> graphics::DrawParam {
         graphics::DrawParam {
