@@ -75,7 +75,8 @@ impl Play {
                     bullets: Vec::new(),
                     player: Object::new(level.start_point.unwrap_or(Point2::new(500., 500.))),
                     grid: level.grid,
-                    goal: level.goal,
+                    exit: level.exit,
+                    intels: level.intels,
                 },
                 holes: SpriteBatch::new(s.assets.get_img(Sprite::Hole).clone()),
             }
@@ -107,6 +108,17 @@ impl GameState for Play {
         }
         for i in deads {
             self.world.bullets.remove(i);
+        }
+
+        let mut deads = Vec::new();
+        for (i, &intel) in self.world.intels.iter().enumerate().rev() {
+            if (intel-self.world.player.pos).norm() <= 15. {
+                deads.push(i);
+                s.mplayer.play(ctx, Sound::Hit)?;
+            }
+        }
+        for i in deads {
+            self.world.intels.remove(i);
         }
 
         // Define player velocity here already because enemies need it
@@ -175,9 +187,9 @@ impl GameState for Play {
         };
         self.world.player.move_on_grid(player_vel, speed, &self.world.grid);
 
-        let game_won = match self.world.goal {
-            Goal::Point(p) => (p - self.world.player.pos).norm() < 32.,
-            Goal::KillAll => self.world.enemies.is_empty(),
+        let game_won = match self.world.exit {
+            Some(p) => self.world.intels.is_empty() && (p - self.world.player.pos).norm() < 32.,
+            None => self.world.enemies.is_empty(),
         };
 
         if game_won && self.victory_time <= 0. {
@@ -207,6 +219,17 @@ impl GameState for Play {
         self.world.grid.draw(ctx, &s.assets)?;
 
         self.holes.draw_ex(ctx, Default::default())?;
+
+        for &intel in &self.world.intels {
+            let drawparams = graphics::DrawParam {
+                dest: intel,
+                offset: Point2::new(0.5, 0.5),
+                color: Some(graphics::WHITE),
+                .. Default::default()
+            };
+            graphics::draw_ex(ctx, s.assets.get_img(Sprite::Intel), drawparams)?;
+        }
+
         for blood in &self.bloods {
             blood.draw(ctx, &s.assets)?;
         }

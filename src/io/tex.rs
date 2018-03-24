@@ -87,6 +87,7 @@ sprites! {
     Blood2, blood2, 32., 32.,
     Blood3, blood3, 32., 32.,
     Goal, goal, 32., 32.,
+    Intel, intel, 32., 32.,
 }
 
 impl Assets {

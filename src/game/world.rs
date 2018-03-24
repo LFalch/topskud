@@ -13,7 +13,8 @@ use serde::{Serialize, Deserialize, Serializer, Deserializer};
 pub struct World {
     pub(super) player: Object,
     pub(super) grid: Grid,
-    pub(super) goal: Goal,
+    pub(super) exit: Option<Point2>,
+    pub(super) intels: Vec<Point2>,
     pub(super) enemies: Vec<Enemy>,
     pub(super) bullets: Vec<Object>,
 }
@@ -32,18 +33,13 @@ mat!{
     Missing = 404, Missing, true,
 }
 
-#[derive(Debug, Copy, Clone)]
-pub enum Goal {
-    KillAll,
-    Point(Point2),
-}
-
 #[derive(Debug, Clone)]
 pub struct Level {
     pub grid: Grid,
     pub start_point: Option<Point2>,
-    pub goal: Goal,
     pub enemies: Vec<Enemy>,
+    pub exit: Option<Point2>,
+    pub intels: Vec<Point2>,
 }
 
 impl Level {
@@ -52,7 +48,8 @@ impl Level {
             grid: Grid::new(width, height),
             start_point: None,
             enemies: Vec::new(),
-            goal: Goal::KillAll,
+            exit: None,
+            intels: Vec::new(),
         }
     }
     pub fn load<P: AsRef<Path>>(path: P) -> GameResult<Self> {
@@ -75,9 +72,12 @@ impl Level {
                 ),
                 "ENEMIES" => ret.enemies = bincode::deserialize_from(&mut reader)
                     .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?,
-                "POINT GOAL" => ret.goal = Goal::Point(bincode::deserialize_from(&mut reader)
+                "POINT GOAL" => ret.exit = Some(bincode::deserialize_from(&mut reader)
                     .map(|(x, y)| Point2::new(x, y))
                     .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?),
+                "INTELS" => ret.intels = bincode::deserialize_from(&mut reader)
+                    .map(|l: Vec<(f32, f32)>| l.into_iter().map(|(x, y)| Point2::new(x, y)).collect())
+                    .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?,
                 "END" => break,
                 _ => return Err("Bad section".to_string())?
             }
@@ -101,13 +101,16 @@ impl Level {
             bincode::serialize_into(&mut file, &self.enemies)
             .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?;
         }
-        match self.goal {
-            Goal::Point(p) => {
-                writeln!(file, "\nPOINT GOAL")?;
-                bincode::serialize_into(&mut file, &(p.x, p.y))
+        if let Some(p) = self.exit {
+            writeln!(file, "\nPOINT GOAL")?;
+            bincode::serialize_into(&mut file, &(p.x, p.y))
+            .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?;
+        }
+        if !self.intels.is_empty() {
+            writeln!(file, "\nINTELS")?;
+            let intels: Vec<_> = self.intels.iter().map(|p| (p.x, p.y)).collect();
+            bincode::serialize_into(&mut file, &intels)
                 .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?;
-            },
-            Goal::KillAll => (),
         }
 
         writeln!(file, "\nEND")?;
@@ -128,7 +131,8 @@ impl Level {
 
         Level {
             grid,
-            goal: Goal::KillAll,
+            intels: Vec::new(),
+            exit: None,
             start_point: None,
             enemies: Vec::new(),
         }

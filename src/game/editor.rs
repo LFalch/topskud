@@ -3,15 +3,16 @@ use graphics::{Rect, DrawMode};
 use super::world::*;
 
 use io::snd::Sound;
-use std::path::PathBuf;
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 enum Tool {
     Material(Material),
     Selector,
     SelectedEnemy(usize),
+    SelectedIntel(usize),
     SelectedGoal,
     GoalPost,
+    Intel,
     Enemy,
 }
 
@@ -57,11 +58,6 @@ impl Editor {
             rotation_speed: 0.,
         }))
     }
-}
-
-pub struct EditorBuilder {
-    pub save: PathBuf,
-    pub dims: Option<(usize, usize)>
 }
 
 const START_X: f32 = 103.;
@@ -112,19 +108,36 @@ impl GameState for Editor {
             graphics::set_color(ctx, BLUE)?;
             graphics::circle(ctx, DrawMode::Fill, start, 9., 1.)?;
         }
-        if let Goal::Point(end) = self.level.goal {
+        if let Some(exit) = self.level.exit {
             if let Tool::SelectedGoal = self.current {
                 graphics::set_color(ctx, YELLOW)?;
-                graphics::circle(ctx, DrawMode::Fill, end, 17., 0.5)?;
+                graphics::circle(ctx, DrawMode::Fill, exit, 17., 0.5)?;
             }
             let drawparams = graphics::DrawParam {
-                dest: end,
+                dest: exit,
                 offset: Point2::new(0.5, 0.5),
                 color: Some(graphics::WHITE),
                 .. Default::default()
             };
             graphics::draw_ex(ctx, s.assets.get_img(Sprite::Goal), drawparams)?;
         }
+
+        for (i, &intel) in self.level.intels.iter().enumerate() {
+            if let Tool::SelectedIntel(j) = self.current {
+                if i == j {
+                    graphics::set_color(ctx, YELLOW)?;
+                    graphics::circle(ctx, DrawMode::Fill, intel, 17., 0.5)?;
+                }
+            }
+            let drawparams = graphics::DrawParam {
+                dest: intel,
+                offset: Point2::new(0.5, 0.5),
+                color: Some(graphics::WHITE),
+                .. Default::default()
+            };
+            graphics::draw_ex(ctx, s.assets.get_img(Sprite::Intel), drawparams)?;
+        }
+
         for (i, enemy) in self.level.enemies.iter().enumerate() {
             if let Tool::SelectedEnemy(j) = self.current {
                 if i == j {
@@ -143,7 +156,7 @@ impl GameState for Editor {
     }
     fn draw_hud(&mut self, s: &State, ctx: &mut Context) -> GameResult<()> {
         match self.current {
-            Tool::SelectedEnemy(_) | Tool::SelectedGoal | Tool::Selector => (),
+            Tool::SelectedIntel(_) | Tool::SelectedEnemy(_) | Tool::SelectedGoal | Tool::Selector => (),
             Tool::Material(_) => (),
             Tool::Enemy => {
                 let drawparams = graphics::DrawParam {
@@ -162,6 +175,15 @@ impl GameState for Editor {
                     .. Default::default()
                 };
                 graphics::draw_ex(ctx, s.assets.get_img(Sprite::Goal), drawparams)?;
+            }
+            Tool::Intel => {
+                let drawparams = graphics::DrawParam {
+                    dest: s.mouse,
+                    offset: Point2::new(0.5, 0.5),
+                    color: Some(TRANS),
+                    .. Default::default()
+                };
+                graphics::draw_ex(ctx, s.assets.get_img(Sprite::Intel), drawparams)?;
             }
         }
 
@@ -203,6 +225,18 @@ impl GameState for Editor {
         };
         graphics::draw_ex(ctx, s.assets.get_img(Sprite::Goal), drawparams)?;
 
+        if let Tool::Intel = self.current {
+            graphics::set_color(ctx, YELLOW)?;
+            graphics::circle(ctx, DrawMode::Fill, Point2::new(468., 34.), 17., 0.5)?;
+        }
+        let drawparams = graphics::DrawParam {
+            dest: Point2::new(468., 34.),
+            offset: Point2::new(0.5, 0.5),
+            color: Some(graphics::WHITE),
+            .. Default::default()
+        };
+        graphics::draw_ex(ctx, s.assets.get_img(Sprite::Intel), drawparams)?;
+
         graphics::set_color(ctx, graphics::WHITE)?;
         self.mat_text.draw_text(ctx)?;
         self.ent_text.draw_text(ctx)
@@ -224,7 +258,11 @@ impl GameState for Editor {
                     self.current = Tool::Selector;
                 }
                 Tool::SelectedGoal => {
-                    self.level.goal = Goal::KillAll;
+                    self.level.exit = None;
+                    self.current = Tool::Selector;
+                }
+                Tool::SelectedIntel(i) => {
+                    self.level.intels.remove(i);
                     self.current = Tool::Selector;
                 }
                 _ => ()
@@ -250,6 +288,9 @@ impl GameState for Editor {
                     if s.mouse.x >= 418. && s.mouse.x < 450. {
                         self.current = Tool::GoalPost;
                     }
+                    if s.mouse.x >= 452. && s.mouse.x < 484. {
+                        self.current = Tool::Intel;
+                    }
                 }
             } else {
                 match self.current {
@@ -258,12 +299,17 @@ impl GameState for Editor {
                         let mousepos = s.mouse - s.offset;
                         for (i, enemy) in self.level.enemies.iter().enumerate() {
                             if (enemy.obj.pos - mousepos).norm() <= 16. {
-                                self.current = Tool::SelectedEnemy(i)
+                                return self.current = Tool::SelectedEnemy(i);
                             }
                         }
-                        if let Goal::Point(g) = self.level.goal {
-                            if (g - mousepos).norm() <= 16. {
-                                self.current = Tool::SelectedGoal;
+                        if let Some(exit) = self.level.exit {
+                            if (exit - mousepos).norm() <= 16. {
+                                return self.current = Tool::SelectedGoal;
+                            }
+                        }
+                        for (i, &intel) in self.level.intels.iter().enumerate() {
+                            if (intel - mousepos).norm() <= 16. {
+                                return self.current = Tool::SelectedIntel(i);
                             }
                         }
                     }
@@ -271,16 +317,20 @@ impl GameState for Editor {
                         self.level.enemies[i].obj.pos = s.mouse - s.offset;
                     }
                     Tool::SelectedGoal => {
-                        self.level.goal = Goal::Point(s.mouse - s.offset);
+                        self.level.exit = Some(s.mouse - s.offset);
+                    }
+                    Tool::SelectedIntel(i) => {
+                        self.level.intels[i] = s.mouse - s.offset;
                     }
                     Tool::GoalPost => {
-                        self.level.goal = Goal::Point(s.mouse - s.offset);
+                        self.level.exit = Some(s.mouse - s.offset);
                         self.current = Tool::SelectedGoal;
                     }
                     Tool::Enemy => {
                         s.mplayer.play(ctx, Sound::Reload).unwrap();
                         self.level.enemies.push(Enemy::new(Object::new(s.mouse - s.offset)));
                     },
+                    Tool::Intel => self.level.intels.push(s.mouse - s.offset),
                 }
             }
             Middle => self.level.start_point = Some(s.mouse - s.offset),
