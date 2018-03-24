@@ -48,6 +48,26 @@ pub struct Master {
     state: State,
 }
 
+pub enum Content {
+    Campaign(Campaign),
+    File(PathBuf),
+}
+
+impl Content {
+    pub fn load_level(&mut self) -> GameResult<Level> {
+        Ok(match *self {
+            Content::Campaign(ref mut cmp) => {
+                let lvl = cmp.levels[cmp.current].clone();
+                cmp.current += 1;
+                lvl
+            }
+            Content::File(ref f) => {
+                Level::load(f)?
+            }
+        })
+    }
+}
+
 /// The state of the game
 pub struct State {
     mouse_down: MouseDown,
@@ -60,8 +80,8 @@ pub struct State {
     mouse: Point2,
     offset: Vector2,
     switch_state: Option<StateSwitch>,
-    save: PathBuf,
     level: Option<Level>,
+    content: Content,
 }
 
 const DESIRED_FPS: u32 = 60;
@@ -70,7 +90,7 @@ pub(crate) const DELTA: f32 = 1. / DESIRED_FPS as f32;
 
 impl Master {
     /// Make a new state object
-    pub fn new(ctx: &mut Context, p: &str, level: Option<Level>) -> GameResult<Self> {
+    pub fn new(ctx: &mut Context, content: Content, level: Option<Level>) -> GameResult<Self> {
         // Background colour is black
         graphics::set_background_color(ctx, (33, 33, 255, 255).into());
         // Initialise assets
@@ -82,7 +102,7 @@ impl Master {
         let height = ctx.conf.window_mode.height;
 
         let mut state = State {
-            save: p.to_owned().into(),
+            content,
             level,
             switch_state: None,
             input: Default::default(),
@@ -229,5 +249,32 @@ impl EventHandler for Master {
     }
     fn quit_event(&mut self, _ctx: &mut Context) -> bool {
         false
+    }
+}
+
+
+use std::fs::File;
+use std::io::{BufRead, BufReader};
+
+pub struct Campaign {
+    pub levels: Vec<Level>,
+    pub current: usize,
+}
+
+impl Campaign {
+    pub fn load(p: &str) -> GameResult<Self> {
+        let file = BufReader::new(File::open(p)?);
+
+        let mut levels = Vec::new();
+
+        for line in file.lines() {
+            let line = line?;
+            levels.push(Level::load(&line.trim())?);
+        }
+
+        Ok(Campaign {
+            levels,
+            current: 0,
+        })
     }
 }

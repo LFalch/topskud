@@ -6,7 +6,7 @@ use io::snd::Sound;
 pub struct Menu {
     play_text: PosText,
     editor_text: PosText,
-    cur_lvl_text: PosText,
+    cur_lvl_text: Option<PosText>,
 }
 
 impl Menu {
@@ -15,7 +15,11 @@ impl Menu {
 
         let play_text = s.assets.text(ctx, Point2::new(w-2.*10., 80.), "Play")?;
         let editor_text = s.assets.text(ctx, Point2::new(w-3.*10., 146.), "Editor")?;
-        let cur_lvl_text = s.assets.text(ctx, Point2::new(2., 2.0), &format!("Current level: {}", s.save.display()))?;
+        let cur_lvl_text = if let Content::File(ref f) = s.content {
+            Some(s.assets.text(ctx, Point2::new(2., 2.0), &format!("Current level: {}", f.display()))?)
+        } else {
+            None
+        };
         s.mplayer.play(ctx, Sound::Music)?;
 
         Ok(Box::new(Menu {
@@ -51,7 +55,9 @@ impl GameState for Menu {
 
         graphics::set_color(ctx, graphics::WHITE)?;
         self.editor_text.draw_text(ctx)?;
-        self.cur_lvl_text.draw_text(ctx)?;
+        if let Some(ref txt) = self.cur_lvl_text {
+            txt.draw_text(ctx)?;
+        }
         self.play_text.draw_text(ctx)
     }
     fn key_up(&mut self, s: &mut State, ctx: &mut Context, keycode: Keycode) {

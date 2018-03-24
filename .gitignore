@@ -1,3 +1,4 @@
 **/*.lvl
+**/*.cmp
 /target/
 **/*.rs.bk

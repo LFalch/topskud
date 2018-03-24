@@ -58,7 +58,7 @@ impl Play {
         let level = if let Some(lvl) = s.level.clone() {
             lvl
         } else {
-            let lvl = Level::load(&s.save)?;
+            let lvl = s.content.load_level()?;
             s.level = Some(lvl.clone());
             lvl
         };
@@ -199,6 +199,7 @@ impl GameState for Play {
             self.victory_time += DELTA;
         }
         if self.victory_time >= 2. {
+            s.level = None;
             s.switch(StateSwitch::Menu);
         }
         Ok(())

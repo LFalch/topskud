@@ -52,29 +52,32 @@ pub const BLUE: Color = Color{r:0.,g:0.,b:1.,a:1.};
 fn main() {
     let mut args = args().skip(1);
 
-    let mut p = args.next().unwrap_or_else(|| "save.lvl".to_owned());
     let mut level = None;
+    let content = if let Some(mut p) = args.next() {
+        if &p == "--convert" {
+            let p = args.next().unwrap();
+            let o = args.next().unwrap();
 
-    if &p == "--convert" {
-        let p = args.next().unwrap();
-        let o = args.next().unwrap();
+            let grid: [[Material; 32]; 32];
+            {
+                let mut file = File::open(&p).unwrap();
+                grid = bincode::deserialize_from(&mut file).unwrap();
+            }
+            let level = Level::from_32x32_transposed_grid(grid);
 
-        let grid: [[Material; 32]; 32];
-        {
-            let mut file = File::open(&p).unwrap();
-            grid = bincode::deserialize_from(&mut file).unwrap();
+            level.save(&o).unwrap();
+            return
+        } else if &p == "--new" {
+            p = args.next().unwrap();
+            let w: usize = args.next().unwrap().parse().unwrap();
+            let h: usize = args.next().unwrap().parse().unwrap();
+
+            level = Some(Level::new(w, h));
         }
-        let level = Level::from_32x32_transposed_grid(grid);
-
-        level.save(&o).unwrap();
-        return
-    } else if &p == "--new" {
-        p = args.next().unwrap();
-        let w: usize = args.next().unwrap().parse().unwrap();
-        let h: usize = args.next().unwrap().parse().unwrap();
-
-        level = Some(Level::new(w, h));
-    }
+        Content::File(p.to_owned().into())
+    } else {
+        Content::Campaign(Campaign::load("start.cmp").unwrap())
+    };
 
     // Set window mode
     let window_mode = conf::WindowMode::default().dimensions(1000, 750);
@@ -94,7 +97,7 @@ fn main() {
     }
 
     // Tries to create a game state and runs it if succesful
-    match Master::new(&mut ctx, &p, level) {
+    match Master::new(&mut ctx, content, level) {
         Err(e) => {
             eprintln!("Couldn't load game {}", e);
         }

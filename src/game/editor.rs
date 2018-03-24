@@ -1,6 +1,9 @@
 use ::*;
 use graphics::{Rect, DrawMode};
+use ggez::error::GameError;
 use super::world::*;
+
+use std::path::PathBuf;
 
 use io::snd::Sound;
 
@@ -18,6 +21,7 @@ enum Tool {
 
 /// The state of the game
 pub struct Editor {
+    save: PathBuf,
     pos: Point2,
     level: Level,
     current: Tool,
@@ -41,14 +45,23 @@ impl Editor {
     pub fn new(ctx: &mut Context, s: &State) -> GameResult<Box<GameState>> {
         let mat_text = s.assets.text(ctx, Point2::new(2., 18.0), "Materials:")?;
         let ent_text = s.assets.text(ctx, Point2::new(302., 18.0), "Entities:")?;
+
+        let save;
+        if let Content::File(ref f) = s.content {
+            save = f.clone();
+        } else {
+            return Err(GameError::UnknownError("Cannot load editor in campaign".to_owned()));
+        }
+
         let level = s.level.clone().unwrap_or_else(|| {
-            Level::load(&s.save).unwrap_or_else(|_| Level::new(32, 32))
+            Level::load(&save).unwrap_or_else(|_| Level::new(32, 32))
         });
 
         let x = level.grid.width() as f32 * 16.;
         let y = level.grid.height() as f32 * 16.;
 
         Ok(Box::new(Editor {
+            save,
             pos: Point2::new(x, y),
             current: Tool::Material(Material::Wall),
             draw_visibility_cones: false,
@@ -244,8 +257,8 @@ impl GameState for Editor {
     fn key_up(&mut self, s: &mut State, _ctx: &mut Context, keycode: Keycode) {
         use Keycode::*;
         match keycode {
-            Z => self.level.save(&s.save).unwrap(),
-            X => self.level = Level::load(&s.save).unwrap(),
+            Z => self.level.save(&self.save).unwrap(),
+            X => self.level = Level::load(&self.save).unwrap(),
             C => self.draw_visibility_cones.toggle(),
             P => {
                 s.level = Some(self.level.clone());
