@@ -69,8 +69,8 @@ fn main() {
             return
         } else if &p == "--new" {
             p = args.next().unwrap();
-            let w: usize = args.next().unwrap().parse().unwrap();
-            let h: usize = args.next().unwrap().parse().unwrap();
+            let w: u16 = args.next().unwrap().parse().unwrap();
+            let h: u16 = args.next().unwrap().parse().unwrap();
 
             level = Some(Level::new(w, h));
         }

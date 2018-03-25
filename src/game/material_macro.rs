@@ -4,7 +4,7 @@ macro_rules! mat {
         $($mat:ident = $id:expr, $spr:ident, $solid:expr,)+
     ) => (
         #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-        #[repr(u16)]
+        #[repr(u8)]
         pub enum Material {
             $(
                 $mat = $id,
@@ -14,21 +14,25 @@ macro_rules! mat {
         impl Serialize for Material {
             fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
                 where S: Serializer {
-                serializer.serialize_u16(*self as u16)
+                serializer.serialize_u8(*self as u8)
+            }
+        }
+
+        impl From<u8> for Material {
+            fn from(n: u8) -> Self {
+                match n {
+                    $(
+                        $id => Material::$mat,
+                    )*
+                    _ => Material::$missing,
+                }
             }
         }
 
         impl<'de> Deserialize<'de> for Material {
             fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
                 where D: Deserializer<'de> {
-                <u16>::deserialize(deserializer).map(
-                    |n| match n {
-                        $(
-                            $id => Material::$mat,
-                        )*
-                        _ => Material::$missing,
-                    }
-                )
+                <u8>::deserialize(deserializer).map(Material::from)
             }
         }
 
