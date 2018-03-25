@@ -149,12 +149,12 @@ impl GameState for Play {
                     s.mplayer.play(ctx, Sound::Shot1)?;
                     self.world.bullets.push(bul);
 
-                    enemy.shoot = 10;
+                    enemy.shoot = 30;
                 } else {
                     enemy.shoot -= 1;
                 }
             } else {
-                enemy.shoot = 10;
+                enemy.shoot = 30;
             }
             enemy.update();
             let mut dead = None;
