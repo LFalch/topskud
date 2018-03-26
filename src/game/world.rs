@@ -153,6 +153,37 @@ impl Grid {
     pub fn height(&self) -> u16 {
         self.mats.len() as u16 / self.width
     }
+    pub fn widen(&mut self) {
+        let width = self.width as usize;
+        let height = self.height() as usize;
+        self.mats.reserve_exact(height);
+        for i in (1..height+1).rev().map(|i| i * width) {
+            self.mats.insert(i, Material::Grass);
+        }
+        self.width += 1;
+    }
+    pub fn thin(&mut self) {
+        if self.width <= 1 {
+            return
+        }
+        let width = self.width;
+        for i in (1..self.height()+1).rev().map(|i| i * width - 1) {
+            self.mats.remove(i as usize);
+        }
+        self.width -= 1;
+    }
+    pub fn heighten(&mut self) {
+        let new_len = self.mats.len() + self.width as usize;
+        self.mats.reserve_exact(self.width as usize);
+        self.mats.resize(new_len, Material::Grass);
+    }
+    pub fn shorten(&mut self) {
+        let new_len = self.mats.len() - self.width as usize;
+        if new_len == 0 {
+            return
+        }
+        self.mats.truncate(new_len);
+    }
     #[inline]
     pub fn snap(c: Point2) -> (u16, u16) {
         Self::snap_coords(c.x, c.y)

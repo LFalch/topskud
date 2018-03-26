@@ -339,6 +339,10 @@ impl GameState for Editor {
             }
             Comma => self.rotation_speed += 6.,
             Period => self.rotation_speed -= 6.,
+            Up if s.modifiers.ctrl => self.level.grid.shorten(),
+            Down if s.modifiers.ctrl => self.level.grid.heighten(),
+            Left if s.modifiers.ctrl => self.level.grid.thin(),
+            Right if s.modifiers.ctrl => self.level.grid.widen(),
             _ => return,
         }
     }
