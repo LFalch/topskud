@@ -131,27 +131,6 @@ impl Level {
         writeln!(file, "\nEND")?;
         Ok(())
     }
-    pub fn from_32x32_transposed_grid(mats: [[Material; 32]; 32]) -> Self {
-        let mut vec = Vec::with_capacity(1024);
-        for y in 0..32 {
-            for x in 0..32 {
-                vec.push(mats[x][y]);
-            }
-        }
-
-        let grid = Grid {
-            width: 32,
-            mats: vec,
-        };
-
-        Level {
-            grid,
-            intels: Vec::new(),
-            exit: None,
-            start_point: None,
-            enemies: Vec::new(),
-        }
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

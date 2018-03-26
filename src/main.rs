@@ -10,9 +10,7 @@ extern crate self_compare;
 extern crate rand;
 
 use std::env::args;
-use std::fs::File;
 
-// use ggez::audio;
 use ggez::conf;
 use ggez::event::*;
 use ggez::{Context, ContextBuilder, GameResult};
@@ -29,7 +27,7 @@ pub use ext::*;
 mod game;
 pub use game::*;
 
-use game::world::{Level, Material};
+use game::world::Level;
 
 /// Makes a unit vector from a given direction angle
 fn angle_to_vec(angle: f32) -> Vector2 {
@@ -54,20 +52,7 @@ fn main() {
 
     let mut level = None;
     let content = if let Some(mut p) = args.next() {
-        if &p == "--convert" {
-            let p = args.next().unwrap();
-            let o = args.next().unwrap();
-
-            let grid: [[Material; 32]; 32];
-            {
-                let mut file = File::open(&p).unwrap();
-                grid = bincode::deserialize_from(&mut file).unwrap();
-            }
-            let level = Level::from_32x32_transposed_grid(grid);
-
-            level.save(&o).unwrap();
-            return
-        } else if &p == "--new" {
+        if &p == "--new" {
             p = args.next().unwrap();
             let w: u16 = args.next().unwrap().parse().unwrap();
             let h: u16 = args.next().unwrap().parse().unwrap();
