@@ -39,6 +39,7 @@ pub struct Editor {
     ent_text: PosText,
     draw_visibility_cones: bool,
     rotation_speed: f32,
+    snap_on_grid: bool,
 }
 
 const PALETTE: [Material; 7] = [
@@ -79,7 +80,16 @@ impl Editor {
             ent_text,
             level,
             rotation_speed: 0.,
+            snap_on_grid: false,
         }))
+    }
+    fn mousepos(&self, s: &State) -> Point2 {
+        let mut mp = s.mouse - s.offset;
+        if self.snap_on_grid {
+            mp.x = (mp.x / 32.).floor() * 32. + 16.;
+            mp.y = (mp.y / 32.).floor() * 32. + 16.;
+        }
+        mp
     }
 }
 
@@ -176,7 +186,7 @@ impl GameState for Editor {
         }
 
         if let Tool::Selector(ref selection @ Selection{moving: Some(_), ..}) = self.current {
-            let mousepos = s.mouse - s.offset;
+            let mousepos = self.mousepos(s);
             let dist = mousepos - selection.moving.unwrap();
 
             graphics::set_color(ctx, TRANS)?;
@@ -208,12 +218,13 @@ impl GameState for Editor {
         Ok(())
     }
     fn draw_hud(&mut self, s: &State, ctx: &mut Context) -> GameResult<()> {
+        let dest = self.mousepos(s) + s.offset;
         match self.current {
             Tool::Selector(_) => (),
             Tool::Inserter(Insertion::Material(_)) => (),
             Tool::Inserter(Insertion::Enemy{rot}) => {
                 let drawparams = graphics::DrawParam {
-                    dest: s.mouse,
+                    dest,
                     rotation: rot,
                     offset: Point2::new(0.5, 0.5),
                     color: Some(TRANS),
@@ -223,7 +234,7 @@ impl GameState for Editor {
             }
             Tool::Inserter(Insertion::Exit) => {
                 let drawparams = graphics::DrawParam {
-                    dest: s.mouse,
+                    dest,
                     offset: Point2::new(0.5, 0.5),
                     color: Some(TRANS),
                     .. Default::default()
@@ -232,7 +243,7 @@ impl GameState for Editor {
             }
             Tool::Inserter(Insertion::Intel) => {
                 let drawparams = graphics::DrawParam {
-                    dest: s.mouse,
+                    dest,
                     offset: Point2::new(0.5, 0.5),
                     color: Some(TRANS),
                     .. Default::default()
@@ -301,6 +312,7 @@ impl GameState for Editor {
             Z => self.level.save(&self.save).unwrap(),
             X => self.level = Level::load(&self.save).unwrap(),
             C => self.draw_visibility_cones.toggle(),
+            G => self.snap_on_grid.toggle(),
             P => {
                 s.level = Some(self.level.clone());
                 s.switch(StateSwitch::Play)
@@ -332,10 +344,9 @@ impl GameState for Editor {
     }
     fn mouse_down(&mut self, s: &mut State, _ctx: &mut Context, btn: MouseButton) {
         use MouseButton::*;
+        let mousepos = self.mousepos(&s);
         match btn {
             Left => if let Tool::Selector(ref mut selection) = self.current {
-                let mousepos = s.mouse - s.offset;
-
                 for &i in &selection.enemies {
                     if (self.level.enemies[i].obj.pos - mousepos).norm() <= 16. {
                         return selection.moving = Some(mousepos);
@@ -359,6 +370,7 @@ impl GameState for Editor {
     }
     fn mouse_up(&mut self, s: &mut State, ctx: &mut Context, btn: MouseButton) {
         use MouseButton::*;
+        let mousepos = self.mousepos(&s);
         match btn {
             Left => if s.mouse.y <= 64. {
                 if s.mouse.x > START_X && s.mouse.x < START_X + PALETTE.len() as f32 * 36. {
@@ -381,7 +393,6 @@ impl GameState for Editor {
                 match self.current {
                     Tool::Inserter(Insertion::Material(_)) => (),
                     Tool::Selector(ref mut selection) => {
-                        let mousepos = s.mouse - s.offset;
 
                         if let Some(moved_from) = selection.moving {
                             let dist = mousepos - moved_from;
@@ -439,17 +450,17 @@ impl GameState for Editor {
                         }
                     }
                     Tool::Inserter(Insertion::Exit) => {
-                        self.level.exit = Some(s.mouse - s.offset);
+                        self.level.exit = Some(self.mousepos(&s));
                         self.current = Tool::Selector(Selection{exit: true, .. Default::default()});
                     }
                     Tool::Inserter(Insertion::Enemy{rot}) => {
                         s.mplayer.play(ctx, Sound::Reload).unwrap();
-                        self.level.enemies.push(Enemy::new(Object::with_rot(s.mouse - s.offset, rot)));
+                        self.level.enemies.push(Enemy::new(Object::with_rot(mousepos, rot)));
                     },
-                    Tool::Inserter(Insertion::Intel) => self.level.intels.push(s.mouse - s.offset),
+                    Tool::Inserter(Insertion::Intel) => self.level.intels.push(mousepos),
                 }
             }
-            Middle => self.level.start_point = Some(s.mouse - s.offset),
+            Middle => self.level.start_point = Some(self.mousepos(&s)),
             _ => ()
         }
     }
