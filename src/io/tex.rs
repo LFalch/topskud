@@ -114,7 +114,7 @@ impl Assets {
 ///
 /// Used for convenience so it's easier to update the text and rememeber their coordinates on the screen
 pub struct PosText {
-    pos: Point2,
+    pub pos: Point2,
     text: Text
 }
 
