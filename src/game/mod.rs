@@ -10,8 +10,9 @@ pub mod play;
 pub mod menu;
 pub mod lose;
 pub mod win;
+pub mod qt;
 
-use menu::Menu;
+use qt::Qt;
 use world::Statistics;
 
 pub enum StateSwitch {
@@ -122,7 +123,7 @@ impl Master {
         };
 
         Ok(Master {
-            gs: Menu::new(ctx, &mut state)?,
+            gs: Qt::new(ctx, &mut state)?,
             state,
         })
     }
