@@ -5,7 +5,7 @@ use io::qtree::QuadTree;
 
 /// The state of the game
 pub struct Qt {
-    qt: QuadTree,
+    qt: QuadTree<Point2>,
     r_pos: Point2,
     r_rad: f32,
     hit_points: Vec<Point2>,
@@ -24,7 +24,7 @@ impl Qt {
 
 impl GameState for Qt {
     fn logic(&mut self, _s: &mut State, _ctx: &mut Context) -> GameResult<()> {
-        self.hit_points = self.qt.query_circular(self.r_pos, self.r_rad);
+        self.hit_points = self.qt.query_circular(self.r_pos, self.r_rad).into_iter().cloned().collect();
         Ok(())
     }
     fn draw_hud(&mut self, _s: &State, ctx: &mut Context) -> GameResult<()> {
