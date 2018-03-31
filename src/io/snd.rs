@@ -95,11 +95,11 @@ macro_rules! sounds {
                     let $snd = SoundData::new(ctx, concat!("/", stringify!($snd), ending!($ty)))?;
                 )*
 
-                Ok((SoundAssets {
+                Ok(SoundAssets {
                     $(
                         $snd,
                     )*
-                }))
+                })
             }
         }
 

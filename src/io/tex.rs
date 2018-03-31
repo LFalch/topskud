@@ -49,12 +49,12 @@ macro_rules! sprites {
                     let $tex = Image::new(ctx, concat!("/", stringify!($tex), ".png"))?;
                 )*
 
-                Ok((Assets {
+                Ok(Assets {
                     $(
                         $tex,
                     )*
                     font: Font::new(ctx, "/FiraMono.ttf", 14)?,
-                }))
+                })
             }
             /// Gets the `Image` to draw from the sprite
             pub fn get_img(&self, s: Sprite) -> &Image {
