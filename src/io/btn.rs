@@ -2,6 +2,7 @@ use super::tex::{Assets, PosText};
 
 use ggez::{GameResult, Context};
 use ggez::graphics::{Drawable, Color, Rect, Mesh, Point2, DrawMode, DrawParam};
+use ggez::nalgebra::coordinates::XY;
 
 pub struct Button {
     width: f32,
@@ -38,10 +39,9 @@ impl Button {
         self.text.draw_center(ctx)
     }
     pub fn in_bounds(&self, p: Point2) -> bool {
-        let x1 = self.text.pos.x - self.width / 2.;
-        let x2 = self.text.pos.x + self.width / 2.;
-        let y1 = self.text.pos.y - self.height / 2.;
-        let y2 = self.text.pos.y + self.height / 2.;
-        p.x >= x1 && p.x < x2 && p.y >= y1 && p.y < y2
+        let XY{x, y} = *self.text.pos;
+        let (w, h) = (self.width / 2., self.height / 2.);
+
+        p.x >= x - w  && p.x < x + w && p.y >= y - h && p.y < y + h
     }
 }

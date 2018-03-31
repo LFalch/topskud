@@ -40,6 +40,7 @@ macro_rules! sprites {
             )*
             /// The font used for all the text
             pub font: Font,
+            pub big_font: Font,
         }
 
         impl Assets {
@@ -54,6 +55,7 @@ macro_rules! sprites {
                         $tex,
                     )*
                     font: Font::new(ctx, "/FiraMono.ttf", 14)?,
+                    big_font: Font::new(ctx, "/FiraMono.ttf", 21)?,
                 })
             }
             /// Gets the `Image` to draw from the sprite
@@ -99,11 +101,11 @@ impl Assets {
             text
         })
     }
-    /// Make a postional text object from the right side of the screen
-    pub fn text_ra(&self, context: &mut Context, x: f32, y: f32, text: &str) -> GameResult<PosText> {
-        let text = Text::new(context, text, &self.font)?;
-        Ok(PosText{
-            pos: Point2::new(x - text.width() as f32, y),
+    /// Make a positional text object
+    pub fn text_big(&self, context: &mut Context, pos: Point2, text: &str) -> GameResult<PosText> {
+        let text = Text::new(context, text, &self.big_font)?;
+        Ok(PosText {
+            pos,
             text
         })
     }
