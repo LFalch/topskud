@@ -14,7 +14,7 @@ pub struct Qt {
 impl Qt {
     pub fn new(_ctx: &mut Context, s: &mut State) -> GameResult<Box<GameState>> {
         Ok(Box::new(Qt {
-            qt: QuadTree::new(s.width as f32, s.height as f32, 2),
+            qt: QuadTree::new(s.width as f32, s.height as f32),
             r_pos: Point2::new(100., 200.),
             r_rad: 32.,
             hit_points: Vec::new(),
