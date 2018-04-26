@@ -468,11 +468,12 @@ impl GameState for Editor {
             _ => ()
         }
     }
-    fn key_down(&mut self, _s: &mut State,_ctx: &mut Context,  keycode: Keycode) {
+    fn key_down(&mut self, s: &mut State,_ctx: &mut Context,  keycode: Keycode) {
         use Keycode::*;
         match keycode {
             Comma => self.rotation_speed -= 6.,
             Period => self.rotation_speed += 6.,
+            Q => self.level.start_point = Some(self.mousepos(&s)),
             _ => return,
         }
     }
