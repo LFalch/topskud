@@ -1,7 +1,17 @@
-use crate::*;
-use crate::io::btn::Button;
-use crate::graphics::Rect;
-use crate::game::world::Statistics;
+use crate::{
+    RED, Point2,
+    io::{
+        tex::PosText,
+        btn::Button,
+    },
+};
+use ggez::{
+    Context, GameResult,
+    graphics::{self, Rect},
+    event::{MouseButton, Keycode}
+};
+
+use super::{State, GameState, StateSwitch, world::Statistics};
 
 /// The state of the game
 pub struct Lose {
@@ -13,6 +23,7 @@ pub struct Lose {
 }
 
 impl Lose {
+    #[allow(clippy::new_ret_no_self, clippy::needless_pass_by_value)]
     pub fn new(ctx: &mut Context, s: &mut State, stats: Statistics) -> GameResult<Box<GameState>> {
         let w = s.width as f32;
         let you_died = s.assets.text(ctx, Point2::new(s.width as f32/ 2., 10.), "You died!")?;
@@ -52,11 +63,10 @@ impl GameState for Lose {
     }
     fn mouse_up(&mut self, s: &mut State, _ctx: &mut Context, btn: MouseButton) {
         use crate::MouseButton::*;
-        match btn {
-            Left => if self.restart_btn.in_bounds(s.mouse) {
-                    s.switch(StateSwitch::Play);
-                }
-            _ => ()
+        if let Left = btn {
+            if self.restart_btn.in_bounds(s.mouse) {
+                s.switch(StateSwitch::Play);
+            }
         }
     }
 }

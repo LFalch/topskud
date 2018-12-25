@@ -45,6 +45,7 @@ macro_rules! sprites {
 
         impl Assets {
             /// Initialises the assets with the context
+            #[allow(clippy::new_ret_no_self)]
             pub fn new(ctx: &mut Context) -> GameResult<Self> {
                 $(
                     let $tex = Image::new(ctx, concat!("/", stringify!($tex), ".png"))?;

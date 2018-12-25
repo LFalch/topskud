@@ -1,9 +1,17 @@
-use crate::*;
+use crate::{
+    Point2,
+    io::tex::{Assets, Sprite},
+    obj::{Object, enemy::Enemy}
+};
+use ggez::{
+    Context, GameResult,
+    graphics,
+    error::GameError,
+};
 
 use std::path::Path;
 use std::fs::File;
 use std::io::{Write, BufRead, BufReader};
-use ggez::error::GameError;
 
 use ::bincode;
 use serde::{Serialize, Deserialize, Serializer, Deserializer};
@@ -157,7 +165,7 @@ impl Grid {
         let width = self.width as usize;
         let height = self.height() as usize;
         self.mats.reserve_exact(height);
-        for i in (1..height+1).rev().map(|i| i * width) {
+        for i in (1..=height).rev().map(|i| i * width) {
             self.mats.insert(i, Material::Grass);
         }
         self.width += 1;
@@ -167,7 +175,7 @@ impl Grid {
             return
         }
         let width = self.width;
-        for i in (1..self.height()+1).rev().map(|i| i * width - 1) {
+        for i in (1..=self.height()).rev().map(|i| i * width - 1) {
             self.mats.remove(i as usize);
         }
         self.width -= 1;
@@ -218,8 +226,8 @@ impl Grid {
     }
     pub fn draw(&self, ctx: &mut Context, assets: &Assets) -> GameResult<()> {
         for (i, mat) in self.mats.iter().enumerate() {
-            let x = (i as u16 % self.width) as f32 * 32.;
-            let y = (i as u16 / self.width) as f32 * 32.;
+            let x = f32::from(i as u16 % self.width) * 32.;
+            let y = f32::from(i as u16 / self.width) * 32.;
 
             mat.draw(ctx, assets, x, y)?;
         }

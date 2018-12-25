@@ -2,11 +2,13 @@ use serde::{Serialize, Deserialize, Serializer, Deserializer};
 use crate::{Vector2, Point2};
 
 /// Serialize a `Point2`
+#[allow(clippy::trivially_copy_pass_by_ref)]
 pub fn point_ser<S: Serializer>(p: &Point2, ser: S) -> Result<S::Ok, S::Error> {
     (p.x, p.y).serialize(ser)
 }
 /// Serialize a `Vector2`
 #[allow(dead_code)]
+#[allow(clippy::trivially_copy_pass_by_ref)]
 pub fn vec_ser<S: Serializer>(p: &Vector2, ser: S) -> Result<S::Ok, S::Error> {
     (p.x, p.y).serialize(ser)
 }

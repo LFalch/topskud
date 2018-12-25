@@ -1,11 +1,24 @@
-use crate::*;
-use crate::graphics::{Rect, DrawMode};
-use ggez::error::GameError;
-use super::world::*;
+use crate::{
+    TRANS, BLUE, GREEN,
+    Vector2, Point2,
+    io::tex::{Sprite, PosText},
+    io::snd::Sound,
+    ext::BoolExt,
+    obj::{Object, enemy::Enemy}
+};
+use ggez::{
+    Context, GameResult,
+    graphics::{self, Color, Rect, DrawMode},
+    error::GameError,
+    event::{MouseButton, Keycode}
+};
+
+use super::{
+    DELTA, Content, GameState, State, StateSwitch,
+    world::*
+};
 
 use std::path::PathBuf;
-
-use crate::io::snd::Sound;
 
 #[derive(Debug, PartialEq, Clone)]
 enum Tool {
@@ -53,6 +66,7 @@ const PALETTE: [Material; 7] = [
 ];
 
 impl Editor {
+    #[allow(clippy::new_ret_no_self)]
     pub fn new(ctx: &mut Context, s: &State) -> GameResult<Box<GameState>> {
         let mat_text = s.assets.text(ctx, Point2::new(2., 18.0), "Materials:")?;
         let ent_text = s.assets.text(ctx, Point2::new(302., 18.0), "Entities:")?;
@@ -68,8 +82,8 @@ impl Editor {
             Level::load(&save).unwrap_or_else(|_| Level::new(32, 32))
         });
 
-        let x = level.grid.width() as f32 * 16.;
-        let y = level.grid.height() as f32 * 16.;
+        let x = f32::from(level.grid.width()) * 16.;
+        let y = f32::from(level.grid.height()) * 16.;
 
         Ok(Box::new(Editor {
             save,
@@ -98,10 +112,7 @@ const YELLOW: Color = Color{r: 1., g: 1., b: 0., a: 1.};
 
 impl GameState for Editor {
     fn update(&mut self, s: &mut State, _ctx: &mut Context) -> GameResult<()> {
-        let speed = match s.modifiers.shift {
-            false => 175.,
-            true => 315.,
-        };
+        let speed = if s.modifiers.shift { 315. } else { 175. };
         let v = speed * Vector2::new(s.input.hor(), s.input.ver());
         self.pos += v * DELTA;
 
@@ -128,8 +139,8 @@ impl GameState for Editor {
 
         if let Tool::Inserter(Insertion::Material(mat)) = self.current {
             let (x, y) = Grid::snap(s.mouse-s.offset);
-            let x = x as f32 * 32.;
-            let y = y as f32 * 32.;
+            let x = f32::from(x) * 32.;
+            let y = f32::from(y) * 32.;
             graphics::set_color(ctx, TRANS)?;
             mat.draw(ctx, &s.assets, x, y)?;
         }
@@ -319,6 +330,7 @@ impl GameState for Editor {
             }
             T => self.current = Tool::Selector(Selection::default()),
             Delete | Backspace => if let Tool::Selector(ref mut selection) = self.current {
+                #[allow(clippy::unneeded_field_pattern)]
                 let Selection {
                     mut enemies,
                     mut intels,
@@ -349,8 +361,8 @@ impl GameState for Editor {
     fn mouse_down(&mut self, s: &mut State, _ctx: &mut Context, btn: MouseButton) {
         use crate::MouseButton::*;
         let mousepos = self.mousepos(&s);
-        match btn {
-            Left => if let Tool::Selector(ref mut selection) = self.current {
+        if let Left = btn {
+            if let Tool::Selector(ref mut selection) = self.current {
                 for &i in &selection.enemies {
                     if (self.level.enemies[i].obj.pos - mousepos).norm() <= 16. {
                         return selection.moving = Some(mousepos);
@@ -369,7 +381,6 @@ impl GameState for Editor {
                     }
                 }
             }
-            _ => ()
         }
     }
     fn mouse_up(&mut self, s: &mut State, ctx: &mut Context, btn: MouseButton) {
@@ -415,39 +426,33 @@ impl GameState for Editor {
                             selection.moving = None;
                         } else {
                             for (i, enemy) in self.level.enemies.iter().enumerate() {
-                                if (enemy.obj.pos - mousepos).norm() <= 16. {
-                                    if !selection.enemies.contains(&i) {
-                                        if s.modifiers.ctrl {
-                                            selection.enemies.push(i);
-                                        } else {
-                                            *selection = Selection{enemies: vec![i], .. Default::default()};
-                                        }
-                                        return
+                                if (enemy.obj.pos - mousepos).norm() <= 16. && !selection.enemies.contains(&i) {
+                                    if s.modifiers.ctrl {
+                                        selection.enemies.push(i);
+                                    } else {
+                                        *selection = Selection{enemies: vec![i], .. Default::default()};
                                     }
+                                    return
                                 }
                             }
                             if let Some(exit) = self.level.exit {
-                                if (exit - mousepos).norm() <= 16. {
-                                    if !selection.exit {
-                                        if s.modifiers.ctrl {
-                                            selection.exit = true;
-                                        } else {
-                                            *selection = Selection{exit: true, .. Default::default()};
-                                        }
-                                        return
+                                if (exit - mousepos).norm() <= 16. && !selection.exit {
+                                    if s.modifiers.ctrl {
+                                        selection.exit = true;
+                                    } else {
+                                        *selection = Selection{exit: true, .. Default::default()};
                                     }
+                                    return
                                 }
                             }
                             for (i, &intel) in self.level.intels.iter().enumerate() {
-                                if (intel - mousepos).norm() <= 16. {
-                                    if !selection.intels.contains(&i) {
-                                        if s.modifiers.ctrl {
-                                            selection.intels.push(i);
-                                        } else {
-                                            *selection = Selection{intels: vec![i], .. Default::default()};
-                                        }
-                                        return
+                                if (intel - mousepos).norm() <= 16. && !selection.intels.contains(&i) {
+                                    if s.modifiers.ctrl {
+                                        selection.intels.push(i);
+                                    } else {
+                                        *selection = Selection{intels: vec![i], .. Default::default()};
                                     }
+                                    return
                                 }
                             }
                             *selection = Selection::default();

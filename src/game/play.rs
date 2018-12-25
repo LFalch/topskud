@@ -1,13 +1,24 @@
-use crate::*;
-use super::world::*;
-use crate::io::snd::Sound;
-use crate::obj::enemy::Chaser;
-use ggez::graphics::{Drawable, DrawMode, WHITE, Rect};
-use ggez::graphics::spritebatch::SpriteBatch;
+use crate::{
+    GREEN, RED,
+    angle_to_vec, angle_from_vec,
+    Vector2, Point2,
+    io::{
+        tex::{Assets, Sprite},
+        snd::Sound,
+    },
+    obj::{Object, enemy::Chaser},
+};
+use ggez::{
+    Context, GameResult,
+    graphics::{
+        self, Drawable, DrawMode, WHITE, Rect,
+        spritebatch::SpriteBatch,
+    },
+    event::MouseButton
+};
 
 use rand::{thread_rng, prelude::SliceRandom};
-
-use crate::game::StateSwitch;
+use super::{DELTA, State, GameState, StateSwitch, world::*};
 
 #[derive(Debug, Copy, Clone)]
 enum Blood {
@@ -55,6 +66,7 @@ pub struct Play {
 }
 
 impl Play {
+    #[allow(clippy::new_ret_no_self)]
     pub fn new(ctx: &mut Context, s: &mut State) -> GameResult<Box<GameState>> {
         let level = if let Some(lvl) = s.level.clone() {
             lvl
@@ -75,7 +87,7 @@ impl Play {
                 world: World {
                     enemies: level.enemies,
                     bullets: Vec::new(),
-                    player: Object::new(level.start_point.unwrap_or(Point2::new(500., 500.))),
+                    player: Object::new(level.start_point.unwrap_or_else(|| Point2::new(500., 500.))),
                     grid: level.grid,
                     exit: level.exit,
                     intels: level.intels,
@@ -264,7 +276,7 @@ impl GameState for Play {
         graphics::set_color(ctx, graphics::BLACK)?;
         graphics::rectangle(ctx, DrawMode::Fill, Rect{x: 1., y: 1., w: 102., h: 26.})?;
         graphics::set_color(ctx, GREEN)?;
-        graphics::rectangle(ctx, DrawMode::Fill, Rect{x: 2., y: 2., w: self.health as f32 * 10., h: 24.})?;
+        graphics::rectangle(ctx, DrawMode::Fill, Rect{x: 2., y: 2., w: f32::from(self.health) * 10., h: 24.})?;
 
         graphics::set_color(ctx, RED)?;
         let drawparams = graphics::DrawParam {

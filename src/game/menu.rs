@@ -1,7 +1,18 @@
-use crate::*;
-use crate::graphics::Rect;
-use crate::io::snd::Sound;
-use crate::io::btn::Button;
+use crate::{
+    Point2,
+    io::{
+        tex::PosText,
+        btn::Button,
+        snd::Sound,
+    },
+};
+use ggez::{
+    Context, GameResult,
+    graphics::{self, Rect},
+    event::{MouseButton, Keycode}
+};
+
+use super::{Content, State, GameState, StateSwitch};
 
 /// The state of the game
 pub struct Menu {
@@ -17,6 +28,7 @@ fn button_rect(w: f32, i: f32) -> Rect {
 }
 
 impl Menu {
+    #[allow(clippy::new_ret_no_self)]
     pub fn new(ctx: &mut Context, s: &mut State) -> GameResult<Box<GameState>> {
         let w = s.width as f32;
 
@@ -65,16 +77,13 @@ impl GameState for Menu {
     }
     fn mouse_up(&mut self, s: &mut State, ctx: &mut Context, btn: MouseButton) {
         use crate::MouseButton::*;
-        match btn {
-            Left => {
-                if self.play_btn.in_bounds(s.mouse) {
-                    self.switch_play(ctx, s);
-                }
-                if self.editor_btn.in_bounds(s.mouse) {
-                    self.switch_editor(ctx, s);
-                }
+        if let Left = btn {
+            if self.play_btn.in_bounds(s.mouse) {
+                self.switch_play(ctx, s);
             }
-            _ => ()
+            if self.editor_btn.in_bounds(s.mouse) {
+                self.switch_editor(ctx, s);
+            }
         }
     }
 }

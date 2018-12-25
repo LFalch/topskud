@@ -1,7 +1,19 @@
-use crate::io::snd::MediaPlayer;
-use crate::*;
-
 use std::path::PathBuf;
+use crate::{
+    Vector2, Point2,
+    ext::{MouseDown, InputState, Modifiers},
+    io::{
+        snd::MediaPlayer,
+        tex::Assets,
+    }
+};
+use ggez::{
+    Context, GameResult,
+    graphics::{self, Matrix4},
+    timer,
+    event::{EventHandler, MouseButton, MouseState, Keycode, Mod}
+};
+use self::world::Level;
 
 /// Stuff related to things in the world
 pub mod world;
@@ -11,8 +23,8 @@ pub mod menu;
 pub mod lose;
 pub mod win;
 
-use crate::menu::Menu;
-use crate::world::Statistics;
+use self::menu::Menu;
+use self::world::Statistics;
 
 pub enum StateSwitch {
     Menu,
@@ -94,6 +106,7 @@ const DESIRED_FPS: u32 = 60;
 pub(crate) const DELTA: f32 = 1. / DESIRED_FPS as f32;
 
 impl Master {
+    #[allow(clippy::new_ret_no_self)]
     /// Make a new state object
     pub fn new(ctx: &mut Context, content: Content, level: Option<Level>) -> GameResult<Self> {
         // Background colour is black
@@ -144,7 +157,7 @@ impl EventHandler for Master {
     // Handle the game logic
     fn update(&mut self, ctx: &mut Context) -> GameResult<()> {
         if let Some(gsb) = mem::replace(&mut self.state.switch_state, None) {
-            use crate::StateSwitch::*;
+            use self::StateSwitch::*;
             self.gs = match gsb {
                 Play => play::Play::new(ctx, &mut self.state),
                 Menu => menu::Menu::new(ctx, &mut self.state),

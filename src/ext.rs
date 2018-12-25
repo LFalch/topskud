@@ -24,12 +24,12 @@ impl InputState {
     #[inline]
     /// Returns `-1`, `0` or `1` depending on whether `self.hor` is negative, zero or positive
     pub fn hor(&self) -> f32 {
-        self.hor.signum() as f32
+        f32::from(self.hor.signum())
     }
     /// Returns `-1`, `0` or `1` depending on whether `self.ver` is negative, zero or positive
     #[inline]
     pub fn ver(&self) -> f32 {
-        self.ver.signum() as f32
+        f32::from(self.ver.signum())
     }
 }
 

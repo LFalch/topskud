@@ -12,6 +12,7 @@ pub struct Button {
 }
 
 impl Button {
+    #[allow(clippy::new_ret_no_self)]
     pub fn new(ctx: &mut Context, assets: &Assets, rect: Rect, text: &str) -> GameResult<Self> {
         let x2 = rect.x + rect.w;
         let y2 = rect.y + rect.h;

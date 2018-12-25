@@ -1,40 +1,36 @@
 // #![windows_subsystem = "windows"]
 //! Shooter game
+#![warn(clippy::all)]
 
-extern crate ggez;
-extern crate bincode;
 #[macro_use]
 extern crate serde_derive;
-extern crate serde;
-extern crate self_compare;
-extern crate rand;
 
 use std::env::args;
 
-use ggez::conf;
-use ggez::event::*;
-use ggez::{Context, ContextBuilder, GameResult};
-use ggez::timer;
-use ggez::graphics::{self, Vector2, Point2, Matrix4, Color};
+use ggez::{
+    ContextBuilder,
+    conf,
+    event::*,
+    graphics::Color,
+};
 
-mod io;
-pub use crate::io::tex::*;
+pub use ggez::graphics::{Vector2, Point2};
 
-mod obj;
-pub use crate::obj::*;
-mod ext;
-pub use crate::ext::*;
-mod game;
-pub use crate::game::*;
+pub mod io;
+pub mod obj;
+pub mod ext;
+pub mod game;
 
-use crate::game::world::Level;
+use self::game::{Master, Content, Campaign};
+use self::game::world::Level;
 
 /// Makes a unit vector from a given direction angle
-fn angle_to_vec(angle: f32) -> Vector2 {
+pub fn angle_to_vec(angle: f32) -> Vector2 {
     let (sin, cos) = angle.sin_cos();
     Vector2::new(cos, sin)
 }
 /// Gets the direction angle on the screen (0 is along the x-axis) of a vector
+#[allow(clippy::trivially_copy_pass_by_ref)]
 pub fn angle_from_vec(v: &Vector2) -> f32 {
     let x = v.x;
     let y = v.y;

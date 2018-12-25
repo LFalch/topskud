@@ -1,7 +1,17 @@
-use crate::*;
-use crate::io::btn::Button;
-use crate::graphics::Rect;
-use crate::game::world::Statistics;
+use crate::{
+    Point2,
+    io::{
+        tex::PosText,
+        btn::Button,
+    },
+};
+use ggez::{
+    Context, GameResult,
+    graphics::{self, Rect},
+    event::{MouseButton, Keycode}
+};
+
+use super::{State, GameState, StateSwitch, world::Statistics};
 
 /// The state of the game
 pub struct Win {
@@ -14,6 +24,7 @@ pub struct Win {
 }
 
 impl Win {
+    #[allow(clippy::new_ret_no_self, clippy::needless_pass_by_value)]
     pub fn new(ctx: &mut Context, s: &mut State, stats: Statistics) -> GameResult<Box<GameState>> {
         let w = s.width as f32;
 
@@ -49,18 +60,14 @@ impl GameState for Win {
     }
     fn key_up(&mut self, s: &mut State, _ctx: &mut Context, keycode: Keycode) {
         use crate::Keycode::*;
-        match keycode {
-            Return => s.switch(StateSwitch::Play),
-            _ => (),
-        }
+        if let Return = keycode { s.switch(StateSwitch::Play) }
     }
     fn mouse_up(&mut self, s: &mut State, _ctx: &mut Context, btn: MouseButton) {
         use crate::MouseButton::*;
-        match btn {
-            Left => if self.continue_btn.in_bounds(s.mouse) {
+        if let Left = btn {
+            if self.continue_btn.in_bounds(s.mouse) {
                 s.switch(StateSwitch::Play)
             }
-            _ => ()
         }
     }
 }

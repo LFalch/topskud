@@ -1,11 +1,16 @@
-use ggez::{Context, GameResult};
-use ggez::graphics::{self, Point2, Vector2};
+use ggez::{
+    Context, GameResult,
+    nalgebra as na,
+    graphics::{self, Point2, Vector2}
+};
 
-use crate::obj::Object;
-use crate::game::world::Grid;
-use crate::{angle_from_vec, angle_to_vec, Assets, Sprite, DELTA};
+use crate::{
+    angle_from_vec, angle_to_vec,
+    io::tex::{Assets, Sprite},
+    game::{DELTA, world::Grid},
+};
 
-use ggez::nalgebra as na;
+use super::Object;
 
 #[derive(Debug, Clone)]
 pub enum Chaser {
@@ -121,7 +126,7 @@ impl Enemy {
             let distance = dist.norm();
 
             let intervals = (distance / 16.).ceil() as u16;
-            let ray = dist.normalize() * (distance / intervals as f32);
+            let ray = dist.normalize() * (distance / f32::from(intervals));
 
             let mut ray_end = self.obj.pos;
 
