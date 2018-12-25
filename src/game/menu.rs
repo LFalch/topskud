@@ -1,7 +1,7 @@
-use ::*;
-use graphics::Rect;
-use io::snd::Sound;
-use io::btn::Button;
+use crate::*;
+use crate::graphics::Rect;
+use crate::io::snd::Sound;
+use crate::io::btn::Button;
 
 /// The state of the game
 pub struct Menu {
@@ -56,7 +56,7 @@ impl GameState for Menu {
         self.play_btn.draw(ctx)
     }
     fn key_up(&mut self, s: &mut State, ctx: &mut Context, keycode: Keycode) {
-        use Keycode::*;
+        use crate::Keycode::*;
         match keycode {
             P => self.switch_play(ctx, s),
             E => self.switch_editor(ctx, s),
@@ -64,7 +64,7 @@ impl GameState for Menu {
         }
     }
     fn mouse_up(&mut self, s: &mut State, ctx: &mut Context, btn: MouseButton) {
-        use MouseButton::*;
+        use crate::MouseButton::*;
         match btn {
             Left => {
                 if self.play_btn.in_bounds(s.mouse) {

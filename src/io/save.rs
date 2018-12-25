@@ -1,5 +1,5 @@
 use serde::{Serialize, Deserialize, Serializer, Deserializer};
-use ::{Vector2, Point2};
+use crate::{Vector2, Point2};
 
 /// Serialize a `Point2`
 pub fn point_ser<S: Serializer>(p: &Point2, ser: S) -> Result<S::Ok, S::Error> {

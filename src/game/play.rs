@@ -1,13 +1,13 @@
-use ::*;
+use crate::*;
 use super::world::*;
-use io::snd::Sound;
-use obj::enemy::Chaser;
+use crate::io::snd::Sound;
+use crate::obj::enemy::Chaser;
 use ggez::graphics::{Drawable, DrawMode, WHITE, Rect};
 use ggez::graphics::spritebatch::SpriteBatch;
 
-use rand::{thread_rng, Rng};
+use rand::{thread_rng, prelude::SliceRandom};
 
-use game::StateSwitch;
+use crate::game::StateSwitch;
 
 #[derive(Debug, Copy, Clone)]
 enum Blood {
@@ -26,13 +26,13 @@ impl BloodSplatter {
         o.pos += 16. * angle_to_vec(o.rot);
         BloodSplatter {
             o,
-            ty: *thread_rng().choose(&[
+            ty: *[
                 Blood::B1,
                 Blood::B2,
                 Blood::B2,
                 Blood::B3,
                 Blood::B3,
-            ]).unwrap(),
+            ].choose(&mut thread_rng()).unwrap(),
         }
     }
     fn draw(&self, ctx: &mut Context, a: &Assets) -> GameResult<()> {

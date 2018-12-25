@@ -1,7 +1,7 @@
-use ::*;
-use io::btn::Button;
-use graphics::Rect;
-use game::world::Statistics;
+use crate::*;
+use crate::io::btn::Button;
+use crate::graphics::Rect;
+use crate::game::world::Statistics;
 
 /// The state of the game
 pub struct Lose {
@@ -44,14 +44,14 @@ impl GameState for Lose {
         self.enemies_text.draw_text(ctx)
     }
     fn key_up(&mut self, s: &mut State, _ctx: &mut Context, keycode: Keycode) {
-        use Keycode::*;
+        use crate::Keycode::*;
         match keycode {
             R | Return => s.switch(StateSwitch::Play),
             _ => (),
         }
     }
     fn mouse_up(&mut self, s: &mut State, _ctx: &mut Context, btn: MouseButton) {
-        use MouseButton::*;
+        use crate::MouseButton::*;
         match btn {
             Left => if self.restart_btn.in_bounds(s.mouse) {
                     s.switch(StateSwitch::Play);

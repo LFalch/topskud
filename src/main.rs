@@ -18,16 +18,16 @@ use ggez::timer;
 use ggez::graphics::{self, Vector2, Point2, Matrix4, Color};
 
 mod io;
-pub use io::tex::*;
+pub use crate::io::tex::*;
 
 mod obj;
-pub use obj::*;
+pub use crate::obj::*;
 mod ext;
-pub use ext::*;
+pub use crate::ext::*;
 mod game;
-pub use game::*;
+pub use crate::game::*;
 
-use game::world::Level;
+use crate::game::world::Level;
 
 /// Makes a unit vector from a given direction angle
 fn angle_to_vec(angle: f32) -> Vector2 {

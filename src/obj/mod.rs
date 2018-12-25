@@ -6,13 +6,13 @@ pub mod enemy;
 
 pub use self::enemy::*;
 
-use game::world::Grid;
-use game::DELTA;
+use crate::game::world::Grid;
+use crate::game::DELTA;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 /// A simple object that can be drawn to the screen
 pub struct Object {
-    #[serde(serialize_with = "::io::save::point_ser", deserialize_with = "::io::save::point_des")]
+    #[serde(serialize_with = "crate::io::save::point_ser", deserialize_with = "crate::io::save::point_des")]
     /// The position of the object
     pub pos: Point2,
     /// The rotation of the obejct in radians

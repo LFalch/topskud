@@ -1,5 +1,5 @@
-use io::snd::MediaPlayer;
-use ::*;
+use crate::io::snd::MediaPlayer;
+use crate::*;
 
 use std::path::PathBuf;
 
@@ -11,8 +11,8 @@ pub mod menu;
 pub mod lose;
 pub mod win;
 
-use menu::Menu;
-use world::Statistics;
+use crate::menu::Menu;
+use crate::world::Statistics;
 
 pub enum StateSwitch {
     Menu,
@@ -23,27 +23,27 @@ pub enum StateSwitch {
 }
 
 pub trait GameState {
-    fn update(&mut self, &mut State, &mut Context) -> GameResult<()> {
+    fn update(&mut self, _: &mut State, _: &mut Context) -> GameResult<()> {
         Ok(())
     }
-    fn logic(&mut self, &mut State, &mut Context) -> GameResult<()> {
+    fn logic(&mut self, _: &mut State, _: &mut Context) -> GameResult<()> {
         Ok(())
     }
-    fn draw(&mut self, &State, &mut Context) -> GameResult<()> {
+    fn draw(&mut self, _: &State, _: &mut Context) -> GameResult<()> {
         Ok(())
     }
-    fn draw_hud(&mut self, &State, &mut Context) -> GameResult<()>;
+    fn draw_hud(&mut self, _: &State, _: &mut Context) -> GameResult<()>;
 
-    fn key_down(&mut self, &mut State, &mut Context, Keycode) {
-
-    }
-    fn key_up(&mut self, &mut State, &mut Context, Keycode) {
+    fn key_down(&mut self, _: &mut State, _: &mut Context, _: Keycode) {
 
     }
-    fn mouse_down(&mut self, &mut State, &mut Context, MouseButton) {
+    fn key_up(&mut self, _: &mut State, _: &mut Context, _: Keycode) {
 
     }
-    fn mouse_up(&mut self, &mut State, &mut Context, MouseButton) {
+    fn mouse_down(&mut self, _: &mut State, _: &mut Context, _: MouseButton) {
+
+    }
+    fn mouse_up(&mut self, _: &mut State, _: &mut Context, _: MouseButton) {
 
     }
 }
@@ -144,7 +144,7 @@ impl EventHandler for Master {
     // Handle the game logic
     fn update(&mut self, ctx: &mut Context) -> GameResult<()> {
         if let Some(gsb) = mem::replace(&mut self.state.switch_state, None) {
-            use StateSwitch::*;
+            use crate::StateSwitch::*;
             self.gs = match gsb {
                 Play => play::Play::new(ctx, &mut self.state),
                 Menu => menu::Menu::new(ctx, &mut self.state),
@@ -193,7 +193,7 @@ impl EventHandler for Master {
             return
         }
 
-        use Keycode::*;
+        use crate::Keycode::*;
         // Update input axes and quit game on Escape
         match keycode {
             W | Up => self.state.input.ver -= 1,
@@ -214,7 +214,7 @@ impl EventHandler for Master {
         if repeat {
             return
         }
-        use Keycode::*;
+        use crate::Keycode::*;
 
         match keycode {
             W | Up => self.state.input.ver += 1,
@@ -230,7 +230,7 @@ impl EventHandler for Master {
     }
     /// Handle mouse down event
     fn mouse_button_down_event(&mut self, ctx: &mut Context, btn: MouseButton, _x: i32, _y: i32) {
-        use MouseButton::*;
+        use crate::MouseButton::*;
         match btn {
             Left => self.state.mouse_down.left = true,
             Middle => self.state.mouse_down.middle = true,
@@ -241,7 +241,7 @@ impl EventHandler for Master {
     }
     /// Handle mouse release events
     fn mouse_button_up_event(&mut self, ctx: &mut Context, btn: MouseButton, _x: i32, _y: i32) {
-        use MouseButton::*;
+        use crate::MouseButton::*;
         match btn {
             Left => self.state.mouse_down.left = false,
             Middle => self.state.mouse_down.middle = false,

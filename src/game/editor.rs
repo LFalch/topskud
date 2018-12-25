@@ -1,11 +1,11 @@
-use ::*;
-use graphics::{Rect, DrawMode};
+use crate::*;
+use crate::graphics::{Rect, DrawMode};
 use ggez::error::GameError;
 use super::world::*;
 
 use std::path::PathBuf;
 
-use io::snd::Sound;
+use crate::io::snd::Sound;
 
 #[derive(Debug, PartialEq, Clone)]
 enum Tool {
@@ -307,7 +307,7 @@ impl GameState for Editor {
         self.ent_text.draw_text(ctx)
     }
     fn key_up(&mut self, s: &mut State, _ctx: &mut Context, keycode: Keycode) {
-        use Keycode::*;
+        use crate::Keycode::*;
         match keycode {
             Z => self.level.save(&self.save).unwrap(),
             X => self.level = Level::load(&self.save).unwrap(),
@@ -347,7 +347,7 @@ impl GameState for Editor {
         }
     }
     fn mouse_down(&mut self, s: &mut State, _ctx: &mut Context, btn: MouseButton) {
-        use MouseButton::*;
+        use crate::MouseButton::*;
         let mousepos = self.mousepos(&s);
         match btn {
             Left => if let Tool::Selector(ref mut selection) = self.current {
@@ -373,7 +373,7 @@ impl GameState for Editor {
         }
     }
     fn mouse_up(&mut self, s: &mut State, ctx: &mut Context, btn: MouseButton) {
-        use MouseButton::*;
+        use crate::MouseButton::*;
         let mousepos = self.mousepos(&s);
         match btn {
             Left => if s.mouse.y <= 64. {
@@ -469,7 +469,7 @@ impl GameState for Editor {
         }
     }
     fn key_down(&mut self, s: &mut State,_ctx: &mut Context,  keycode: Keycode) {
-        use Keycode::*;
+        use crate::Keycode::*;
         match keycode {
             Comma => self.rotation_speed -= 6.,
             Period => self.rotation_speed += 6.,

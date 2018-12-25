@@ -1,9 +1,9 @@
 use ggez::{Context, GameResult};
 use ggez::graphics::{self, Point2, Vector2};
 
-use obj::Object;
-use game::world::Grid;
-use ::{angle_from_vec, angle_to_vec, Assets, Sprite, DELTA};
+use crate::obj::Object;
+use crate::game::world::Grid;
+use crate::{angle_from_vec, angle_to_vec, Assets, Sprite, DELTA};
 
 use ggez::nalgebra as na;
 
