@@ -1,5 +1,5 @@
 use crate::{
-    Point2,
+    util::Point2,
     io::{
         tex::PosText,
         btn::Button,
@@ -59,11 +59,11 @@ impl GameState for Win {
         self.health_text.draw_text(ctx)
     }
     fn key_up(&mut self, s: &mut State, _ctx: &mut Context, keycode: Keycode) {
-        use crate::Keycode::*;
+        use self::Keycode::*;
         if let Return = keycode { s.switch(StateSwitch::Play) }
     }
     fn mouse_up(&mut self, s: &mut State, _ctx: &mut Context, btn: MouseButton) {
-        use crate::MouseButton::*;
+        use self::MouseButton::*;
         if let Left = btn {
             if self.continue_btn.in_bounds(s.mouse) {
                 s.switch(StateSwitch::Play)

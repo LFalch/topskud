@@ -1,5 +1,5 @@
 use crate::{
-    Point2,
+    util::Point2,
     io::tex::{Assets, Sprite},
     obj::{Object, enemy::Enemy}
 };

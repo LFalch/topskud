@@ -1,5 +1,5 @@
 use crate::{
-    Point2,
+    util::Point2,
     io::{
         tex::PosText,
         btn::Button,
@@ -68,7 +68,7 @@ impl GameState for Menu {
         self.play_btn.draw(ctx)
     }
     fn key_up(&mut self, s: &mut State, ctx: &mut Context, keycode: Keycode) {
-        use crate::Keycode::*;
+        use self::Keycode::*;
         match keycode {
             P => self.switch_play(ctx, s),
             E => self.switch_editor(ctx, s),
@@ -76,7 +76,7 @@ impl GameState for Menu {
         }
     }
     fn mouse_up(&mut self, s: &mut State, ctx: &mut Context, btn: MouseButton) {
-        use crate::MouseButton::*;
+        use self::MouseButton::*;
         if let Left = btn {
             if self.play_btn.in_bounds(s.mouse) {
                 self.switch_play(ctx, s);

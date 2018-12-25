@@ -10,38 +10,40 @@ use std::env::args;
 use ggez::{
     ContextBuilder,
     conf,
-    event::*,
-    graphics::Color,
+    event::run,
 };
-
-pub use ggez::graphics::{Vector2, Point2};
 
 pub mod io;
 pub mod obj;
 pub mod ext;
 pub mod game;
 
+pub mod util {
+    use ggez::graphics::Color;
+    pub use ggez::graphics::{Vector2, Point2};
+
+    pub const TRANS: Color = Color{r:1.,g:1.,b:1.,a:0.5};
+    pub const GREEN: Color = Color{r:0.,g:1.,b:0.,a:1.};
+    pub const RED: Color = Color{r:1.,g:0.,b:0.,a:1.};
+    pub const BLUE: Color = Color{r:0.,g:0.,b:1.,a:1.};
+
+    /// Makes a unit vector from a given direction angle
+    pub fn angle_to_vec(angle: f32) -> Vector2 {
+        let (sin, cos) = angle.sin_cos();
+        Vector2::new(cos, sin)
+    }
+    /// Gets the direction angle on the screen (0 is along the x-axis) of a vector
+    #[allow(clippy::trivially_copy_pass_by_ref)]
+    pub fn angle_from_vec(v: &Vector2) -> f32 {
+        let x = v.x;
+        let y = v.y;
+
+        y.atan2(x)
+    }
+}
+
 use self::game::{Master, Content, Campaign};
 use self::game::world::Level;
-
-/// Makes a unit vector from a given direction angle
-pub fn angle_to_vec(angle: f32) -> Vector2 {
-    let (sin, cos) = angle.sin_cos();
-    Vector2::new(cos, sin)
-}
-/// Gets the direction angle on the screen (0 is along the x-axis) of a vector
-#[allow(clippy::trivially_copy_pass_by_ref)]
-pub fn angle_from_vec(v: &Vector2) -> f32 {
-    let x = v.x;
-    let y = v.y;
-
-    y.atan2(x)
-}
-
-pub const TRANS: Color = Color{r:1.,g:1.,b:1.,a:0.5};
-pub const GREEN: Color = Color{r:0.,g:1.,b:0.,a:1.};
-pub const RED: Color = Color{r:1.,g:0.,b:0.,a:1.};
-pub const BLUE: Color = Color{r:0.,g:0.,b:1.,a:1.};
 
 fn main() {
     let mut args = args().skip(1);

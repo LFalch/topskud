@@ -1,6 +1,6 @@
 use crate::{
-    TRANS, BLUE, GREEN,
-    Vector2, Point2,
+    util::{TRANS, BLUE, GREEN,
+    Vector2, Point2},
     io::tex::{Sprite, PosText},
     io::snd::Sound,
     ext::BoolExt,
@@ -15,7 +15,7 @@ use ggez::{
 
 use super::{
     DELTA, Content, GameState, State, StateSwitch,
-    world::*
+    world::{Grid, Level, Material}
 };
 
 use std::path::PathBuf;
@@ -318,7 +318,7 @@ impl GameState for Editor {
         self.ent_text.draw_text(ctx)
     }
     fn key_up(&mut self, s: &mut State, _ctx: &mut Context, keycode: Keycode) {
-        use crate::Keycode::*;
+        use self::Keycode::*;
         match keycode {
             Z => self.level.save(&self.save).unwrap(),
             X => self.level = Level::load(&self.save).unwrap(),
@@ -359,7 +359,7 @@ impl GameState for Editor {
         }
     }
     fn mouse_down(&mut self, s: &mut State, _ctx: &mut Context, btn: MouseButton) {
-        use crate::MouseButton::*;
+        use self::MouseButton::*;
         let mousepos = self.mousepos(&s);
         if let Left = btn {
             if let Tool::Selector(ref mut selection) = self.current {
@@ -384,7 +384,7 @@ impl GameState for Editor {
         }
     }
     fn mouse_up(&mut self, s: &mut State, ctx: &mut Context, btn: MouseButton) {
-        use crate::MouseButton::*;
+        use self::MouseButton::*;
         let mousepos = self.mousepos(&s);
         match btn {
             Left => if s.mouse.y <= 64. {
@@ -474,7 +474,7 @@ impl GameState for Editor {
         }
     }
     fn key_down(&mut self, s: &mut State,_ctx: &mut Context,  keycode: Keycode) {
-        use crate::Keycode::*;
+        use self::Keycode::*;
         match keycode {
             Comma => self.rotation_speed -= 6.,
             Period => self.rotation_speed += 6.,

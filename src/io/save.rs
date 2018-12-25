@@ -1,5 +1,5 @@
 use serde::{Serialize, Deserialize, Serializer, Deserializer};
-use crate::{Vector2, Point2};
+use crate::util::{Vector2, Point2};
 
 /// Serialize a `Point2`
 #[allow(clippy::trivially_copy_pass_by_ref)]

@@ -5,7 +5,7 @@ use ggez::{
 };
 
 use crate::{
-    angle_from_vec, angle_to_vec,
+    util::{angle_from_vec, angle_to_vec},
     io::tex::{Assets, Sprite},
     game::{DELTA, world::Grid},
 };

@@ -1,7 +1,9 @@
 use crate::{
-    GREEN, RED,
-    angle_to_vec, angle_from_vec,
-    Vector2, Point2,
+    util::{
+        GREEN, RED,
+        angle_to_vec, angle_from_vec,
+        Vector2, Point2
+    },
     io::{
         tex::{Assets, Sprite},
         snd::Sound,
@@ -18,7 +20,7 @@ use ggez::{
 };
 
 use rand::{thread_rng, prelude::SliceRandom};
-use super::{DELTA, State, GameState, StateSwitch, world::*};
+use super::{DELTA, State, GameState, StateSwitch, world::{Statistics, World}};
 
 #[derive(Debug, Copy, Clone)]
 enum Blood {

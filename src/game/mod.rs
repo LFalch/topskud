@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 use crate::{
-    Vector2, Point2,
+    util::{Vector2, Point2},
     ext::{MouseDown, InputState, Modifiers},
     io::{
         snd::MediaPlayer,
@@ -206,7 +206,7 @@ impl EventHandler for Master {
             return
         }
 
-        use crate::Keycode::*;
+        use self::Keycode::*;
         // Update input axes and quit game on Escape
         match keycode {
             W | Up => self.state.input.ver -= 1,
@@ -227,8 +227,8 @@ impl EventHandler for Master {
         if repeat {
             return
         }
-        use crate::Keycode::*;
 
+        use self::Keycode::*;
         match keycode {
             W | Up => self.state.input.ver += 1,
             S | Down => self.state.input.ver -= 1,
@@ -243,7 +243,7 @@ impl EventHandler for Master {
     }
     /// Handle mouse down event
     fn mouse_button_down_event(&mut self, ctx: &mut Context, btn: MouseButton, _x: i32, _y: i32) {
-        use crate::MouseButton::*;
+        use self::MouseButton::*;
         match btn {
             Left => self.state.mouse_down.left = true,
             Middle => self.state.mouse_down.middle = true,
@@ -254,7 +254,7 @@ impl EventHandler for Master {
     }
     /// Handle mouse release events
     fn mouse_button_up_event(&mut self, ctx: &mut Context, btn: MouseButton, _x: i32, _y: i32) {
-        use crate::MouseButton::*;
+        use self::MouseButton::*;
         match btn {
             Left => self.state.mouse_down.left = false,
             Middle => self.state.mouse_down.middle = false,
