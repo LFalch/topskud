@@ -87,7 +87,7 @@ impl Enemy {
             }
             false
         } else {
-            self.obj.rot = angle_from_vec(&dist);
+            self.obj.rot = angle_from_vec(dist);
             true
         }
     }

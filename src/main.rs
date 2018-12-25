@@ -33,8 +33,7 @@ pub mod util {
         Vector2::new(cos, sin)
     }
     /// Gets the direction angle on the screen (0 is along the x-axis) of a vector
-    #[allow(clippy::trivially_copy_pass_by_ref)]
-    pub fn angle_from_vec(v: &Vector2) -> f32 {
+    pub fn angle_from_vec(v: Vector2) -> f32 {
         let x = v.x;
         let y = v.y;
 

@@ -235,7 +235,7 @@ impl GameState for Play {
     fn logic(&mut self, s: &mut State, _ctx: &mut Context) -> GameResult<()> {
         let dist = s.mouse - s.offset - self.world.player.pos;
 
-        self.world.player.rot = angle_from_vec(&dist);
+        self.world.player.rot = angle_from_vec(dist);
 
         // Center the camera on the player
         let p = self.world.player.pos;
