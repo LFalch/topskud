@@ -1,6 +1,6 @@
 use crate::{
     util::{
-        GREEN, RED,
+        BLUE, GREEN, RED,
         angle_to_vec, angle_from_vec,
         Vector2, Point2
     },
@@ -8,7 +8,7 @@ use crate::{
         tex::{Assets, Sprite},
         snd::Sound,
     },
-    obj::{Object, enemy::Chaser},
+    obj::{Object, enemy::Chaser, health::Health},
 };
 use ggez::{
     Context, GameResult,
@@ -20,7 +20,7 @@ use ggez::{
 };
 
 use rand::{thread_rng, prelude::SliceRandom};
-use super::{DELTA, State, GameState, StateSwitch, world::{Statistics, World}};
+use super::{DELTA, State, GameState, StateSwitch, world::{Statistics, World, Bullet}, weapon::GLOCK};
 
 #[derive(Debug, Copy, Clone)]
 enum Blood {
@@ -59,7 +59,7 @@ impl BloodSplatter {
 }
 /// The state of the game
 pub struct Play {
-    health: u8,
+    health: Health,
     world: World,
     holes: SpriteBatch,
     bloods: Vec<BloodSplatter>,
@@ -84,7 +84,7 @@ impl Play {
             Play {
                 misses: 0,
                 victory_time: 0.,
-                health: 10,
+                health: Health{hp: 100., armour: 100.},
                 bloods: Vec::new(),
                 world: World {
                     enemies: level.enemies,
@@ -104,19 +104,19 @@ impl GameState for Play {
     fn update(&mut self, s: &mut State, ctx: &mut Context) -> GameResult<()> {
         let mut deads = Vec::new();
         for (i, bullet) in self.world.bullets.iter_mut().enumerate().rev() {
-            bullet.pos += 500. * DELTA * angle_to_vec(bullet.rot);
-            if bullet.is_on_solid(&self.world.grid) {
+            bullet.obj.pos += 500. * DELTA * angle_to_vec(bullet.obj.rot);
+            if bullet.obj.is_on_solid(&self.world.grid) {
                 s.mplayer.play(ctx, Sound::Impact)?;
-                self.holes.add(bullet.drawparams());
+                self.holes.add(bullet.obj.drawparams());
                 self.misses += 1;
                 deads.push(i);
-            } else if (bullet.pos-self.world.player.pos).norm() <= 16. {
+            } else if (bullet.obj.pos-self.world.player.pos).norm() <= 16. {
                 deads.push(i);
-                self.bloods.push(BloodSplatter::new(bullet.clone()));
-                self.health = self.health.saturating_sub(1);
+                self.bloods.push(BloodSplatter::new(bullet.obj.clone()));
+                bullet.weapon.apply_damage(&mut self.health);
                 s.mplayer.play(ctx, Sound::Hit)?;
 
-                if self.health == 0 {
+                if self.health.is_dead() {
                     s.switch(StateSwitch::Lose(Statistics{
                         hits: self.bloods.len(),
                         misses: self.misses,
@@ -161,7 +161,7 @@ impl GameState for Play {
                     bul.rot = enemy.obj.rot;
 
                     s.mplayer.play(ctx, Sound::Shot1)?;
-                    self.world.bullets.push(bul);
+                    self.world.bullets.push(Bullet{obj: bul, weapon: &GLOCK});
 
                     enemy.shoot = 30;
                 } else {
@@ -173,10 +173,10 @@ impl GameState for Play {
             enemy.update();
             let mut dead = None;
             for (i, bullet) in self.world.bullets.iter().enumerate().rev() {
-                let dist = bullet.pos - enemy.obj.pos;
+                let dist = bullet.obj.pos - enemy.obj.pos;
                 if dist.norm() < 16. {
                     dead = Some(i);
-                    enemy.health -= 1;
+                    bullet.weapon.apply_damage(&mut enemy.health);
 
                     if !enemy.behaviour.chasing() {
                         enemy.behaviour = Chaser::LookAround{
@@ -185,8 +185,8 @@ impl GameState for Play {
                     }
                     s.mplayer.play(ctx, Sound::Hit)?;
 
-                    self.bloods.push(BloodSplatter::new(bullet.clone()));
-                    if enemy.health == 0 {
+                    self.bloods.push(BloodSplatter::new(bullet.obj.clone()));
+                    if enemy.health.is_dead() {
                         s.mplayer.play(ctx, Sound::Death)?;
                         deads.push(e);
                     } else {
@@ -269,7 +269,7 @@ impl GameState for Play {
             enemy.draw(ctx, &s.assets)?;
         }
         for bullet in &self.world.bullets {
-            bullet.draw(ctx, s.assets.get_img(Sprite::Bullet))?;
+            bullet.obj.draw(ctx, s.assets.get_img(Sprite::Bullet))?;
         }
 
         Ok(())
@@ -277,8 +277,12 @@ impl GameState for Play {
     fn draw_hud(&mut self, s: &State, ctx: &mut Context) -> GameResult<()> {
         graphics::set_color(ctx, graphics::BLACK)?;
         graphics::rectangle(ctx, DrawMode::Fill, Rect{x: 1., y: 1., w: 102., h: 26.})?;
+        graphics::set_color(ctx, graphics::BLACK)?;
+        graphics::rectangle(ctx, DrawMode::Fill, Rect{x: 1., y: 29., w: 102., h: 26.})?;
         graphics::set_color(ctx, GREEN)?;
-        graphics::rectangle(ctx, DrawMode::Fill, Rect{x: 2., y: 2., w: f32::from(self.health) * 10., h: 24.})?;
+        graphics::rectangle(ctx, DrawMode::Fill, Rect{x: 2., y: 2., w: self.health.hp, h: 24.})?;
+        graphics::set_color(ctx, BLUE)?;
+        graphics::rectangle(ctx, DrawMode::Fill, Rect{x: 2., y: 30., w: self.health.armour, h: 24.})?;
 
         graphics::set_color(ctx, RED)?;
         let drawparams = graphics::DrawParam {
@@ -295,7 +299,7 @@ impl GameState for Play {
             bul.rot = self.world.player.rot;
 
             s.mplayer.play(ctx, Sound::Shot2).unwrap();
-            self.world.bullets.push(bul);
+            self.world.bullets.push(Bullet{obj: bul, weapon: &GLOCK});
         }
     }
 }

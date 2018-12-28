@@ -10,7 +10,7 @@ use crate::{
     game::{DELTA, world::Grid},
 };
 
-use super::Object;
+use super::{Object, health::Health};
 
 #[derive(Debug, Clone)]
 pub enum Chaser {
@@ -44,13 +44,11 @@ pub struct Enemy {
     pub obj: Object,
     #[serde(skip)]
     pub behaviour: Chaser,
-    #[serde(skip, default = "three")]
-    pub health: u8,
+    #[serde(skip)]
+    pub health: Health,
     #[serde(skip)]
     pub shoot: u8,
 }
-
-fn three() -> u8 { 3 }
 
 pub const VISIBILITY: f32 = ::std::f32::consts::FRAC_PI_4;
 
@@ -59,7 +57,7 @@ impl Enemy {
         Enemy {
             shoot: 0,
             obj,
-            health: 3,
+            health: Health::default(),
             behaviour: Chaser::NoIntel,
         }
     }

@@ -1,8 +1,9 @@
 use crate::{
     util::Point2,
     io::tex::{Assets, Sprite},
-    obj::{Object, enemy::Enemy}
+    obj::{Object, enemy::Enemy, health::Health}
 };
+use super::weapon::Weapon;
 use ggez::{
     Context, GameResult,
     graphics,
@@ -16,6 +17,12 @@ use std::io::{Write, BufRead, BufReader};
 use ::bincode;
 use serde::{Serialize, Deserialize, Serializer, Deserializer};
 
+#[derive(Debug, Clone)]
+pub struct Bullet {
+    pub obj: Object,
+    pub weapon: &'static Weapon,
+}
+
 #[derive(Debug)]
 /// All the objects in the current world
 pub struct World {
@@ -24,14 +31,14 @@ pub struct World {
     pub(super) exit: Option<Point2>,
     pub(super) intels: Vec<Point2>,
     pub(super) enemies: Vec<Enemy>,
-    pub(super) bullets: Vec<Object>,
+    pub(super) bullets: Vec<Bullet>,
 }
 
 pub struct Statistics {
     pub hits: usize,
     pub misses: usize,
     pub enemies_left: usize,
-    pub health_left: u8,
+    pub health_left: Health,
 }
 
 include!("material_macro.rs");

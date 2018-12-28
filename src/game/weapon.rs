@@ -1,6 +1,8 @@
 use std::num::NonZeroU16;
 use std::fmt::{self, Display};
 
+use crate::obj::health::Health;
+
 #[derive(Debug, Clone, Copy)]
 pub enum FireMode {
     Automatic,
@@ -13,12 +15,18 @@ pub enum FireMode {
 
 #[derive(Debug, Clone, Copy)]
 pub struct Weapon {
-    name: &'static str,
-    clip_size: NonZeroU16,
-    damage: f32,
-    penetration: f32,
-    fire_rate: f32,
-    fire_mode: FireMode,
+    pub name: &'static str,
+    pub clip_size: NonZeroU16,
+    pub damage: f32,
+    pub penetration: f32,
+    pub fire_rate: f32,
+    pub fire_mode: FireMode,
+}
+
+impl Weapon {
+    pub fn apply_damage(&self, health: &mut Health) {
+        health.weapon_damage(self.damage, self.penetration)
+    }
 }
 
 macro_rules! nzu16 {
@@ -32,10 +40,10 @@ macro_rules! nzu16 {
 
 #[derive(Debug, Copy, Clone)]
 pub struct WeaponInstance<'a> {
-    cur_clip: u16,
-    clips: u16,
-    loading_time: f32,
-    weapon: &'a Weapon,
+    pub cur_clip: u16,
+    pub clips: u16,
+    pub loading_time: f32,
+    pub weapon: &'a Weapon,
 }
 
 impl Display for WeaponInstance<'_> {
@@ -44,11 +52,10 @@ impl Display for WeaponInstance<'_> {
     }
 }
 
-#[allow(unused)]
-const GLOCK: Weapon = Weapon {
+pub const GLOCK: Weapon = Weapon {
     name: "Glock",
     clip_size: nzu16!(7),
-    damage: 32.,
+    damage: 36.,
     penetration: 0.4,
     fire_rate: 0.05,
     fire_mode: FireMode::SemiAutomatic,
