@@ -5,7 +5,7 @@ use crate::{
         Vector2, Point2
     },
     io::{
-        tex::{Assets, Sprite},
+        tex::{Assets, Sprite, PosText},
         snd::Sound,
     },
     obj::{Object, enemy::Chaser, health::Health},
@@ -59,6 +59,8 @@ impl BloodSplatter {
 }
 /// The state of the game
 pub struct Play {
+    hp_text: PosText,
+    arm_text: PosText,
     health: Health,
     world: World,
     holes: SpriteBatch,
@@ -82,6 +84,8 @@ impl Play {
 
         Ok(Box::new(
             Play {
+                hp_text: s.assets.text(ctx, Point2::new(4., 4.), "100")?,
+                arm_text: s.assets.text(ctx, Point2::new(4., 33.), "100")?,
                 misses: 0,
                 victory_time: 0.,
                 health: Health{hp: 100., armour: 100.},
@@ -115,6 +119,9 @@ impl GameState for Play {
                 self.bloods.push(BloodSplatter::new(bullet.obj.clone()));
                 bullet.weapon.apply_damage(&mut self.health);
                 s.mplayer.play(ctx, Sound::Hit)?;
+
+                self.hp_text.update_text(&s.assets, ctx, &format!("{:02.0}", self.health.hp))?;
+                self.arm_text.update_text(&s.assets, ctx, &format!("{:02.0}", self.health.armour))?;
 
                 if self.health.is_dead() {
                     s.switch(StateSwitch::Lose(Statistics{
@@ -283,6 +290,9 @@ impl GameState for Play {
         graphics::rectangle(ctx, DrawMode::Fill, Rect{x: 2., y: 2., w: self.health.hp, h: 24.})?;
         graphics::set_color(ctx, BLUE)?;
         graphics::rectangle(ctx, DrawMode::Fill, Rect{x: 2., y: 30., w: self.health.armour, h: 24.})?;
+        graphics::set_color(ctx, WHITE)?;
+        self.hp_text.draw_text(ctx)?;
+        self.arm_text.draw_text(ctx)?;
 
         graphics::set_color(ctx, RED)?;
         let drawparams = graphics::DrawParam {
