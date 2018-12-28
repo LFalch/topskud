@@ -8,7 +8,7 @@ use crate::{
         tex::{Assets, Sprite, PosText},
         snd::Sound,
     },
-    obj::{Object, enemy::Chaser, health::Health},
+    obj::{Object, enemy::Chaser, health::Health, weapon::GLOCK},
 };
 use ggez::{
     Context, GameResult,
@@ -20,7 +20,7 @@ use ggez::{
 };
 
 use rand::{thread_rng, prelude::SliceRandom};
-use super::{DELTA, State, GameState, StateSwitch, world::{Statistics, World, Bullet}, weapon::GLOCK};
+use super::{DELTA, State, GameState, StateSwitch, world::{Statistics, World, Bullet}};
 
 #[derive(Debug, Copy, Clone)]
 enum Blood {

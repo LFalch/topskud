@@ -1,7 +1,7 @@
 use std::num::NonZeroU16;
 use std::fmt::{self, Display};
 
-use crate::obj::health::Health;
+use super::health::Health;
 
 #[derive(Debug, Clone, Copy)]
 pub enum FireMode {

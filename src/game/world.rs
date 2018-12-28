@@ -1,9 +1,8 @@
 use crate::{
     util::Point2,
     io::tex::{Assets, Sprite},
-    obj::{Object, enemy::Enemy, health::Health}
+    obj::{Object, enemy::Enemy, health::Health, weapon::Weapon}
 };
-use super::weapon::Weapon;
 use ggez::{
     Context, GameResult,
     graphics,

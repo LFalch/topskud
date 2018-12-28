@@ -18,7 +18,6 @@ use self::world::Level;
 /// Stuff related to things in the world
 pub mod world;
 pub mod editor;
-pub mod weapon;
 pub mod play;
 pub mod menu;
 pub mod lose;
