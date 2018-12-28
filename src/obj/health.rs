@@ -7,8 +7,8 @@ pub struct Health {
 impl Health {
     pub fn weapon_damage(&mut self, dmg: f32, penetration: f32) {
         let frac = self.armour / 100.;
-        let dmg_hp = (1. + (penetration - 1.) * frac) * dmg;
         let dmg_armour = (1. - penetration) * dmg * frac;
+        let dmg_hp = dmg - dmg_armour;
 
         self.hp -= dmg_hp;
         self.armour -= dmg_armour;
