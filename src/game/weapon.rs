@@ -56,7 +56,7 @@ pub const GLOCK: Weapon = Weapon {
     name: "Glock",
     clip_size: nzu16!(7),
     damage: 36.,
-    penetration: 0.4,
+    penetration: 0.26,
     fire_rate: 0.05,
     fire_mode: FireMode::SemiAutomatic,
 };
