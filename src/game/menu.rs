@@ -40,7 +40,7 @@ impl Menu {
         let w = s.width as f32;
 
         let corner_text = if let Content::File(ref f) = s.content {
-            Some(s.assets.text(ctx, Point2::new(2., 2.), &format!("Current level: {}", f.display()))?)
+            Some(s.assets.text(ctx, Point2::new(2., 2.), &format!("File: {}", f.display()))?)
         } else {
             None
         };
@@ -50,7 +50,7 @@ impl Menu {
             Content::Campaign(_cam) => {
                 unreachable!()
             }
-            Content::File(p) if p.ends_with(".cmp") => {
+            Content::File(p) if p.extension().and_then(|s| s.to_str()) == Some("cmp") => {
                 vec![
                     Button::new(ctx, &s.assets, button_rect(w, 0.), "Play campaign", Callback::Campaign(p.clone()))?,
                 ]
