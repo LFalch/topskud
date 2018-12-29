@@ -54,7 +54,7 @@ impl PickupType {
 }
 
 impl Debug for PickupType {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("PickupType")
             .field("spr", &self.spr)
             .finish()

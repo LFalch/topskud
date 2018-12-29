@@ -65,7 +65,7 @@ pub trait GameState {
 }
 
 pub struct Master {
-    gs: Box<GameState>,
+    gs: Box<dyn GameState>,
     state: State,
 }
 

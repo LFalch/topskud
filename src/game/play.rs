@@ -75,7 +75,7 @@ pub struct Play {
 
 impl Play {
     #[allow(clippy::new_ret_no_self)]
-    pub fn new(ctx: &mut Context, s: &mut State, health: Health, wep: WeaponInstance<'static>) -> GameResult<Box<GameState>> {
+    pub fn new(ctx: &mut Context, s: &mut State, health: Health, wep: WeaponInstance<'static>) -> GameResult<Box<dyn GameState>> {
         let level = if let Some(lvl) = s.level.clone() {
             lvl
         } else {

@@ -147,7 +147,7 @@ pub struct WeaponDrop<'a> {
 }
 
 impl Display for WeaponDrop<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{} {}/{}", self.weapon.name, self.cur_clip, self.ammo)
     }
 }
@@ -161,7 +161,7 @@ pub struct WeaponInstance<'a> {
 }
 
 impl Display for WeaponInstance<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{} {}/{}", self.weapon.name, self.cur_clip, self.ammo)
     }
 }

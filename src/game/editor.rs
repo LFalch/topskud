@@ -161,7 +161,7 @@ impl EntitiesBar {
 
 impl Editor {
     #[allow(clippy::new_ret_no_self)]
-    pub fn new(ctx: &mut Context, s: &State) -> GameResult<Box<GameState>> {
+    pub fn new(ctx: &mut Context, s: &State) -> GameResult<Box<dyn GameState>> {
         let mat_text = s.assets.text(ctx, Point2::new(2., 18.0), "Materials:")?;
         let entities_bar = EntitiesBar::new(Point2::new(342., 18.0), ctx, s, &[
             (Sprite::Enemy, Insertion::Enemy{rot: 0.}, is_enemy),

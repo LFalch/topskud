@@ -30,7 +30,7 @@ fn button_rect(w: f32, i: f32) -> Rect {
 
 impl Menu {
     #[allow(clippy::new_ret_no_self)]
-    pub fn new(ctx: &mut Context, s: &mut State) -> GameResult<Box<GameState>> {
+    pub fn new(ctx: &mut Context, s: &mut State) -> GameResult<Box<dyn GameState>> {
         let w = s.width as f32;
 
         let cur_lvl_text = if let Content::File(ref f) = s.content {
