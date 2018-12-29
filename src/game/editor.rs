@@ -308,6 +308,23 @@ impl GameState for Editor {
                 };
                 graphics::draw_ex(ctx, s.assets.get_img(Sprite::Intel), drawparams)?;
             }
+            for &i in &selection.pickups {
+                let pickup = self.level.pickups[i];
+                let drawparams = graphics::DrawParam {
+                    dest: pickup.0 + dist,
+                    offset: Point2::new(0.5, 0.5),
+                    .. Default::default()
+                };
+                graphics::draw_ex(ctx, s.assets.get_img(PICKUPS[pickup.1 as usize].spr), drawparams)?;
+            }
+            for &i in &selection.weapons {
+                let drawparams = graphics::DrawParam {
+                    dest: self.level.weapons[i].pos + dist,
+                    offset: Point2::new(0.5, 0.5),
+                    .. Default::default()
+                };
+                graphics::draw_ex(ctx, s.assets.get_img(self.level.weapons[i].weapon.entity_sprite), drawparams)?;
+            }
             if selection.exit {
                 if let Some(exit) = self.level.exit {
                     let drawparams = graphics::DrawParam {
@@ -463,6 +480,16 @@ impl GameState for Editor {
                         return selection.moving = Some(mousepos);
                     }
                 }
+                for &i in &selection.pickups {
+                    if (self.level.pickups[i].0 - mousepos).norm() <= 16. {
+                        return selection.moving = Some(mousepos);
+                    }
+                }
+                for &i in &selection.weapons {
+                    if (self.level.weapons[i].pos - mousepos).norm() <= 16. {
+                        return selection.moving = Some(mousepos);
+                    }
+                }
                 if selection.exit {
                     if let Some(exit) = self.level.exit {
                         if (exit - mousepos).norm() <= 16. {
@@ -504,6 +531,12 @@ impl GameState for Editor {
                             }
                             for i in selection.intels.iter().rev() {
                                 self.level.intels[*i] += dist;
+                            }
+                            for i in selection.pickups.iter().rev() {
+                                self.level.pickups[*i].0 += dist;
+                            }
+                            for i in selection.weapons.iter().rev() {
+                                self.level.weapons[*i].pos += dist;
                             }
                             selection.moving = None;
                         } else {

@@ -84,8 +84,6 @@ impl Play {
             lvl
         };
 
-        s.mplayer.play(ctx, Sound::Cock)?;
-
         Ok(Box::new(
             Play {
                 initial: (health, wep),
