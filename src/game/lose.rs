@@ -4,6 +4,7 @@ use crate::{
         tex::PosText,
         btn::Button,
     },
+    obj::{health::Health, weapon::WeaponInstance},
 };
 use ggez::{
     Context, GameResult,
@@ -20,6 +21,8 @@ pub struct Lose {
     misses_text: PosText,
     enemies_text: PosText,
     restart_btn: Button,
+    health: Health,
+    weapon: WeaponInstance<'static>
 }
 
 impl Lose {
@@ -38,6 +41,8 @@ impl Lose {
             misses_text,
             enemies_text,
             restart_btn,
+            health: stats.health_left,
+            weapon: stats.weapon,
         }))
     }
 }
@@ -57,7 +62,7 @@ impl GameState for Lose {
     fn key_up(&mut self, s: &mut State, _ctx: &mut Context, keycode: Keycode) {
         use self::Keycode::*;
         match keycode {
-            R | Return => s.switch(StateSwitch::Play),
+            R | Return => s.switch(StateSwitch::Play{health: self.health, wep: self.weapon}),
             _ => (),
         }
     }
@@ -65,7 +70,7 @@ impl GameState for Lose {
         use self::MouseButton::*;
         if let Left = btn {
             if self.restart_btn.in_bounds(s.mouse) {
-                s.switch(StateSwitch::Play);
+                s.switch(StateSwitch::Play{health: self.health, wep: self.weapon});
             }
         }
     }

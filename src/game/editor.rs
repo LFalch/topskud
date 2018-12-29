@@ -4,7 +4,7 @@ use crate::{
     io::tex::{Sprite, PosText},
     io::snd::Sound,
     ext::BoolExt,
-    obj::{Object, enemy::Enemy}
+    obj::{Object, enemy::Enemy, pickup::PICKUPS, weapon::FIVE_SEVEN, health::Health}
 };
 use ggez::{
     Context, GameResult,
@@ -31,6 +31,7 @@ enum Insertion {
     Material(Material),
     Intel,
     Enemy{rot: f32},
+    Pickup(u8),
     Exit,
 }
 
@@ -39,6 +40,7 @@ struct Selection {
     exit: bool,
     enemies: Vec<usize>,
     intels: Vec<usize>,
+    pickups: Vec<usize>,
     moving: Option<Point2>,
 }
 
@@ -49,13 +51,13 @@ pub struct Editor {
     level: Level,
     current: Tool,
     mat_text: PosText,
-    ent_text: PosText,
+    entities_bar: EntitiesBar,
     draw_visibility_cones: bool,
     rotation_speed: f32,
     snap_on_grid: bool,
 }
 
-const PALETTE: [Material; 7] = [
+const PALETTE: [Material; 8] = [
     Material::Grass,
     Material::Dirt,
     Material::Floor,
@@ -63,13 +65,111 @@ const PALETTE: [Material; 7] = [
     Material::Asphalt,
     Material::Sand,
     Material::Concrete,
+    Material::WoodFloor,
 ];
+
+struct EntitiesBar {
+    ent_text: PosText,
+    palette: &'static [EntityItem]
+}
+
+#[inline]
+fn is_enemy(ins: Insertion) -> bool {
+    if let Insertion::Enemy{..} = ins {
+        true
+    } else {
+        false
+    }
+}
+#[inline]
+fn is_exit(ins: Insertion) -> bool {
+    if let Insertion::Exit = ins {
+        true
+    } else {
+        false
+    }
+}
+#[inline]
+fn is_intel(ins: Insertion) -> bool {
+    if let Insertion::Intel = ins {
+        true
+    } else {
+        false
+    }
+}
+#[inline]
+fn is_hp(ins: Insertion) -> bool {
+    if let Insertion::Pickup(0) = ins {
+        true
+    } else {
+        false
+    }
+}
+#[inline]
+fn is_armour(ins: Insertion) -> bool {
+    if let Insertion::Pickup(1) = ins {
+        true
+    } else {
+        false
+    }
+}
+
+type EntityItem = (Sprite, Insertion, fn(Insertion) -> bool);
+
+impl EntitiesBar {
+    #[allow(clippy::new_ret_no_self)]
+    fn new(p: Point2, ctx: &mut Context, s: &State, palette: &'static [EntityItem]) -> GameResult<Self> {
+        let ent_text = s.assets.text(ctx, p, "Entities:")?;
+        Ok(Self {
+            ent_text,
+            palette
+        })
+    }
+    fn draw(&self, ctx: &mut Context, s: &State, cur: Option<Insertion>) -> GameResult<()> {
+        let mut drawparams = graphics::DrawParam {
+            dest: self.ent_text.pos + Vector2::new(98., 16.),
+            offset: Point2::new(0.5, 0.5),
+            color: Some(graphics::WHITE),
+            .. Default::default()
+        };
+
+        for (spr, _, is_selected) in self.palette {
+            if let Some(cur) = cur {
+                if (is_selected)(cur) {
+                    graphics::set_color(ctx, YELLOW)?;
+                    graphics::circle(ctx, DrawMode::Fill, drawparams.dest, 17., 0.5)?;
+                }
+            }
+            graphics::draw_ex(ctx, s.assets.get_img(*spr), drawparams)?;
+            drawparams.dest.x += 34.; 
+        }
+        Ok(())
+    }
+    fn click(&self, mouse: Point2) -> Option<Insertion> {
+        if mouse.y >= self.ent_text.pos.y && mouse.y < self.ent_text.pos.y+32. {
+            let mut range = self.ent_text.pos.x + 82.;
+            for (_, ins, _) in self.palette {
+                if mouse.x >= range && mouse.x < range + 32. {
+                    return Some(*ins);
+                }
+                range += 34.;
+            }
+        }
+        None
+    }
+}
 
 impl Editor {
     #[allow(clippy::new_ret_no_self)]
     pub fn new(ctx: &mut Context, s: &State) -> GameResult<Box<GameState>> {
         let mat_text = s.assets.text(ctx, Point2::new(2., 18.0), "Materials:")?;
-        let ent_text = s.assets.text(ctx, Point2::new(302., 18.0), "Entities:")?;
+        let entities_bar = EntitiesBar::new(Point2::new(342., 18.0), ctx, s, &[
+            (Sprite::Enemy, Insertion::Enemy{rot: 0.}, is_enemy),
+            (Sprite::Goal, Insertion::Exit, is_exit),
+            (Sprite::Intel, Insertion::Intel, is_intel),
+            (Sprite::HealthPack, Insertion::Pickup(0), is_hp),
+            (Sprite::Armour, Insertion::Pickup(1), is_armour),
+        ])?;
 
         let save;
         if let Content::File(ref f) = s.content {
@@ -91,7 +191,7 @@ impl Editor {
             current: Tool::Selector(Selection::default()),
             draw_visibility_cones: false,
             mat_text,
-            ent_text,
+            entities_bar,
             level,
             rotation_speed: 0.,
             snap_on_grid: false,
@@ -180,6 +280,16 @@ impl GameState for Editor {
             };
             graphics::draw_ex(ctx, s.assets.get_img(Sprite::Intel), drawparams)?;
         }
+        graphics::set_color(ctx, graphics::WHITE)?;
+        for (i, pickup) in self.level.pickups.iter().enumerate() {
+            if let Tool::Selector(Selection{ref pickups, ..}) = self.current {
+                if pickups.contains(&i) {
+                    graphics::set_color(ctx, YELLOW)?;
+                    graphics::circle(ctx, DrawMode::Fill, pickup.0, 17., 0.5)?;
+                }
+            }
+            PICKUPS[pickup.1 as usize].draw(pickup.0, ctx, &s.assets)?;
+        }
 
         for (i, enemy) in self.level.enemies.iter().enumerate() {
             if let Tool::Selector(Selection{ref enemies, ..})= self.current {
@@ -233,6 +343,16 @@ impl GameState for Editor {
         match self.current {
             Tool::Selector(_) => (),
             Tool::Inserter(Insertion::Material(_)) => (),
+            Tool::Inserter(Insertion::Pickup(index)) => {
+                let drawparams = graphics::DrawParam {
+                    dest,
+                    rotation: 0.,
+                    offset: Point2::new(0.5, 0.5),
+                    color: Some(TRANS),
+                    .. Default::default()
+                };
+                graphics::draw_ex(ctx, s.assets.get_img(PICKUPS[index as usize].spr), drawparams)?;
+            }
             Tool::Inserter(Insertion::Enemy{rot}) => {
                 let drawparams = graphics::DrawParam {
                     dest,
@@ -277,45 +397,11 @@ impl GameState for Editor {
             mat.draw(ctx, &s.assets, x, 16.)?;
         }
 
-        if let Tool::Inserter(Insertion::Enemy{..}) = self.current {
-            graphics::set_color(ctx, YELLOW)?;
-            graphics::circle(ctx, DrawMode::Fill, Point2::new(400., 34.), 17., 0.5)?;
-        }
-        let drawparams = graphics::DrawParam {
-            dest: Point2::new(400., 34.),
-            offset: Point2::new(0.5, 0.5),
-            color: Some(graphics::WHITE),
-            .. Default::default()
-        };
-        graphics::draw_ex(ctx, s.assets.get_img(Sprite::Enemy), drawparams)?;
-
-        if let Tool::Inserter(Insertion::Exit) = self.current {
-            graphics::set_color(ctx, YELLOW)?;
-            graphics::circle(ctx, DrawMode::Fill, Point2::new(434., 34.), 17., 0.5)?;
-        }
-        let drawparams = graphics::DrawParam {
-            dest: Point2::new(434., 34.),
-            offset: Point2::new(0.5, 0.5),
-            color: Some(graphics::WHITE),
-            .. Default::default()
-        };
-        graphics::draw_ex(ctx, s.assets.get_img(Sprite::Goal), drawparams)?;
-
-        if let Tool::Inserter(Insertion::Intel) = self.current {
-            graphics::set_color(ctx, YELLOW)?;
-            graphics::circle(ctx, DrawMode::Fill, Point2::new(468., 34.), 17., 0.5)?;
-        }
-        let drawparams = graphics::DrawParam {
-            dest: Point2::new(468., 34.),
-            offset: Point2::new(0.5, 0.5),
-            color: Some(graphics::WHITE),
-            .. Default::default()
-        };
-        graphics::draw_ex(ctx, s.assets.get_img(Sprite::Intel), drawparams)?;
+        self.entities_bar.draw(ctx, s, if let Tool::Inserter(ins) = self.current{Some(ins)}else{None})?;
 
         graphics::set_color(ctx, graphics::WHITE)?;
         self.mat_text.draw_text(ctx)?;
-        self.ent_text.draw_text(ctx)
+        self.entities_bar.ent_text.draw_text(ctx)
     }
     fn key_up(&mut self, s: &mut State, _ctx: &mut Context, keycode: Keycode) {
         use self::Keycode::*;
@@ -326,7 +412,7 @@ impl GameState for Editor {
             G => self.snap_on_grid.toggle(),
             P => {
                 s.level = Some(self.level.clone());
-                s.switch(StateSwitch::Play)
+                s.switch(StateSwitch::Play{health: Health{hp: 100., armour: 100.}, wep: FIVE_SEVEN.make_instance()})
             }
             T => self.current = Tool::Selector(Selection::default()),
             Delete | Backspace => if let Tool::Selector(ref mut selection) = self.current {
@@ -334,6 +420,7 @@ impl GameState for Editor {
                 let Selection {
                     mut enemies,
                     mut intels,
+                    mut pickups,
                     exit, moving: _,
                 } = ::std::mem::replace(selection, Selection::default());
 
@@ -347,6 +434,10 @@ impl GameState for Editor {
                 intels.sort();
                 for intel in intels.into_iter().rev() {
                     self.level.intels.remove(intel);
+                }
+                pickups.sort();
+                for pickup in pickups.into_iter().rev() {
+                    self.level.pickups.remove(pickup);
                 }
             }
             Comma => self.rotation_speed += 6.,
@@ -393,16 +484,8 @@ impl GameState for Editor {
 
                     self.current = Tool::Inserter(Insertion::Material(PALETTE[i]));
                 }
-                if s.mouse.y >= 18. && s.mouse.y < 50. {
-                    if s.mouse.x >= 384. && s.mouse.x < 416. {
-                        self.current = Tool::Inserter(Insertion::Enemy{rot: 0.});
-                    }
-                    if s.mouse.x >= 418. && s.mouse.x < 450. {
-                        self.current = Tool::Inserter(Insertion::Exit);
-                    }
-                    if s.mouse.x >= 452. && s.mouse.x < 484. {
-                        self.current = Tool::Inserter(Insertion::Intel);
-                    }
+                if let Some(ins) = self.entities_bar.click(s.mouse) {
+                    self.current = Tool::Inserter(ins);
                 }
             } else {
                 match self.current {
@@ -465,6 +548,9 @@ impl GameState for Editor {
                     Tool::Inserter(Insertion::Enemy{rot}) => {
                         s.mplayer.play(ctx, Sound::Reload).unwrap();
                         self.level.enemies.push(Enemy::new(Object::with_rot(mousepos, rot)));
+                    },
+                    Tool::Inserter(Insertion::Pickup(i)) => {
+                        self.level.pickups.push((mousepos, i));
                     },
                     Tool::Inserter(Insertion::Intel) => self.level.intels.push(mousepos),
                 }

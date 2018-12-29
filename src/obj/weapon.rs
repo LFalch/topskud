@@ -38,6 +38,7 @@ impl FireMode {
 pub struct Weapon {
     pub name: &'static str,
     pub clip_size: NonZeroU16,
+    pub clips: NonZeroU16,
     pub damage: f32,
     /// Fraction of armour damage redirverted to hp damage
     pub penetration: f32,
@@ -65,6 +66,7 @@ macro_rules! nzu16 {
 pub const GLOCK: Weapon = Weapon {
     name: "Glack",
     clip_size: nzu16!(15),
+    clips: nzu16!(6),
     damage: 34.,
     penetration: 0.24,
     fire_rate: 0.25,
@@ -80,6 +82,7 @@ pub const GLOCK: Weapon = Weapon {
 pub const FIVE_SEVEN: Weapon = Weapon {
     name: "5-SeveN",
     clip_size: nzu16!(20),
+    clips: nzu16!(5),
     damage: 41.,
     penetration: 0.46,
     fire_rate: 0.20,
@@ -95,6 +98,7 @@ pub const FIVE_SEVEN: Weapon = Weapon {
 pub const M4A1: Weapon = Weapon {
     name: "M4A1",
     clip_size: nzu16!(30),
+    clips: nzu16!(3),
     damage: 52.,
     penetration: 0.51,
     fire_rate: 0.075,
@@ -109,6 +113,7 @@ pub const M4A1: Weapon = Weapon {
 pub const AK47: Weapon = Weapon {
     name: "AK-47",
     clip_size: nzu16!(30),
+    clips: nzu16!(3),
     damage: 65.,
     penetration: 0.22,
     fire_rate: 0.09,
@@ -128,7 +133,7 @@ impl Weapon {
             weapon: self,
             cur_clip,
             loading_time: 0.,
-            ammo: cur_clip*3,
+            ammo: cur_clip*self.clips.get(),
         }
     }
 }

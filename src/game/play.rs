@@ -8,7 +8,7 @@ use crate::{
         tex::{Assets, Sprite, PosText},
         snd::Sound,
     },
-    obj::{Object, enemy::{Enemy, Chaser}, health::Health, weapon::{WeaponInstance, AK47}},
+    obj::{Object, pickup::Pickup, player::Player, enemy::{Enemy, Chaser}, health::Health, weapon::WeaponInstance},
 };
 use ggez::{
     Context, GameResult,
@@ -64,19 +64,18 @@ pub struct Play {
     reload_text: PosText,
     wep_text: PosText,
     status_text: PosText,
-    health: Health,
-    wep_inst: WeaponInstance<'static>,
     world: World,
     holes: SpriteBatch,
     bloods: Vec<BloodSplatter>,
     cur_pickup: Option<usize>,
     victory_time: f32,
     misses: usize,
+    initial: (Health, WeaponInstance<'static>),
 }
 
 impl Play {
     #[allow(clippy::new_ret_no_self)]
-    pub fn new(ctx: &mut Context, s: &mut State) -> GameResult<Box<GameState>> {
+    pub fn new(ctx: &mut Context, s: &mut State, health: Health, wep: WeaponInstance<'static>) -> GameResult<Box<GameState>> {
         let level = if let Some(lvl) = s.level.clone() {
             lvl
         } else {
@@ -89,6 +88,7 @@ impl Play {
 
         Ok(Box::new(
             Play {
+                initial: (health, wep),
                 hp_text: s.assets.text(ctx, Point2::new(4., 4.), "100")?,
                 arm_text: s.assets.text(ctx, Point2::new(4., 33.), "100")?,
                 reload_text: s.assets.text(ctx, Point2::new(4., 62.), "0.0s")?,
@@ -96,18 +96,17 @@ impl Play {
                 status_text: s.assets.text(ctx, Point2::new(s.width as f32 / 2., s.height as f32 / 2.+32.), "")?,
                 misses: 0,
                 victory_time: 0.,
-                health: Health{hp: 100., armour: 100.},
-                wep_inst: AK47.make_instance(),
                 bloods: Vec::new(),
                 cur_pickup: None,
                 world: World {
                     enemies: level.enemies,
                     bullets: Vec::new(),
                     weapons: Vec::new(),
-                    player: Object::new(level.start_point.unwrap_or_else(|| Point2::new(500., 500.))),
+                    player: Player::new(level.start_point.unwrap_or_else(|| Point2::new(500., 500.)), wep, health),
                     grid: level.grid,
                     exit: level.exit,
                     intels: level.intels,
+                    pickups: level.pickups.into_iter().map(|(p, i)| Pickup::new(p, i)).collect(),
                 },
                 holes: SpriteBatch::new(s.assets.get_img(Sprite::Hole).clone()),
             }
@@ -118,8 +117,10 @@ impl Play {
 impl GameState for Play {
     #[allow(clippy::cyclomatic_complexity)]
     fn update(&mut self, s: &mut State, ctx: &mut Context) -> GameResult<()> {
-        self.reload_text.update_text(&s.assets, ctx, &format!("{:.1}s", self.wep_inst.loading_time))?;
-        self.wep_text.update_text(&s.assets, ctx, &format!("{}", self.wep_inst))?;
+        self.hp_text.update_text(&s.assets, ctx, &format!("{:02.0}", self.world.player.health.hp))?;
+        self.arm_text.update_text(&s.assets, ctx, &format!("{:02.0}", self.world.player.health.armour))?;
+        self.reload_text.update_text(&s.assets, ctx, &format!("{:.1}s", self.world.player.wep.loading_time))?;
+        self.wep_text.update_text(&s.assets, ctx, &format!("{}", self.world.player.wep))?;
         if let Some(i) = self.cur_pickup {
             self.status_text.update_text(&s.assets, ctx, &format!("Press F to pick up {}", self.world.weapons[i]))?;
         } else {
@@ -134,21 +135,20 @@ impl GameState for Play {
                 self.holes.add(bullet.obj.drawparams());
                 self.misses += 1;
                 deads.push(i);
-            } else if (bullet.obj.pos-self.world.player.pos).norm() <= 16. {
+            } else if (bullet.obj.pos-self.world.player.obj.pos).norm() <= 16. {
                 deads.push(i);
                 self.bloods.push(BloodSplatter::new(bullet.obj.clone()));
-                bullet.apply_damage(&mut self.health);
+                bullet.apply_damage(&mut self.world.player.health);
                 s.mplayer.play(ctx, Sound::Hit)?;
 
-                self.hp_text.update_text(&s.assets, ctx, &format!("{:02.0}", self.health.hp))?;
-                self.arm_text.update_text(&s.assets, ctx, &format!("{:02.0}", self.health.armour))?;
 
-                if self.health.is_dead() {
+                if self.world.player.health.is_dead() {
                     s.switch(StateSwitch::Lose(Statistics{
                         hits: self.bloods.len(),
                         misses: self.misses,
                         enemies_left: self.world.enemies.len(),
-                        health_left: self.health,
+                        health_left: self.initial.0,
+                        weapon: self.initial.1,
                     }));
                     s.mplayer.play(ctx, Sound::Death)?;
                 } else {
@@ -162,7 +162,7 @@ impl GameState for Play {
 
         let mut deads = Vec::new();
         for (i, &intel) in self.world.intels.iter().enumerate().rev() {
-            if (intel-self.world.player.pos).norm() <= 15. {
+            if (intel-self.world.player.obj.pos).norm() <= 15. {
                 deads.push(i);
                 s.mplayer.play(ctx, Sound::Hit)?;
             }
@@ -170,9 +170,20 @@ impl GameState for Play {
         for i in deads {
             self.world.intels.remove(i);
         }
+        let mut deads = Vec::new();
+        for (i, pickup) in self.world.pickups.iter().enumerate().rev() {
+            if (pickup.pos-self.world.player.obj.pos).norm() <= 15. {
+                pickup.apply(&mut self.world.player);
+                deads.push(i);
+                s.mplayer.play(ctx, Sound::Hit)?;
+            }
+        }
+        for i in deads {
+            self.world.pickups.remove(i);
+        }
         self.cur_pickup = None;
         for (i, weapon) in self.world.weapons.iter().enumerate().rev() {
-            if (weapon.pos-self.world.player.pos).norm() <= 29. {
+            if (weapon.pos-self.world.player.obj.pos).norm() <= 29. {
                 self.cur_pickup = Some(i);
                 break
             }
@@ -183,9 +194,9 @@ impl GameState for Play {
 
         let mut deads = Vec::new();
         for (e, enemy) in self.world.enemies.iter_mut().enumerate().rev() {
-            if enemy.can_see(self.world.player.pos, &self.world.grid) {
+            if enemy.can_see(self.world.player.obj.pos, &self.world.grid) {
                 enemy.behaviour = Chaser::LastKnown{
-                    pos: self.world.player.pos,
+                    pos: self.world.player.obj.pos,
                     vel: player_vel,
                 };
 
@@ -236,20 +247,20 @@ impl GameState for Play {
         } else {
             100.
         };
-        self.wep_inst.update(ctx, &mut s.mplayer)?;
-        if s.mouse_down.left && self.wep_inst.weapon.fire_mode.is_auto() {
-            if let Some(bm) = self.wep_inst.shoot(ctx, &mut s.mplayer)? {
-                let pos = self.world.player.pos + 16. * angle_to_vec(self.world.player.rot);
+        self.world.player.wep.update(ctx, &mut s.mplayer)?;
+        if s.mouse_down.left && self.world.player.wep.weapon.fire_mode.is_auto() {
+            if let Some(bm) = self.world.player.wep.shoot(ctx, &mut s.mplayer)? {
+                let pos = self.world.player.obj.pos + 16. * angle_to_vec(self.world.player.obj.rot);
                 let mut bul = Object::new(pos);
-                bul.rot = self.world.player.rot;
+                bul.rot = self.world.player.obj.rot;
 
                 self.world.bullets.push(bm.make(bul));
             }
         }
-        self.world.player.move_on_grid(player_vel, speed, &self.world.grid);
+        self.world.player.obj.move_on_grid(player_vel, speed, &self.world.grid);
 
         let game_won = match self.world.exit {
-            Some(p) => self.world.intels.is_empty() && (p - self.world.player.pos).norm() < 32.,
+            Some(p) => self.world.intels.is_empty() && (p - self.world.player.obj.pos).norm() < 32.,
             None => self.world.enemies.is_empty(),
         };
 
@@ -265,18 +276,19 @@ impl GameState for Play {
                 hits: self.bloods.len(),
                 misses: self.misses,
                 enemies_left: self.world.enemies.len(),
-                health_left: self.health,
+                health_left: self.world.player.health,
+                weapon: self.world.player.wep,
             }));
         }
         Ok(())
     }
     fn logic(&mut self, s: &mut State, _ctx: &mut Context) -> GameResult<()> {
-        let dist = s.mouse - s.offset - self.world.player.pos;
+        let dist = s.mouse - s.offset - self.world.player.obj.pos;
 
-        self.world.player.rot = angle_from_vec(dist);
+        self.world.player.obj.rot = angle_from_vec(dist);
 
         // Center the camera on the player
-        let p = self.world.player.pos;
+        let p = self.world.player.obj.pos;
         s.focus_on(p);
         Ok(())
     }
@@ -296,6 +308,15 @@ impl GameState for Play {
             };
             graphics::draw_ex(ctx, s.assets.get_img(Sprite::Intel), drawparams)?;
         }
+        for pickup in &self.world.pickups {
+            let drawparams = graphics::DrawParam {
+                dest: pickup.pos,
+                offset: Point2::new(0.5, 0.5),
+                color: Some(graphics::WHITE),
+                .. Default::default()
+            };
+            graphics::draw_ex(ctx, s.assets.get_img(pickup.pickup_type.spr), drawparams)?;
+        }
         for wep in &self.world.weapons {
             let drawparams = graphics::DrawParam {
                 dest: wep.pos,
@@ -310,7 +331,7 @@ impl GameState for Play {
             blood.draw(ctx, &s.assets)?;
         }
 
-        self.world.player.draw(ctx, s.assets.get_img(Sprite::Player))?;
+        self.world.player.draw(ctx, &s.assets)?;
 
         for enemy in &self.world.enemies {
             enemy.draw(ctx, &s.assets)?;
@@ -335,11 +356,11 @@ impl GameState for Play {
         graphics::rectangle(ctx, DrawMode::Fill, Rect{x: 1., y: 29., w: 102., h: 26.})?;
         graphics::rectangle(ctx, DrawMode::Fill, Rect{x: 1., y: 57., w: 102., h: 26.})?;
         graphics::set_color(ctx, GREEN)?;
-        graphics::rectangle(ctx, DrawMode::Fill, Rect{x: 2., y: 2., w: self.health.hp, h: 24.})?;
+        graphics::rectangle(ctx, DrawMode::Fill, Rect{x: 2., y: 2., w: self.world.player.health.hp, h: 24.})?;
         graphics::set_color(ctx, BLUE)?;
-        graphics::rectangle(ctx, DrawMode::Fill, Rect{x: 2., y: 30., w: self.health.armour, h: 24.})?;
+        graphics::rectangle(ctx, DrawMode::Fill, Rect{x: 2., y: 30., w: self.world.player.health.armour, h: 24.})?;
         graphics::set_color(ctx, RED)?;
-        graphics::rectangle(ctx, DrawMode::Fill, Rect{x: 2., y: 58., w: min(1., self.wep_inst.loading_time)*100., h: 24.})?;
+        graphics::rectangle(ctx, DrawMode::Fill, Rect{x: 2., y: 58., w: min(1., self.world.player.wep.loading_time)*100., h: 24.})?;
         graphics::set_color(ctx, WHITE)?;
         self.hp_text.draw_text(ctx)?;
         self.arm_text.draw_text(ctx)?;
@@ -357,10 +378,10 @@ impl GameState for Play {
     }
     fn mouse_up(&mut self, s: &mut State, ctx: &mut Context, btn: MouseButton) {
         if let MouseButton::Left = btn {
-            if let Some(bm) = self.wep_inst.shoot(ctx, &mut s.mplayer).unwrap() {
-                let pos = self.world.player.pos + 16. * angle_to_vec(self.world.player.rot);
+            if let Some(bm) = self.world.player.wep.shoot(ctx, &mut s.mplayer).unwrap() {
+                let pos = self.world.player.obj.pos + 16. * angle_to_vec(self.world.player.obj.rot);
                 let mut bul = Object::new(pos);
-                bul.rot = self.world.player.rot;
+                bul.rot = self.world.player.obj.rot;
 
                 self.world.bullets.push(bm.make(bul));
             }
@@ -369,11 +390,11 @@ impl GameState for Play {
     fn key_up(&mut self, s: &mut State, ctx: &mut Context, keycode: Keycode) {
         use self::Keycode::*;
         match keycode {
-            R => self.wep_inst.reload(ctx, &mut s.mplayer).unwrap(),
+            R => self.world.player.wep.reload(ctx, &mut s.mplayer).unwrap(),
             F => {
                 if let Some(i) = self.cur_pickup {
-                    let wep = self.wep_inst.into_drop(self.world.player.pos);
-                    self.wep_inst = WeaponInstance::from_drop(std::mem::replace(&mut self.world.weapons[i], wep));
+                    let wep = self.world.player.wep.into_drop(self.world.player.obj.pos);
+                    self.world.player.wep = WeaponInstance::from_drop(std::mem::replace(&mut self.world.weapons[i], wep));
                 }
             },
             _ => return,

@@ -4,6 +4,7 @@ use crate::{
         tex::PosText,
         btn::Button,
     },
+    obj::{health::Health, weapon::WeaponInstance},
 };
 use ggez::{
     Context, GameResult,
@@ -21,6 +22,9 @@ pub struct Win {
     enemies_text: PosText,
     health_text: PosText,
     continue_btn: Button,
+    health: Health,
+    weapon: WeaponInstance<'static>
+    
 }
 
 impl Win {
@@ -42,6 +46,8 @@ impl Win {
             enemies_text,
             health_text,
             continue_btn,
+            health: stats.health_left,
+            weapon: stats.weapon,
         }))
     }
 }
@@ -60,13 +66,13 @@ impl GameState for Win {
     }
     fn key_up(&mut self, s: &mut State, _ctx: &mut Context, keycode: Keycode) {
         use self::Keycode::*;
-        if let Return = keycode { s.switch(StateSwitch::Play) }
+        if let Return = keycode { s.switch(StateSwitch::Play{health: self.health, wep: self.weapon}) }
     }
     fn mouse_up(&mut self, s: &mut State, _ctx: &mut Context, btn: MouseButton) {
         use self::MouseButton::*;
         if let Left = btn {
             if self.continue_btn.in_bounds(s.mouse) {
-                s.switch(StateSwitch::Play)
+                s.switch(StateSwitch::Play{health: self.health, wep: self.weapon})
             }
         }
     }

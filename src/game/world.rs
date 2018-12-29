@@ -1,7 +1,14 @@
 use crate::{
     util::Point2,
     io::tex::{Assets, Sprite},
-    obj::{Object, enemy::Enemy, health::Health, bullet::Bullet, weapon::WeaponDrop}
+    obj::{
+        player::Player,
+        enemy::Enemy,
+        health::Health,
+        bullet::Bullet,
+        weapon::{WeaponInstance, WeaponDrop},
+        pickup::Pickup,
+    }
 };
 use ggez::{
     Context, GameResult,
@@ -19,13 +26,14 @@ use serde::{Serialize, Deserialize, Serializer, Deserializer};
 #[derive(Debug)]
 /// All the objects in the current world
 pub struct World {
-    pub player: Object,
+    pub player: Player,
     pub grid: Grid,
     pub exit: Option<Point2>,
     pub intels: Vec<Point2>,
     pub enemies: Vec<Enemy>,
     pub bullets: Vec<Bullet<'static>>,
     pub weapons: Vec<WeaponDrop<'static>>,
+    pub pickups: Vec<Pickup>,
 }
 
 pub struct Statistics {
@@ -33,6 +41,7 @@ pub struct Statistics {
     pub misses: usize,
     pub enemies_left: usize,
     pub health_left: Health,
+    pub weapon: WeaponInstance<'static>,
 }
 
 include!("material_macro.rs");
@@ -46,6 +55,7 @@ mat!{
     Asphalt = 4, Asphalt, false,
     Sand = 5, Sand, false,
     Concrete = 6, Concrete, true,
+    WoodFloor = 7, WoodFloor, true,
     Missing = 255, Missing, true,
 }
 
@@ -56,6 +66,7 @@ pub struct Level {
     pub enemies: Vec<Enemy>,
     pub exit: Option<Point2>,
     pub intels: Vec<Point2>,
+    pub pickups: Vec<(Point2, u8)>,
 }
 
 impl Level {
@@ -66,6 +77,7 @@ impl Level {
             enemies: Vec::new(),
             exit: None,
             intels: Vec::new(),
+            pickups: Vec::new(),
         }
     }
     pub fn load<P: AsRef<Path>>(path: P) -> GameResult<Self> {
@@ -75,10 +87,8 @@ impl Level {
         loop {
             let mut buf = String::with_capacity(16);
             reader.read_line(&mut buf)?;
-            if buf == "\n" {
-                continue
-            }
             match &*buf.trim_right() {
+                "" => continue,
                 "GRD" => ret.grid = bincode::deserialize_from(&mut reader)
                 .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?,
                 "GRID" => {
@@ -101,6 +111,9 @@ impl Level {
                     .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?),
                 "INTELS" => ret.intels = bincode::deserialize_from(&mut reader)
                     .map(|l: Vec<(f32, f32)>| l.into_iter().map(|(x, y)| Point2::new(x, y)).collect())
+                    .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?,
+                "PICKUPS" => ret.pickups = bincode::deserialize_from(&mut reader)
+                    .map(|l: Vec<((f32, f32), u8)>| l.into_iter().map(|((x, y), i)| (Point2::new(x, y), i)).collect())
                     .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?,
                 "END" => break,
                 _ => return Err("Bad section".to_string())?
@@ -134,6 +147,12 @@ impl Level {
             writeln!(file, "\nINTELS")?;
             let intels: Vec<_> = self.intels.iter().map(|p| (p.x, p.y)).collect();
             bincode::serialize_into(&mut file, &intels)
+                .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?;
+        }
+        if !self.pickups.is_empty() {
+            writeln!(file, "\nPICKUPS")?;
+            let pickups: Vec<_> = self.pickups.iter().map(|&(p, i)| ((p.x, p.y), i)).collect();
+            bincode::serialize_into(&mut file, &pickups)
                 .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?;
         }
 

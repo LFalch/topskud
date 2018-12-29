@@ -2,10 +2,12 @@ use ggez::{Context, GameResult};
 use ggez::graphics::{self, Point2, Vector2, Image};
 // use ggez::nalgebra as na;
 
+pub mod player;
 pub mod enemy;
 pub mod health;
 pub mod weapon;
 pub mod bullet;
+pub mod pickup;
 
 use crate::game::world::Grid;
 use crate::game::DELTA;

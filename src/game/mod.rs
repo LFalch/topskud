@@ -5,7 +5,8 @@ use crate::{
     io::{
         snd::MediaPlayer,
         tex::Assets,
-    }
+    },
+    obj::{health::Health, weapon::WeaponInstance},
 };
 use ggez::{
     Context, GameResult,
@@ -29,7 +30,10 @@ use self::world::Statistics;
 pub enum StateSwitch {
     Menu,
     Editor,
-    Play,
+    Play{
+        health: Health,
+        wep: WeaponInstance<'static>,
+    },
     Lose(Statistics),
     Win(Statistics),
 }
@@ -159,7 +163,7 @@ impl EventHandler for Master {
         if let Some(gsb) = mem::replace(&mut self.state.switch_state, None) {
             use self::StateSwitch::*;
             self.gs = match gsb {
-                Play => play::Play::new(ctx, &mut self.state),
+                Play{health, wep} => play::Play::new(ctx, &mut self.state, health, wep),
                 Menu => menu::Menu::new(ctx, &mut self.state),
                 Editor => editor::Editor::new(ctx, &self.state),
                 Win(stats) => win::Win::new(ctx, &mut self.state, stats),
