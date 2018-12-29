@@ -13,7 +13,7 @@ use crate::{
     game::{DELTA, world::Grid},
 };
 
-use super::{Object, health::Health, weapon::{WeaponInstance, GLOCK}};
+use super::{Object, health::Health, weapon::{WeaponInstance, WEAPONS}};
 
 #[derive(Debug, Clone)]
 pub enum Chaser {
@@ -55,7 +55,7 @@ pub struct Enemy {
 
 #[inline]
 fn default_weapon() -> WeaponInstance<'static> {
-    GLOCK.make_instance()
+    WEAPONS[0].make_instance()
 }
 
 pub const VISIBILITY: f32 = ::std::f32::consts::FRAC_PI_4;

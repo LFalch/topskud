@@ -6,7 +6,7 @@ use crate::{
         enemy::Enemy,
         health::Health,
         bullet::Bullet,
-        weapon::{WeaponInstance, WeaponDrop},
+        weapon::{WeaponInstance, WeaponDrop, WEAPONS},
         pickup::Pickup,
     }
 };
@@ -55,7 +55,7 @@ mat!{
     Asphalt = 4, Asphalt, false,
     Sand = 5, Sand, false,
     Concrete = 6, Concrete, true,
-    WoodFloor = 7, WoodFloor, true,
+    WoodFloor = 7, WoodFloor, false,
     Missing = 255, Missing, true,
 }
 
@@ -67,6 +67,7 @@ pub struct Level {
     pub exit: Option<Point2>,
     pub intels: Vec<Point2>,
     pub pickups: Vec<(Point2, u8)>,
+    pub weapons: Vec<WeaponDrop<'static>>,
 }
 
 impl Level {
@@ -78,6 +79,7 @@ impl Level {
             exit: None,
             intels: Vec::new(),
             pickups: Vec::new(),
+            weapons: Vec::new(),
         }
     }
     pub fn load<P: AsRef<Path>>(path: P) -> GameResult<Self> {
@@ -114,6 +116,9 @@ impl Level {
                     .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?,
                 "PICKUPS" => ret.pickups = bincode::deserialize_from(&mut reader)
                     .map(|l: Vec<((f32, f32), u8)>| l.into_iter().map(|((x, y), i)| (Point2::new(x, y), i)).collect())
+                    .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?,
+                "WEAPONS" => ret.weapons = bincode::deserialize_from(&mut reader)
+                    .map(|l: Vec<((f32, f32), u8)>| l.into_iter().map(|((x, y), i)| WEAPONS[i as usize].make_instance().into_drop(Point2::new(x, y))).collect())
                     .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?,
                 "END" => break,
                 _ => return Err("Bad section".to_string())?
@@ -152,6 +157,21 @@ impl Level {
         if !self.pickups.is_empty() {
             writeln!(file, "\nPICKUPS")?;
             let pickups: Vec<_> = self.pickups.iter().map(|&(p, i)| ((p.x, p.y), i)).collect();
+            bincode::serialize_into(&mut file, &pickups)
+                .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?;
+        }
+        if !self.weapons.is_empty() {
+            writeln!(file, "\nWEAPONS")?;
+            let pickups: Vec<((f32, f32), u8)> = self.weapons.iter().map(|w| ((w.pos.x, w.pos.y), {
+                let mut index = 0;
+                for (i, wep) in WEAPONS.iter().enumerate() {
+                    if wep.name == w.weapon.name {
+                        index = i;
+                        break
+                    }  
+                }
+                index as u8
+            })).collect();
             bincode::serialize_into(&mut file, &pickups)
                 .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?;
         }

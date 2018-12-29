@@ -101,7 +101,7 @@ impl Play {
                 world: World {
                     enemies: level.enemies,
                     bullets: Vec::new(),
-                    weapons: Vec::new(),
+                    weapons: level.weapons,
                     player: Player::new(level.start_point.unwrap_or_else(|| Point2::new(500., 500.)), wep, health),
                     grid: level.grid,
                     exit: level.exit,

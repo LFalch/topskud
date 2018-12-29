@@ -4,7 +4,7 @@ use crate::{
     io::tex::{Sprite, PosText},
     io::snd::Sound,
     ext::BoolExt,
-    obj::{Object, enemy::Enemy, pickup::PICKUPS, weapon::FIVE_SEVEN, health::Health}
+    obj::{Object, enemy::Enemy, pickup::PICKUPS, weapon::WEAPONS, health::Health}
 };
 use ggez::{
     Context, GameResult,
@@ -32,6 +32,7 @@ enum Insertion {
     Intel,
     Enemy{rot: f32},
     Pickup(u8),
+    Weapon(u8),
     Exit,
 }
 
@@ -41,6 +42,7 @@ struct Selection {
     enemies: Vec<usize>,
     intels: Vec<usize>,
     pickups: Vec<usize>,
+    weapons: Vec<usize>,
     moving: Option<Point2>,
 }
 
@@ -73,46 +75,7 @@ struct EntitiesBar {
     palette: &'static [EntityItem]
 }
 
-#[inline]
-fn is_enemy(ins: Insertion) -> bool {
-    if let Insertion::Enemy{..} = ins {
-        true
-    } else {
-        false
-    }
-}
-#[inline]
-fn is_exit(ins: Insertion) -> bool {
-    if let Insertion::Exit = ins {
-        true
-    } else {
-        false
-    }
-}
-#[inline]
-fn is_intel(ins: Insertion) -> bool {
-    if let Insertion::Intel = ins {
-        true
-    } else {
-        false
-    }
-}
-#[inline]
-fn is_hp(ins: Insertion) -> bool {
-    if let Insertion::Pickup(0) = ins {
-        true
-    } else {
-        false
-    }
-}
-#[inline]
-fn is_armour(ins: Insertion) -> bool {
-    if let Insertion::Pickup(1) = ins {
-        true
-    } else {
-        false
-    }
-}
+mod is_fns;
 
 type EntityItem = (Sprite, Insertion, fn(Insertion) -> bool);
 
@@ -163,12 +126,18 @@ impl Editor {
     #[allow(clippy::new_ret_no_self)]
     pub fn new(ctx: &mut Context, s: &State) -> GameResult<Box<dyn GameState>> {
         let mat_text = s.assets.text(ctx, Point2::new(2., 18.0), "Materials:")?;
+        use self::is_fns::*;
         let entities_bar = EntitiesBar::new(Point2::new(342., 18.0), ctx, s, &[
             (Sprite::Enemy, Insertion::Enemy{rot: 0.}, is_enemy),
             (Sprite::Goal, Insertion::Exit, is_exit),
             (Sprite::Intel, Insertion::Intel, is_intel),
             (Sprite::HealthPack, Insertion::Pickup(0), is_hp),
             (Sprite::Armour, Insertion::Pickup(1), is_armour),
+            (Sprite::Glock, Insertion::Weapon(0), is_glock),
+            (Sprite::FiveSeven, Insertion::Weapon(1), is_five_seven),
+            (Sprite::Magnum, Insertion::Weapon(2), is_magnum),
+            (Sprite::M4, Insertion::Weapon(3), is_m4a1),
+            (Sprite::Ak47, Insertion::Weapon(4), is_ak47),
         ])?;
 
         let save;
@@ -290,6 +259,21 @@ impl GameState for Editor {
             }
             PICKUPS[pickup.1 as usize].draw(pickup.0, ctx, &s.assets)?;
         }
+        for (i, weapon) in self.level.weapons.iter().enumerate() {
+            if let Tool::Selector(Selection{ref weapons, ..}) = self.current {
+                if weapons.contains(&i) {
+                    graphics::set_color(ctx, YELLOW)?;
+                    graphics::circle(ctx, DrawMode::Fill, weapon.pos, 17., 0.5)?;
+                }
+            }
+            let drawparams = graphics::DrawParam {
+                dest: weapon.pos,
+                offset: Point2::new(0.5, 0.5),
+                color: Some(graphics::WHITE),
+                .. Default::default()
+            };
+            graphics::draw_ex(ctx, s.assets.get_img(weapon.weapon.entity_sprite), drawparams)?;
+        }
 
         for (i, enemy) in self.level.enemies.iter().enumerate() {
             if let Tool::Selector(Selection{ref enemies, ..})= self.current {
@@ -353,6 +337,16 @@ impl GameState for Editor {
                 };
                 graphics::draw_ex(ctx, s.assets.get_img(PICKUPS[index as usize].spr), drawparams)?;
             }
+            Tool::Inserter(Insertion::Weapon(index)) => {
+                let drawparams = graphics::DrawParam {
+                    dest,
+                    rotation: 0.,
+                    offset: Point2::new(0.5, 0.5),
+                    color: Some(TRANS),
+                    .. Default::default()
+                };
+                graphics::draw_ex(ctx, s.assets.get_img(WEAPONS[index as usize].entity_sprite), drawparams)?;
+            }
             Tool::Inserter(Insertion::Enemy{rot}) => {
                 let drawparams = graphics::DrawParam {
                     dest,
@@ -412,7 +406,7 @@ impl GameState for Editor {
             G => self.snap_on_grid.toggle(),
             P => {
                 s.level = Some(self.level.clone());
-                s.switch(StateSwitch::Play{health: Health{hp: 100., armour: 100.}, wep: FIVE_SEVEN.make_instance()})
+                s.switch(StateSwitch::Play{health: Health{hp: 100., armour: 0.}, wep: WEAPONS[1].make_instance()})
             }
             T => self.current = Tool::Selector(Selection::default()),
             Delete | Backspace => if let Tool::Selector(ref mut selection) = self.current {
@@ -421,6 +415,7 @@ impl GameState for Editor {
                     mut enemies,
                     mut intels,
                     mut pickups,
+                    mut weapons,
                     exit, moving: _,
                 } = ::std::mem::replace(selection, Selection::default());
 
@@ -438,6 +433,10 @@ impl GameState for Editor {
                 pickups.sort();
                 for pickup in pickups.into_iter().rev() {
                     self.level.pickups.remove(pickup);
+                }
+                weapons.sort();
+                for weapon in weapons.into_iter().rev() {
+                    self.level.weapons.remove(weapon);
                 }
             }
             Comma => self.rotation_speed += 6.,
@@ -508,37 +507,39 @@ impl GameState for Editor {
                             }
                             selection.moving = None;
                         } else {
+                            if !s.modifiers.ctrl {
+                                *selection = Selection::default();
+                            }
                             for (i, enemy) in self.level.enemies.iter().enumerate() {
                                 if (enemy.obj.pos - mousepos).norm() <= 16. && !selection.enemies.contains(&i) {
-                                    if s.modifiers.ctrl {
-                                        selection.enemies.push(i);
-                                    } else {
-                                        *selection = Selection{enemies: vec![i], .. Default::default()};
-                                    }
+                                    selection.enemies.push(i);
                                     return
                                 }
                             }
                             if let Some(exit) = self.level.exit {
                                 if (exit - mousepos).norm() <= 16. && !selection.exit {
-                                    if s.modifiers.ctrl {
-                                        selection.exit = true;
-                                    } else {
-                                        *selection = Selection{exit: true, .. Default::default()};
-                                    }
+                                    selection.exit = true;
                                     return
                                 }
                             }
                             for (i, &intel) in self.level.intels.iter().enumerate() {
                                 if (intel - mousepos).norm() <= 16. && !selection.intels.contains(&i) {
-                                    if s.modifiers.ctrl {
-                                        selection.intels.push(i);
-                                    } else {
-                                        *selection = Selection{intels: vec![i], .. Default::default()};
-                                    }
+                                    selection.intels.push(i);
                                     return
                                 }
                             }
-                            *selection = Selection::default();
+                            for (i, &pickup) in self.level.pickups.iter().enumerate() {
+                                if (pickup.0 - mousepos).norm() <= 16. && !selection.pickups.contains(&i) {
+                                    selection.pickups.push(i);
+                                    return
+                                }
+                            }
+                            for (i, weapon) in self.level.weapons.iter().enumerate() {
+                                if (weapon.pos - mousepos).norm() <= 16. && !selection.weapons.contains(&i) {
+                                    selection.weapons.push(i);
+                                    return
+                                }
+                            }
                         }
                     }
                     Tool::Inserter(Insertion::Exit) => {
@@ -551,6 +552,9 @@ impl GameState for Editor {
                     },
                     Tool::Inserter(Insertion::Pickup(i)) => {
                         self.level.pickups.push((mousepos, i));
+                    },
+                    Tool::Inserter(Insertion::Weapon(i)) => {
+                        self.level.weapons.push(WEAPONS[i as usize].make_instance().into_drop(mousepos));
                     },
                     Tool::Inserter(Insertion::Intel) => self.level.intels.push(mousepos),
                 }

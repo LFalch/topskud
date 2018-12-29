@@ -5,7 +5,7 @@ use crate::{
         btn::Button,
         snd::Sound,
     },
-    obj::{health::Health, weapon::FIVE_SEVEN}
+    obj::{health::Health, weapon::WEAPONS}
 };
 use ggez::{
     Context, GameResult,
@@ -49,7 +49,7 @@ impl Menu {
     }
     pub fn switch_play(&self, ctx: &mut Context, s: &mut State) {
         s.mplayer.stop(ctx, Sound::Music).unwrap();
-        s.switch(StateSwitch::Play{health: Health{hp: 100., armour: 100.}, wep: FIVE_SEVEN.make_instance()});
+        s.switch(StateSwitch::Play{health: Health{hp: 100., armour: 0.}, wep: WEAPONS[1].make_instance()});
     }
     pub fn switch_editor(&self, ctx: &mut Context, s: &mut State) {
         s.mplayer.stop(ctx, Sound::Music).unwrap();

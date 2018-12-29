@@ -99,6 +99,7 @@ sprites! {
     FiveSeven, five_seven, 32., 32.,
     M4, m4, 32., 32.,
     Ak47, ak47, 32., 32.,
+    Magnum, magnum, 32., 32.,
 }
 
 impl Assets {
