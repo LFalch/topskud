@@ -12,7 +12,7 @@ use ggez::{
     event::{MouseButton, Keycode}
 };
 
-use super::{State, GameState, StateSwitch, world::Statistics};
+use super::{State, GameState, StateSwitch, world::{Statistics, Level}};
 
 /// The state of the game
 pub struct Lose {
@@ -20,20 +20,21 @@ pub struct Lose {
     hits_text: PosText,
     misses_text: PosText,
     enemies_text: PosText,
-    restart_btn: Button,
+    restart_btn: Button<()>,
+    level: Level,
     health: Health,
     weapon: WeaponInstance<'static>
 }
 
 impl Lose {
     #[allow(clippy::new_ret_no_self, clippy::needless_pass_by_value)]
-    pub fn new(ctx: &mut Context, s: &mut State, stats: Statistics) -> GameResult<Box<dyn GameState>> {
+    pub fn new(ctx: &mut Context, s: &mut State, stats: Statistics, level: Level) -> GameResult<Box<dyn GameState>> {
         let w = s.width as f32;
         let you_died = s.assets.text(ctx, Point2::new(s.width as f32/ 2., 10.), "You died!")?;
         let hits_text = s.assets.text(ctx, Point2::new(4., 20.), &format!("Hits: {}", stats.hits))?;
         let misses_text = s.assets.text(ctx, Point2::new(4., 36.), &format!("Misses: {}", stats.misses))?;
         let enemies_text = s.assets.text(ctx, Point2::new(4., 52.), &format!("Enemies left: {}", stats.enemies_left))?;
-        let restart_btn = Button::new(ctx, &s.assets, Rect{x: 3. * w / 7., y: 64., w: w / 7., h: 64.}, "Restart")?;
+        let restart_btn = Button::new(ctx, &s.assets, Rect{x: 3. * w / 7., y: 64., w: w / 7., h: 64.}, "Restart", ())?;
 
         Ok(Box::new(Lose {
             you_died,
@@ -41,9 +42,13 @@ impl Lose {
             misses_text,
             enemies_text,
             restart_btn,
+            level,
             health: stats.health_left,
             weapon: stats.weapon,
         }))
+    }
+    fn restart(&self, s: &mut State) {
+        s.switch(StateSwitch::Play{lvl: self.level.clone(), health: self.health, wep: self.weapon})
     }
 }
 
@@ -62,7 +67,7 @@ impl GameState for Lose {
     fn key_up(&mut self, s: &mut State, _ctx: &mut Context, keycode: Keycode) {
         use self::Keycode::*;
         match keycode {
-            R | Return => s.switch(StateSwitch::Play{health: self.health, wep: self.weapon}),
+            R | Return => self.restart(s),
             _ => (),
         }
     }
@@ -70,7 +75,7 @@ impl GameState for Lose {
         use self::MouseButton::*;
         if let Left = btn {
             if self.restart_btn.in_bounds(s.mouse) {
-                s.switch(StateSwitch::Play{health: self.health, wep: self.weapon});
+                self.restart(s);
             }
         }
     }

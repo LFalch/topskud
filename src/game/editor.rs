@@ -124,7 +124,7 @@ impl EntitiesBar {
 
 impl Editor {
     #[allow(clippy::new_ret_no_self)]
-    pub fn new(ctx: &mut Context, s: &State) -> GameResult<Box<dyn GameState>> {
+    pub fn new(ctx: &mut Context, s: &State, level: Option<Level>) -> GameResult<Box<dyn GameState>> {
         let mat_text = s.assets.text(ctx, Point2::new(2., 18.0), "Materials:")?;
         use self::is_fns::*;
         let entities_bar = EntitiesBar::new(Point2::new(342., 18.0), ctx, s, &[
@@ -144,10 +144,10 @@ impl Editor {
         if let Content::File(ref f) = s.content {
             save = f.clone();
         } else {
-            return Err(GameError::UnknownError("Cannot load editor in campaign".to_owned()));
+            return Err(GameError::UnknownError("Cannot load editor without file".to_owned()));
         }
 
-        let level = s.level.clone().unwrap_or_else(|| {
+        let level = level.unwrap_or_else(|| {
             Level::load(&save).unwrap_or_else(|_| Level::new(32, 32))
         });
 
@@ -422,8 +422,7 @@ impl GameState for Editor {
             C => self.draw_visibility_cones.toggle(),
             G => self.snap_on_grid.toggle(),
             P => {
-                s.level = Some(self.level.clone());
-                s.switch(StateSwitch::Play{health: Health{hp: 100., armour: 0.}, wep: WEAPONS[1].make_instance()})
+                s.switch(StateSwitch::Play{lvl: self.level.clone(), health: Health{hp: 100., armour: 0.}, wep: WEAPONS[1].make_instance()})
             }
             T => self.current = Tool::Selector(Selection::default()),
             Delete | Backspace => if let Tool::Selector(ref mut selection) = self.current {

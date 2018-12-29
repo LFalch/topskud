@@ -4,16 +4,17 @@ use ggez::{GameResult, Context};
 use ggez::graphics::{Drawable, Color, Rect, Mesh, Point2, DrawMode, DrawParam};
 use ggez::nalgebra::coordinates::XY;
 
-pub struct Button {
+pub struct Button<T> {
     width: f32,
     height: f32,
+    pub callback: T,
     text: PosText,
     mesh: Mesh
 }
 
-impl Button {
+impl<T> Button<T> {
     #[allow(clippy::new_ret_no_self)]
-    pub fn new(ctx: &mut Context, assets: &Assets, rect: Rect, text: &str) -> GameResult<Self> {
+    pub fn new(ctx: &mut Context, assets: &Assets, rect: Rect, text: &str, callback: T) -> GameResult<Self> {
         let x2 = rect.x + rect.w;
         let y2 = rect.y + rect.h;
         let pts = [
@@ -27,6 +28,7 @@ impl Button {
         Ok(Button{
             text,
             mesh,
+            callback,
             width: rect.w,
             height: rect.h,
         })

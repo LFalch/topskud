@@ -12,7 +12,7 @@ use ggez::{
     event::{MouseButton, Keycode}
 };
 
-use super::{State, GameState, StateSwitch, world::Statistics};
+use super::{State, Content, GameState, StateSwitch, world::Statistics};
 
 /// The state of the game
 pub struct Win {
@@ -21,7 +21,7 @@ pub struct Win {
     misses_text: PosText,
     enemies_text: PosText,
     health_text: PosText,
-    continue_btn: Button,
+    continue_btn: Button<()>,
     health: Health,
     weapon: WeaponInstance<'static>
     
@@ -37,7 +37,7 @@ impl Win {
         let misses_text = s.assets.text(ctx, Point2::new(4., 36.), &format!("Misses: {}", stats.misses))?;
         let enemies_text = s.assets.text(ctx, Point2::new(4., 52.), &format!("Enemies left: {}", stats.enemies_left))?;
         let health_text = s.assets.text(ctx, Point2::new(4., 68.), &format!("Health left: {:02.0} / {:02.0}", stats.health_left.hp, stats.health_left.armour))?;
-        let continue_btn = Button::new(ctx, &s.assets, Rect{x: 3. * w / 7., y: 64., w: w / 7., h: 64.}, "Continue")?;
+        let continue_btn = Button::new(ctx, &s.assets, Rect{x: 3. * w / 7., y: 64., w: w / 7., h: 64.}, "Continue", ())?;
 
         Ok(Box::new(Win {
             level_complete,
@@ -49,6 +49,21 @@ impl Win {
             health: stats.health_left,
             weapon: stats.weapon,
         }))
+    }
+    fn continue_play(&self, s: &mut State) {
+        let lvl;
+        match &mut s.content {
+            Content::Campaign(cam) => {
+                if let Some(l) = cam.next_level() {
+                    lvl = l;
+                } else {
+                    return
+                }
+            }
+            Content::None | Content::File(_) => return,
+        }
+
+        s.switch(StateSwitch::Play{health: self.health, wep: self.weapon, lvl});
     }
 }
 
@@ -66,13 +81,13 @@ impl GameState for Win {
     }
     fn key_up(&mut self, s: &mut State, _ctx: &mut Context, keycode: Keycode) {
         use self::Keycode::*;
-        if let Return = keycode { s.switch(StateSwitch::Play{health: self.health, wep: self.weapon}) }
+        if let Return = keycode { self.continue_play(s) }
     }
     fn mouse_up(&mut self, s: &mut State, _ctx: &mut Context, btn: MouseButton) {
         use self::MouseButton::*;
         if let Left = btn {
             if self.continue_btn.in_bounds(s.mouse) {
-                s.switch(StateSwitch::Play{health: self.health, wep: self.weapon})
+                self.continue_play(s)
             }
         }
     }

@@ -20,7 +20,7 @@ use ggez::{
 };
 
 use rand::{thread_rng, prelude::SliceRandom};
-use super::{DELTA, State, GameState, StateSwitch, world::{Statistics, World}};
+use super::{DELTA, State, GameState, StateSwitch, world::{Level, Statistics, World}};
 
 #[derive(Debug, Copy, Clone)]
 enum Blood {
@@ -71,21 +71,15 @@ pub struct Play {
     victory_time: f32,
     misses: usize,
     initial: (Health, WeaponInstance<'static>),
+    level: Level,
 }
 
 impl Play {
     #[allow(clippy::new_ret_no_self)]
-    pub fn new(ctx: &mut Context, s: &mut State, health: Health, wep: WeaponInstance<'static>) -> GameResult<Box<dyn GameState>> {
-        let level = if let Some(lvl) = s.level.clone() {
-            lvl
-        } else {
-            let lvl = s.content.load_level()?;
-            s.level = Some(lvl.clone());
-            lvl
-        };
-
+    pub fn new(ctx: &mut Context, s: &mut State, level: Level, health: Health, wep: WeaponInstance<'static>) -> GameResult<Box<dyn GameState>> {
         Ok(Box::new(
             Play {
+                level: level.clone(),
                 initial: (health, wep),
                 hp_text: s.assets.text(ctx, Point2::new(4., 4.), "100")?,
                 arm_text: s.assets.text(ctx, Point2::new(4., 33.), "100")?,
@@ -147,7 +141,7 @@ impl GameState for Play {
                         enemies_left: self.world.enemies.len(),
                         health_left: self.initial.0,
                         weapon: self.initial.1,
-                    }));
+                    }, self.level.clone()));
                     s.mplayer.play(ctx, Sound::Death)?;
                 } else {
                     s.mplayer.play(ctx, Sound::Hurt)?;
@@ -269,7 +263,6 @@ impl GameState for Play {
             self.victory_time += DELTA;
         }
         if self.victory_time >= 2. {
-            s.level = None;
             s.switch(StateSwitch::Win(Statistics{
                 hits: self.bloods.len(),
                 misses: self.misses,

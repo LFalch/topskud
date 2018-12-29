@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use crate::{
     util::Point2,
     io::{
@@ -10,17 +11,22 @@ use crate::{
 use ggez::{
     Context, GameResult,
     graphics::{self, Rect},
-    event::{MouseButton, Keycode}
+    event::{MouseButton}
 };
 
-use super::{Content, State, GameState, StateSwitch};
+use super::{Campaign, Content, State, GameState, StateSwitch, world::Level};
 
 /// The state of the game
 pub struct Menu {
     title_txt: PosText,
-    play_btn: Button,
-    editor_btn: Button,
-    cur_lvl_text: Option<PosText>,
+    buttons: Vec<Button<Callback>>,
+    corner_text: Option<PosText>,
+}
+
+enum Callback {
+    SwitchPlay(PathBuf),
+    SwitchEditor(PathBuf),
+    Campaign(PathBuf),
 }
 
 // ↓
@@ -33,27 +39,45 @@ impl Menu {
     pub fn new(ctx: &mut Context, s: &mut State) -> GameResult<Box<dyn GameState>> {
         let w = s.width as f32;
 
-        let cur_lvl_text = if let Content::File(ref f) = s.content {
+        let corner_text = if let Content::File(ref f) = s.content {
             Some(s.assets.text(ctx, Point2::new(2., 2.), &format!("Current level: {}", f.display()))?)
         } else {
             None
         };
         s.mplayer.play(ctx, Sound::Music)?;
 
+        let buttons = match &mut s.content {
+            Content::Campaign(_cam) => {
+                unreachable!()
+            }
+            Content::File(p) if p.ends_with(".cmp") => {
+                vec![
+                    Button::new(ctx, &s.assets, button_rect(w, 0.), "Play campaign", Callback::Campaign(p.clone()))?,
+                ]
+            }
+            Content::File(p) => {
+                vec![
+                    Button::new(ctx, &s.assets, button_rect(w, 0.), "Play", Callback::SwitchPlay(p.clone()))?,
+                    Button::new(ctx, &s.assets, button_rect(w, 1.), "Editor", Callback::SwitchEditor(p.clone()))?,
+                ]
+            }
+            Content::None => {
+                std::fs::read_dir("campaigns/")?
+                    .filter_map(Result::ok)
+                    .enumerate()
+                    .map(|(i, d)| Button::new(
+                        ctx, &s.assets, button_rect(w, i as f32), d.file_name().to_str().unwrap(), Callback::Campaign(d.path())
+                    ))
+                    .filter_map(Result::ok)
+                    .collect()
+            },
+        };
+
         Ok(Box::new(Menu {
             title_txt: s.assets.text_big(ctx, Point2::new(w / 2., 16.), "Main Menu")?,
-            play_btn: Button::new(ctx, &s.assets, button_rect(w, 0.), "Play")?,
-            editor_btn: Button::new(ctx, &s.assets, button_rect(w, 1.), "Editor")?,
-            cur_lvl_text,
+            buttons,
+            corner_text,
         }))
-    }
-    pub fn switch_play(&self, ctx: &mut Context, s: &mut State) {
-        s.mplayer.stop(ctx, Sound::Music).unwrap();
-        s.switch(StateSwitch::Play{health: Health{hp: 100., armour: 0.}, wep: WEAPONS[1].make_instance()});
-    }
-    pub fn switch_editor(&self, ctx: &mut Context, s: &mut State) {
-        s.mplayer.stop(ctx, Sound::Music).unwrap();
-        s.switch(StateSwitch::Editor);
     }
 }
 
@@ -61,29 +85,45 @@ impl GameState for Menu {
     fn draw_hud(&mut self, _s: &State, ctx: &mut Context) -> GameResult<()> {
         graphics::set_color(ctx, graphics::WHITE)?;
         self.title_txt.draw_center(ctx)?;
-
-        self.editor_btn.draw(ctx)?;
-        if let Some(ref txt) = self.cur_lvl_text {
+        if let Some(ref txt) = self.corner_text {
             txt.draw_text(ctx)?;
         }
-        self.play_btn.draw(ctx)
-    }
-    fn key_up(&mut self, s: &mut State, ctx: &mut Context, keycode: Keycode) {
-        use self::Keycode::*;
-        match keycode {
-            P => self.switch_play(ctx, s),
-            E => self.switch_editor(ctx, s),
-            _ => (),
+        for button in &self.buttons {
+            button.draw(ctx)?;
         }
+        Ok(())
     }
+    // fn key_up(&mut self, s: &mut State, ctx: &mut Context, keycode: Keycode) {
+    //     use self::Keycode::*;
+    //     match keycode {
+    //         P => self.switch_play(ctx, s),
+    //         E => self.switch_editor(ctx, s),
+    //         _ => (),
+    //     }
+    // }
     fn mouse_up(&mut self, s: &mut State, ctx: &mut Context, btn: MouseButton) {
         use self::MouseButton::*;
         if let Left = btn {
-            if self.play_btn.in_bounds(s.mouse) {
-                self.switch_play(ctx, s);
-            }
-            if self.editor_btn.in_bounds(s.mouse) {
-                self.switch_editor(ctx, s);
+            for button in &self.buttons {
+                if button.in_bounds(s.mouse) {
+                    s.mplayer.stop(ctx, Sound::Music).unwrap();
+                    match &button.callback {
+                        Callback::Campaign(cam) => {
+                            let mut cam = Campaign::load(cam).unwrap();
+                            let lvl = cam.next_level().unwrap();
+                            s.content = Content::Campaign(cam);
+                            s.switch(StateSwitch::Play{lvl, health: Health::default(), wep: WEAPONS[1].make_instance()})
+                        },
+                        Callback::SwitchPlay(p) => {
+                            let lvl = Level::load(&p).unwrap();
+                            s.switch(StateSwitch::Play{lvl, health: Health::default(), wep: WEAPONS[1].make_instance()})
+                        },
+                        Callback::SwitchEditor(p) => {
+                            let l = Level::load(&p).ok();
+                            s.switch(StateSwitch::Editor(l))
+                        },
+                    }
+                }
             }
         }
     }

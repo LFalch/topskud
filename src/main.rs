@@ -41,24 +41,16 @@ pub mod util {
     }
 }
 
-use self::game::{Master, Content, Campaign};
-use self::game::world::Level;
+use self::game::Master;
 
 fn main() {
     let mut args = args().skip(1);
 
-    let mut level = None;
-    let content = if let Some(mut p) = args.next() {
-        if &p == "--new" {
-            p = args.next().unwrap();
-            let w: u16 = args.next().unwrap().parse().unwrap();
-            let h: u16 = args.next().unwrap().parse().unwrap();
-
-            level = Some(Level::new(w, h));
-        }
-        Content::File(p.to_owned().into())
+    let arg;
+    if let Some(p) = args.next() {
+        arg = p;
     } else {
-        Content::Campaign(Campaign::load("start.cmp").unwrap())
+        arg = "".to_owned();
     };
 
     // Set window mode
@@ -79,7 +71,7 @@ fn main() {
     }
 
     // Tries to create a game state and runs it if succesful
-    match Master::new(&mut ctx, content, level) {
+    match Master::new(&mut ctx, &arg) {
         Err(e) => {
             eprintln!("Couldn't load game {}", e);
         }

@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use crate::{
     util::{Vector2, Point2},
     ext::{MouseDown, InputState, Modifiers},
@@ -29,12 +29,13 @@ use self::world::Statistics;
 
 pub enum StateSwitch {
     Menu,
-    Editor,
+    Editor(Option<Level>),
     Play{
+        lvl: Level,
         health: Health,
         wep: WeaponInstance<'static>,
     },
-    Lose(Statistics),
+    Lose(Statistics, Level),
     Win(Statistics),
 }
 
@@ -72,21 +73,7 @@ pub struct Master {
 pub enum Content {
     Campaign(Campaign),
     File(PathBuf),
-}
-
-impl Content {
-    pub fn load_level(&mut self) -> GameResult<Level> {
-        Ok(match *self {
-            Content::Campaign(ref mut cmp) => {
-                let lvl = cmp.levels[cmp.current].clone();
-                cmp.current += 1;
-                lvl
-            }
-            Content::File(ref f) => {
-                Level::load(f)?
-            }
-        })
-    }
+    None
 }
 
 /// The state of the game
@@ -101,7 +88,6 @@ pub struct State {
     mouse: Point2,
     offset: Vector2,
     switch_state: Option<StateSwitch>,
-    level: Option<Level>,
     content: Content,
 }
 
@@ -112,7 +98,7 @@ pub(crate) const DELTA: f32 = 1. / DESIRED_FPS as f32;
 impl Master {
     #[allow(clippy::new_ret_no_self)]
     /// Make a new state object
-    pub fn new(ctx: &mut Context, content: Content, level: Option<Level>) -> GameResult<Self> {
+    pub fn new(ctx: &mut Context, arg: &str) -> GameResult<Self> {
         // Background colour is black
         graphics::set_background_color(ctx, (33, 33, 255, 255).into());
         // Initialise assets
@@ -123,9 +109,16 @@ impl Master {
         let width = ctx.conf.window_mode.width;
         let height = ctx.conf.window_mode.height;
 
+        let content;
+
+        if arg.is_empty() {
+            content = Content::None
+        } else {
+            content = Content::File(arg.to_owned().into())
+        }
+
         let mut state = State {
             content,
-            level,
             switch_state: None,
             input: Default::default(),
             mouse_down: Default::default(),
@@ -163,11 +156,11 @@ impl EventHandler for Master {
         if let Some(gsb) = mem::replace(&mut self.state.switch_state, None) {
             use self::StateSwitch::*;
             self.gs = match gsb {
-                Play{health, wep} => play::Play::new(ctx, &mut self.state, health, wep),
+                Play{lvl, health, wep} => play::Play::new(ctx, &mut self.state, lvl, health, wep),
                 Menu => menu::Menu::new(ctx, &mut self.state),
-                Editor => editor::Editor::new(ctx, &self.state),
+                Editor(l) => editor::Editor::new(ctx, &self.state, l),
                 Win(stats) => win::Win::new(ctx, &mut self.state, stats),
-                Lose(stats) => lose::Lose::new(ctx, &mut self.state, stats),
+                Lose(stats, l) => lose::Lose::new(ctx, &mut self.state, stats, l),
             }?;
         }
 
@@ -286,7 +279,7 @@ pub struct Campaign {
 }
 
 impl Campaign {
-    pub fn load(p: &str) -> GameResult<Self> {
+    pub fn load<P: AsRef<Path>>(p: P) -> GameResult<Self> {
         let file = BufReader::new(File::open(p)?);
 
         let mut levels = Vec::new();
@@ -300,5 +293,10 @@ impl Campaign {
             levels,
             current: 0,
         })
+    }
+    pub fn next_level(&mut self) -> Option<Level> {
+        let ret = self.levels.get(self.current).cloned();
+        self.current += 1;
+        ret
     }
 }
