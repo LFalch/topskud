@@ -5,6 +5,7 @@ use ggez::graphics::{self, Point2, Vector2, Image};
 pub mod enemy;
 pub mod health;
 pub mod weapon;
+pub mod bullet;
 
 use crate::game::world::Grid;
 use crate::game::DELTA;

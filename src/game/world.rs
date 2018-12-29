@@ -1,7 +1,7 @@
 use crate::{
     util::Point2,
     io::tex::{Assets, Sprite},
-    obj::{Object, enemy::Enemy, health::Health, weapon::Weapon}
+    obj::{Object, enemy::Enemy, health::Health, bullet::Bullet, weapon::WeaponDrop}
 };
 use ggez::{
     Context, GameResult,
@@ -16,21 +16,16 @@ use std::io::{Write, BufRead, BufReader};
 use ::bincode;
 use serde::{Serialize, Deserialize, Serializer, Deserializer};
 
-#[derive(Debug, Clone)]
-pub struct Bullet {
-    pub obj: Object,
-    pub weapon: &'static Weapon,
-}
-
 #[derive(Debug)]
 /// All the objects in the current world
 pub struct World {
-    pub(super) player: Object,
-    pub(super) grid: Grid,
-    pub(super) exit: Option<Point2>,
-    pub(super) intels: Vec<Point2>,
-    pub(super) enemies: Vec<Enemy>,
-    pub(super) bullets: Vec<Bullet>,
+    pub player: Object,
+    pub grid: Grid,
+    pub exit: Option<Point2>,
+    pub intels: Vec<Point2>,
+    pub enemies: Vec<Enemy>,
+    pub bullets: Vec<Bullet<'static>>,
+    pub weapons: Vec<WeaponDrop<'static>>,
 }
 
 pub struct Statistics {

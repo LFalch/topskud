@@ -91,6 +91,10 @@ sprites! {
     Blood3, blood3, 32., 32.,
     Goal, goal, 32., 32.,
     Intel, intel, 32., 32.,
+    Glock, glock, 32., 32.,
+    FiveSeven, five_seven, 32., 32.,
+    M4, m4, 32., 32.,
+    Ak47, ak47, 32., 32.,
 }
 
 impl Assets {

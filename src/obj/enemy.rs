@@ -6,11 +6,14 @@ use ggez::{
 
 use crate::{
     util::{angle_from_vec, angle_to_vec},
-    io::tex::{Assets, Sprite},
+    io::{
+        snd::MediaPlayer,
+        tex::{Assets, Sprite},
+    },
     game::{DELTA, world::Grid},
 };
 
-use super::{Object, health::Health};
+use super::{Object, health::Health, weapon::{WeaponInstance, GLOCK}};
 
 #[derive(Debug, Clone)]
 pub enum Chaser {
@@ -44,10 +47,15 @@ pub struct Enemy {
     pub obj: Object,
     #[serde(skip)]
     pub behaviour: Chaser,
+    #[serde(skip, default = "default_weapon")]
+    pub wep: WeaponInstance<'static>,
     #[serde(skip)]
     pub health: Health,
-    #[serde(skip)]
-    pub shoot: u8,
+}
+
+#[inline]
+fn default_weapon() -> WeaponInstance<'static> {
+    GLOCK.make_instance()
 }
 
 pub const VISIBILITY: f32 = ::std::f32::consts::FRAC_PI_4;
@@ -55,8 +63,8 @@ pub const VISIBILITY: f32 = ::std::f32::consts::FRAC_PI_4;
 impl Enemy {
     pub fn new(obj: Object) -> Enemy {
         Enemy {
-            shoot: 0,
             obj,
+            wep: default_weapon(),
             health: Health::default(),
             behaviour: Chaser::NoIntel,
         }
@@ -89,7 +97,11 @@ impl Enemy {
             true
         }
     }
-    pub fn update(&mut self) {
+    pub fn update(&mut self, ctx: &mut Context, mplayer: &mut MediaPlayer) -> GameResult<()> {
+        self.wep.update(ctx, mplayer)?;
+        if self.wep.cur_clip == 0 && self.wep.loading_time == 0. {
+            self.wep.reload(ctx, mplayer)?;
+        }
         match self.behaviour {
             Chaser::NoIntel => (),
             Chaser::LastKnown{
@@ -115,6 +127,7 @@ impl Enemy {
                 }
             }
         }
+        Ok(())
     }
     pub fn can_see(&self, p: Point2, grid: &Grid) -> bool {
         let dist = p-self.obj.pos;
