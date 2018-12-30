@@ -71,17 +71,22 @@ pub struct Play {
     cur_pickup: Option<usize>,
     victory_time: f32,
     misses: usize,
-    initial: (Health, WeaponInstance<'static>),
+    initial: (Health, Option<WeaponInstance<'static>>),
     level: Level,
 }
 
 impl Play {
     #[allow(clippy::new_ret_no_self)]
-    pub fn new(ctx: &mut Context, s: &mut State, level: Level, health: Health, wep: WeaponInstance<'static>) -> GameResult<Box<dyn GameState>> {
+    pub fn new(ctx: &mut Context, s: &mut State, level: Level, pl: Option<(Health, Option<WeaponInstance<'static>>)>) -> GameResult<Box<dyn GameState>> {
+        let mut player = Player::new(level.start_point.unwrap_or_else(|| Point2::new(500., 500.)));
+        if let Some((h, w)) = pl {
+            player = player.with_health(h).with_weapon(w);
+        };
+
         Ok(Box::new(
             Play {
                 level: level.clone(),
-                initial: (health, wep),
+                initial: (player.health, player.wep),
                 hp_text: s.assets.text(ctx, Point2::new(4., 4.), "100")?,
                 arm_text: s.assets.text(ctx, Point2::new(4., 33.), "100")?,
                 reload_text: s.assets.text(ctx, Point2::new(4., 62.), "0.0s")?,
@@ -91,15 +96,29 @@ impl Play {
                 victory_time: 0.,
                 bloods: Vec::new(),
                 cur_pickup: None,
-                world: World {
-                    enemies: level.enemies,
-                    bullets: Vec::new(),
-                    weapons: level.weapons,
-                    player: Player::new(level.start_point.unwrap_or_else(|| Point2::new(500., 500.)), wep, health),
-                    grid: level.grid,
-                    exit: level.exit,
-                    intels: level.intels,
-                    pickups: level.pickups.into_iter().map(|(p, i)| Pickup::new(p, i)).collect(),
+                world: {
+                    let mut world = World {
+                        enemies: level.enemies,
+                        bullets: Vec::new(),
+                        weapons: level.weapons,
+                        player,
+                        grid: level.grid,
+                        exit: level.exit,
+                        intels: level.intels,
+                        pickups: level.pickups.into_iter().map(|(p, i)| Pickup::new(p, i)).collect(),
+                    };
+                    world.enemy_pickup();
+                    world.player_pickup();
+
+                    if world.player.wep.is_none() {
+                        eprintln!("Warning: player has no weapon");
+                    }
+
+                    for enemy_pos in world.enemies.iter().filter_map(|enemy| if enemy.wep.is_none() {Some(enemy.obj.pos)}else{None}) {
+                        eprintln!("Warning: enemy at {:.2} has no weapon", enemy_pos)
+                    }
+
+                    world
                 },
                 holes: SpriteBatch::new(s.assets.get_img(Sprite::Hole).clone()),
             }
@@ -112,8 +131,10 @@ impl GameState for Play {
     fn update(&mut self, s: &mut State, ctx: &mut Context) -> GameResult<()> {
         self.hp_text.update_text(&s.assets, ctx, &format!("{:02.0}", self.world.player.health.hp))?;
         self.arm_text.update_text(&s.assets, ctx, &format!("{:02.0}", self.world.player.health.armour))?;
-        self.reload_text.update_text(&s.assets, ctx, &format!("{:.1}s", self.world.player.wep.loading_time))?;
-        self.wep_text.update_text(&s.assets, ctx, &format!("{}", self.world.player.wep))?;
+        if let Some(wep) = self.world.player.wep {
+            self.reload_text.update_text(&s.assets, ctx, &format!("{:.1}s", wep.loading_time))?;
+            self.wep_text.update_text(&s.assets, ctx, &format!("{}", wep))?;
+        }
         if let Some(i) = self.cur_pickup {
             self.status_text.update_text(&s.assets, ctx, &format!("Press F to pick up {}", self.world.weapons[i]))?;
         } else {
@@ -167,7 +188,7 @@ impl GameState for Play {
         let mut deads = Vec::new();
         for (i, pickup) in self.world.pickups.iter().enumerate().rev() {
             if (pickup.pos-self.world.player.obj.pos).norm() <= 15. {
-                pickup.apply(&mut self.world.player);
+                pickup.apply(&mut self.world.player.health);
                 deads.push(i);
                 s.mplayer.play(ctx, Sound::Hit)?;
             }
@@ -194,12 +215,14 @@ impl GameState for Play {
                     vel: player_vel,
                 };
 
-                if let Some(bm) = enemy.wep.shoot(ctx, &mut s.mplayer)? {
-                    let pos = enemy.obj.pos + 20. * angle_to_vec(enemy.obj.rot);
-                    let mut bul = Object::new(pos);
-                    bul.rot = enemy.obj.rot;
+                if let Some(wep) = &mut enemy.wep {
+                    if let Some(bm) = wep.shoot(ctx, &mut s.mplayer)? {
+                        let pos = enemy.obj.pos + 20. * angle_to_vec(enemy.obj.rot);
+                        let mut bul = Object::new(pos);
+                        bul.rot = enemy.obj.rot;
 
-                    self.world.bullets.push(bm.make(bul));
+                        self.world.bullets.push(bm.make(bul));
+                    }
                 }
             }
             enemy.update(ctx, &mut s.mplayer)?;
@@ -233,7 +256,9 @@ impl GameState for Play {
         }
         for i in deads {
             let Enemy{wep, obj: Object{pos, ..}, ..} = self.world.enemies.remove(i);
-            self.world.weapons.push(wep.into_drop(pos));
+            if let Some(wep) = wep {
+                self.world.weapons.push(wep.into_drop(pos));
+            }
         }
 
         let speed = if s.modifiers.shift {
@@ -241,14 +266,16 @@ impl GameState for Play {
         } else {
             100.
         };
-        self.world.player.wep.update(ctx, &mut s.mplayer)?;
-        if s.mouse_down.left && self.world.player.wep.weapon.fire_mode.is_auto() {
-            if let Some(bm) = self.world.player.wep.shoot(ctx, &mut s.mplayer)? {
-                let pos = self.world.player.obj.pos + 16. * angle_to_vec(self.world.player.obj.rot);
-                let mut bul = Object::new(pos);
-                bul.rot = self.world.player.obj.rot;
+        if let Some(wep) = &mut self.world.player.wep {
+            wep.update(ctx, &mut s.mplayer)?;
+            if s.mouse_down.left && wep.weapon.fire_mode.is_auto() {
+                if let Some(bm) = wep.shoot(ctx, &mut s.mplayer)? {
+                    let pos = self.world.player.obj.pos + 16. * angle_to_vec(self.world.player.obj.rot);
+                    let mut bul = Object::new(pos);
+                    bul.rot = self.world.player.obj.rot;
 
-                self.world.bullets.push(bm.make(bul));
+                    self.world.bullets.push(bm.make(bul));
+                }
             }
         }
         self.world.player.obj.move_on_grid(player_vel, speed, &self.world.grid);
@@ -346,7 +373,7 @@ impl GameState for Play {
         graphics::set_color(ctx, BLUE)?;
         graphics::rectangle(ctx, DrawMode::Fill, Rect{x: 2., y: 30., w: self.world.player.health.armour.limit(0., 100.), h: 24.})?;
         graphics::set_color(ctx, RED)?;
-        graphics::rectangle(ctx, DrawMode::Fill, Rect{x: 2., y: 58., w: self.world.player.wep.loading_time.limit(0., 1.)*100., h: 24.})?;
+        graphics::rectangle(ctx, DrawMode::Fill, Rect{x: 2., y: 58., w: self.world.player.wep.map(|m| m.loading_time).unwrap_or(0.).limit(0., 1.)*100., h: 24.})?;
         graphics::set_color(ctx, WHITE)?;
         self.hp_text.draw_text(ctx)?;
         self.arm_text.draw_text(ctx)?;
@@ -364,23 +391,38 @@ impl GameState for Play {
     }
     fn mouse_up(&mut self, s: &mut State, ctx: &mut Context, btn: MouseButton) {
         if let MouseButton::Left = btn {
-            if let Some(bm) = self.world.player.wep.shoot(ctx, &mut s.mplayer).unwrap() {
-                let pos = self.world.player.obj.pos + 16. * angle_to_vec(self.world.player.obj.rot);
-                let mut bul = Object::new(pos);
-                bul.rot = self.world.player.obj.rot;
+            if let Some(wep) = &mut self.world.player.wep {
+                if let Some(bm) = wep.shoot(ctx, &mut s.mplayer).unwrap() {
+                    let pos = self.world.player.obj.pos + 16. * angle_to_vec(self.world.player.obj.rot);
+                    let mut bul = Object::new(pos);
+                    bul.rot = self.world.player.obj.rot;
 
-                self.world.bullets.push(bm.make(bul));
+                    self.world.bullets.push(bm.make(bul));
+                }
             }
         }
     }
     fn key_up(&mut self, s: &mut State, ctx: &mut Context, keycode: Keycode) {
         use self::Keycode::*;
         match keycode {
-            R => self.world.player.wep.reload(ctx, &mut s.mplayer).unwrap(),
+            R => {
+                if let Some(wep) = &mut self.world.player.wep {
+                    wep.reload(ctx, &mut s.mplayer).unwrap()
+                } else {
+                    self.world.bullets.push(crate::obj::bullet::Bullet{obj: self.world.player.obj.clone(), weapon: &crate::obj::weapon::WEAPONS[0]});
+                }
+            },
             F => {
                 if let Some(i) = self.cur_pickup {
-                    let wep = self.world.player.wep.into_drop(self.world.player.obj.pos);
-                    self.world.player.wep = WeaponInstance::from_drop(std::mem::replace(&mut self.world.weapons[i], wep));
+                    self.world.player.wep = Some(WeaponInstance::from_drop(
+                        if let Some(wep) = self.world.player.wep {
+                            let w = wep.into_drop(self.world.player.obj.pos);
+                            std::mem::replace(&mut self.world.weapons[i], w)
+                        } else {
+                            self.world.weapons.remove(i)
+                        }
+                    ));
+                    self.cur_pickup = None;
                 }
             },
             _ => return,

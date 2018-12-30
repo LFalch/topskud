@@ -36,13 +36,68 @@ pub struct World {
     pub pickups: Vec<Pickup>,
 }
 
+impl World {
+    pub fn enemy_pickup(&mut self) {
+        for enemy in &mut self.enemies {
+            let mut dead = None;
+            for (w, weapon) in self.weapons.iter().enumerate() {
+                if (weapon.pos - enemy.obj.pos).norm() <= 16. {
+                    dead = Some(w);
+                    break;
+                }
+            }
+            if let Some(i) = dead {
+                enemy.wep = Some(WeaponInstance::from_drop(self.weapons.remove(i)));
+            }
+            let mut deads = Vec::new();
+            for (p, pickup) in self.pickups.iter().enumerate() {
+                if (pickup.pos - enemy.obj.pos).norm() <= 16. {
+                    deads.push(p);
+                    break;
+                }
+            }
+            for i in deads.into_iter() {
+                let pickup = self.pickups.remove(i);
+                pickup.apply(&mut enemy.health);
+            }
+        }
+    }
+    pub fn player_pickup(&mut self) {
+        let player = &mut self.player;
+        if player.wep.is_none() {
+            let mut dead = None;
+            for (w, weapon) in self.weapons.iter().enumerate() {
+                if (weapon.pos - player.obj.pos).norm() <= 16. {
+                    dead = Some(w);
+                    break;
+                }
+            }
+            if let Some(i) = dead {
+                player.wep = Some(WeaponInstance::from_drop(self.weapons.remove(i)));
+            }
+        }
+
+        let mut deads = Vec::new();
+        for (p, pickup) in self.pickups.iter().enumerate() {
+            if (pickup.pos - player.obj.pos).norm() <= 16. {
+                deads.push(p);
+                break;
+            }
+        }
+        for i in deads.into_iter() {
+            let pickup = self.pickups.remove(i);
+            pickup.apply(&mut player.health);
+        }
+    }
+}
+
 pub struct Statistics {
     pub hits: usize,
     pub misses: usize,
     pub enemies_left: usize,
     pub health_left: Health,
     pub level: Level,
-    pub weapon: WeaponInstance<'static>,
+    pub weapon: Option<WeaponInstance<'static>>,
 }
 
 include!("material_macro.rs");

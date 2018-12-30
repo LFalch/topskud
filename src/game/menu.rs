@@ -6,7 +6,6 @@ use crate::{
         btn::Button,
         snd::Sound,
     },
-    obj::{health::Health, weapon::WEAPONS}
 };
 use ggez::{
     Context, GameResult,
@@ -112,11 +111,11 @@ impl GameState for Menu {
                             let mut cam = Campaign::load(cam).unwrap();
                             let lvl = cam.next_level().unwrap();
                             s.content = Content::Campaign(cam);
-                            s.switch(StateSwitch::Play{lvl, health: Health::default(), wep: WEAPONS[1].make_instance()})
+                            s.switch(StateSwitch::Play(lvl));
                         },
                         Callback::SwitchPlay(p) => {
                             let lvl = Level::load(&p).unwrap();
-                            s.switch(StateSwitch::Play{lvl, health: Health::default(), wep: WEAPONS[1].make_instance()})
+                            s.switch(StateSwitch::Play(lvl));
                         },
                         Callback::SwitchEditor => s.switch(StateSwitch::Editor(None)),
                     }

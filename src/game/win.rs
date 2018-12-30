@@ -4,7 +4,7 @@ use crate::{
         tex::PosText,
         btn::Button,
     },
-    obj::{health::Health, weapon::{WEAPONS, WeaponInstance}},
+    obj::{health::Health, weapon::WeaponInstance},
 };
 use ggez::{
     Context, GameResult,
@@ -34,7 +34,7 @@ pub struct Win {
     buttons: WinButtons,
     health: Health,
     level: Level,
-    weapon: WeaponInstance<'static>
+    weapon: Option<WeaponInstance<'static>>
 }
 
 impl Win {
@@ -71,7 +71,7 @@ impl Win {
         }))
     }
     fn restart(&self, s: &mut State) {
-        s.switch(StateSwitch::Play{health: Health::default(), wep: WEAPONS[1].make_instance(), lvl: self.level.clone()});
+        s.switch(StateSwitch::Play(self.level.clone()));
     }
     fn edit(&self, s: &mut State) {
         s.switch(StateSwitch::Editor(Some(self.level.clone())));
@@ -89,7 +89,7 @@ impl Win {
             Content::None | Content::File(_) => return,
         }
 
-        s.switch(StateSwitch::Play{health: self.health, wep: self.weapon, lvl});
+        s.switch(StateSwitch::PlayWith{health: self.health, wep: self.weapon, lvl});
     }
 }
 

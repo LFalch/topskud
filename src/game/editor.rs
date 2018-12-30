@@ -4,7 +4,7 @@ use crate::{
     io::tex::{Sprite, PosText},
     io::snd::Sound,
     ext::BoolExt,
-    obj::{Object, enemy::Enemy, pickup::PICKUPS, weapon::WEAPONS, health::Health}
+    obj::{Object, enemy::Enemy, pickup::PICKUPS, weapon::WEAPONS}
 };
 use ggez::{
     Context, GameResult,
@@ -251,7 +251,24 @@ impl GameState for Editor {
             };
             graphics::draw_ex(ctx, s.assets.get_img(Sprite::Intel), drawparams)?;
         }
+
         graphics::set_color(ctx, graphics::WHITE)?;
+        for (i, enemy) in self.level.enemies.iter().enumerate() {
+            if let Tool::Selector(Selection{ref enemies, ..})= self.current {
+                if enemies.contains(&i) {
+                    graphics::set_color(ctx, YELLOW)?;
+                    graphics::circle(ctx, DrawMode::Fill, enemy.obj.pos, 17., 0.5)?;
+                }
+            }
+            if self.draw_visibility_cones {
+                graphics::set_color(ctx, BLUE)?;
+                enemy.draw_visibility_cone(ctx, 512.)?;
+            }
+            graphics::set_color(ctx, graphics::WHITE)?;
+            enemy.draw(ctx, &s.assets)?;
+        }
+
+        // Draw init pick-up-ables on top of enemies so they're visible
         for (i, pickup) in self.level.pickups.iter().enumerate() {
             if let Tool::Selector(Selection{ref pickups, ..}) = self.current {
                 if pickups.contains(&i) {
@@ -277,21 +294,7 @@ impl GameState for Editor {
             graphics::draw_ex(ctx, s.assets.get_img(weapon.weapon.entity_sprite), drawparams)?;
         }
 
-        for (i, enemy) in self.level.enemies.iter().enumerate() {
-            if let Tool::Selector(Selection{ref enemies, ..})= self.current {
-                if enemies.contains(&i) {
-                    graphics::set_color(ctx, YELLOW)?;
-                    graphics::circle(ctx, DrawMode::Fill, enemy.obj.pos, 17., 0.5)?;
-                }
-            }
-            if self.draw_visibility_cones {
-                graphics::set_color(ctx, BLUE)?;
-                enemy.draw_visibility_cone(ctx, 512.)?;
-            }
-            graphics::set_color(ctx, graphics::WHITE)?;
-            enemy.draw(ctx, &s.assets)?;
-        }
-
+        // Draw moving objects shadows
         if let Tool::Selector(ref selection @ Selection{moving: Some(_), ..}) = self.current {
             let mousepos = self.mousepos(s);
             let dist = mousepos - selection.moving.unwrap();
@@ -424,7 +427,7 @@ impl GameState for Editor {
             C => self.draw_visibility_cones.toggle(),
             G => self.snap_on_grid.toggle(),
             P => {
-                s.switch(StateSwitch::Play{lvl: self.level.clone(), health: Health{hp: 100., armour: 0.}, wep: WEAPONS[1].make_instance()})
+                s.switch(StateSwitch::Play(self.level.clone()));
             }
             T => self.current = Tool::Selector(Selection::default()),
             Delete | Backspace => if let Tool::Selector(ref mut selection) = self.current {
@@ -583,12 +586,13 @@ impl GameState for Editor {
                     Tool::Inserter(Insertion::Enemy{rot}) => {
                         s.mplayer.play(ctx, Sound::Reload).unwrap();
                         self.level.enemies.push(Enemy::new(Object::with_rot(mousepos, rot)));
+                        self.level.weapons.push(WEAPONS[0].make_drop(mousepos));
                     },
                     Tool::Inserter(Insertion::Pickup(i)) => {
                         self.level.pickups.push((mousepos, i));
                     },
                     Tool::Inserter(Insertion::Weapon(i)) => {
-                        self.level.weapons.push(WEAPONS[i as usize].make_instance().into_drop(mousepos));
+                        self.level.weapons.push(WEAPONS[i as usize].make_drop(mousepos));
                     },
                     Tool::Inserter(Insertion::Intel) => self.level.intels.push(mousepos),
                 }

@@ -30,10 +30,11 @@ use self::world::Statistics;
 pub enum StateSwitch {
     Menu,
     Editor(Option<Level>),
-    Play{
+    Play(Level),
+    PlayWith{
         lvl: Level,
         health: Health,
-        wep: WeaponInstance<'static>,
+        wep: Option<WeaponInstance<'static>>,
     },
     Lose(Statistics),
     Win(Statistics),
@@ -156,7 +157,8 @@ impl EventHandler for Master {
         if let Some(gsb) = mem::replace(&mut self.state.switch_state, None) {
             use self::StateSwitch::*;
             self.gs = match gsb {
-                Play{lvl, health, wep} => play::Play::new(ctx, &mut self.state, lvl, health, wep),
+                PlayWith{lvl, health, wep} => play::Play::new(ctx, &mut self.state, lvl, Some((health, wep))),
+                Play(lvl) => play::Play::new(ctx, &mut self.state, lvl, None),
                 Menu => menu::Menu::new(ctx, &mut self.state),
                 Editor(l) => editor::Editor::new(ctx, &self.state, l),
                 Win(stats) => win::Win::new(ctx, &mut self.state, stats),

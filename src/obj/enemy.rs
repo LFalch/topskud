@@ -13,7 +13,7 @@ use crate::{
     game::{DELTA, world::Grid},
 };
 
-use super::{Object, health::Health, weapon::{WeaponInstance, WEAPONS}};
+use super::{Object, health::Health, weapon::WeaponInstance};
 
 #[derive(Debug, Clone)]
 pub enum Chaser {
@@ -47,15 +47,10 @@ pub struct Enemy {
     pub obj: Object,
     #[serde(skip)]
     pub behaviour: Chaser,
-    #[serde(skip, default = "default_weapon")]
-    pub wep: WeaponInstance<'static>,
+    #[serde(skip)]
+    pub wep: Option<WeaponInstance<'static>>,
     #[serde(skip)]
     pub health: Health,
-}
-
-#[inline]
-fn default_weapon() -> WeaponInstance<'static> {
-    WEAPONS[0].make_instance()
 }
 
 pub const VISIBILITY: f32 = ::std::f32::consts::FRAC_PI_4;
@@ -64,7 +59,7 @@ impl Enemy {
     pub fn new(obj: Object) -> Enemy {
         Enemy {
             obj,
-            wep: default_weapon(),
+            wep: None,
             health: Health::default(),
             behaviour: Chaser::NoIntel,
         }
@@ -98,9 +93,11 @@ impl Enemy {
         }
     }
     pub fn update(&mut self, ctx: &mut Context, mplayer: &mut MediaPlayer) -> GameResult<()> {
-        self.wep.update(ctx, mplayer)?;
-        if self.wep.cur_clip == 0 && self.wep.loading_time == 0. {
-            self.wep.reload(ctx, mplayer)?;
+        if let Some(wep) = &mut self.wep {
+            wep.update(ctx, mplayer)?;
+            if wep.cur_clip == 0 && wep.loading_time == 0. {
+                wep.reload(ctx, mplayer)?;
+            }
         }
         match self.behaviour {
             Chaser::NoIntel => (),

@@ -9,7 +9,7 @@ use ggez::{
 
 use std::fmt::{self, Debug};
 
-use super::player::Player;
+use super::health::Health;
 
 #[derive(Debug, Clone)]
 pub struct Pickup {
@@ -26,8 +26,8 @@ impl Pickup {
         }
     }
     #[inline]
-    pub fn apply(&self, player: &mut Player) {
-        (self.pickup_type.ability)(self, player)
+    pub fn apply(&self, health: &mut Health) {
+        (self.pickup_type.ability)(health)
     }
     #[inline]
     pub fn draw(&self, ctx: &mut Context, assets: &Assets) -> GameResult<()> {
@@ -38,7 +38,7 @@ impl Pickup {
 #[derive(Copy, Clone)]
 pub struct PickupType {
     pub spr: Sprite,
-    ability: fn(&Pickup, &mut Player),
+    ability: fn(&mut Health),
 }
 
 impl PickupType {
@@ -75,12 +75,12 @@ pub const PICKUPS: [PickupType; 3] = [
         ability: adrenaline,
     }
 ];
-fn health_pack(_p: &Pickup, pl: &mut Player) {
-    pl.health.hp = 100.;
+fn health_pack(health: &mut Health) {
+    health.hp = 100.;
 }
-fn armour(_p: &Pickup, pl: &mut Player) {
-    pl.health.armour = 100.;
+fn armour(health: &mut Health) {
+    health.armour = 100.;
 }
-fn adrenaline(_p: &Pickup, pl: &mut Player) {
-    pl.health.hp += 100.;
+fn adrenaline(health: &mut Health) {
+    health.hp += 100.;
 }
