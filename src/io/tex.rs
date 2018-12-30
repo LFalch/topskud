@@ -109,6 +109,7 @@ sprites! {
     WallLight, wall_light, 32., 32.,
     WallLight2, wall_light2, 32., 32.,
     WallLight3, wall_light3, 32., 32.,
+    RoadMark, road_mark, 32., 32.,
     Glock, glock, 32., 32.,
     FiveSeven, five_seven, 32., 32.,
     M4, m4, 32., 32.,

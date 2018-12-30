@@ -30,6 +30,7 @@ pub const DECORATIONS: &[DecorationDecl] = &[
     decl(Sprite::WallLight, false),
     decl(Sprite::WallLight2, false),
     decl(Sprite::WallLight3, false),
+    decl(Sprite::RoadMark, false),
 ];
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -172,6 +172,7 @@ impl Editor {
             (Sprite::WallLight, Insertion::Decoration{i: 11, rot: 0.}),
             (Sprite::WallLight2, Insertion::Decoration{i: 12, rot: 0.}),
             (Sprite::WallLight3, Insertion::Decoration{i: 13, rot: 0.}),
+            (Sprite::RoadMark, Insertion::Decoration{i: 14, rot: 0.}),
         ])?;
 
         let save;
