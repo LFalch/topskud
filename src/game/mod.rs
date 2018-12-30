@@ -32,7 +32,7 @@ pub enum StateSwitch {
     Editor(Option<Level>),
     Play(Level),
     PlayWith{
-        lvl: Level,
+        lvl: Box<Level>,
         health: Health,
         wep: Option<WeaponInstance<'static>>,
     },
@@ -157,7 +157,7 @@ impl EventHandler for Master {
         if let Some(gsb) = mem::replace(&mut self.state.switch_state, None) {
             use self::StateSwitch::*;
             self.gs = match gsb {
-                PlayWith{lvl, health, wep} => play::Play::new(ctx, &mut self.state, lvl, Some((health, wep))),
+                PlayWith{lvl, health, wep} => play::Play::new(ctx, &mut self.state, *lvl, Some((health, wep))),
                 Play(lvl) => play::Play::new(ctx, &mut self.state, lvl, None),
                 Menu => menu::Menu::new(ctx, &mut self.state),
                 Editor(l) => editor::Editor::new(ctx, &self.state, l),

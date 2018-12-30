@@ -60,7 +60,7 @@ impl Lose {
         s.switch(StateSwitch::Editor(Some(self.level.clone())));
     }
     fn restart(&self, s: &mut State) {
-        s.switch(StateSwitch::PlayWith{lvl: self.level.clone(), health: self.health, wep: self.weapon})
+        s.switch(StateSwitch::PlayWith{lvl: Box::new(self.level.clone()), health: self.health, wep: self.weapon})
     }
 }
 

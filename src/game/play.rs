@@ -105,6 +105,7 @@ impl Play {
                         grid: level.grid,
                         exit: level.exit,
                         intels: level.intels,
+                        decorations: level.decorations,
                         pickups: level.pickups.into_iter().map(|(p, i)| Pickup::new(p, i)).collect(),
                     };
                     world.enemy_pickup();
@@ -329,6 +330,14 @@ impl GameState for Play {
             };
             graphics::draw_ex(ctx, s.assets.get_img(Sprite::Intel), drawparams)?;
         }
+        for decoration in &self.world.decorations {
+            decoration.draw(ctx, &s.assets)?;
+        }
+
+        for blood in &self.bloods {
+            blood.draw(ctx, &s.assets)?;
+        }
+
         for pickup in &self.world.pickups {
             let drawparams = graphics::DrawParam {
                 dest: pickup.pos,
@@ -346,10 +355,6 @@ impl GameState for Play {
                 .. Default::default()
             };
             graphics::draw_ex(ctx, s.assets.get_img(wep.weapon.entity_sprite), drawparams)?;
-        }
-
-        for blood in &self.bloods {
-            blood.draw(ctx, &s.assets)?;
         }
 
         self.world.player.draw(ctx, &s.assets)?;

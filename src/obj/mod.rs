@@ -8,6 +8,7 @@ pub mod health;
 pub mod weapon;
 pub mod bullet;
 pub mod pickup;
+pub mod decoration;
 
 use crate::game::world::Grid;
 use crate::game::DELTA;

@@ -8,6 +8,7 @@ use crate::{
         bullet::Bullet,
         weapon::{WeaponInstance, WeaponDrop, WEAPONS},
         pickup::Pickup,
+        decoration::DecorationObj,
     }
 };
 use ggez::{
@@ -33,6 +34,7 @@ pub struct World {
     pub enemies: Vec<Enemy>,
     pub bullets: Vec<Bullet<'static>>,
     pub weapons: Vec<WeaponDrop<'static>>,
+    pub decorations: Vec<DecorationObj>,
     pub pickups: Vec<Pickup>,
 }
 
@@ -124,6 +126,7 @@ pub struct Level {
     pub exit: Option<Point2>,
     pub intels: Vec<Point2>,
     pub pickups: Vec<(Point2, u8)>,
+    pub decorations: Vec<DecorationObj>,
     pub weapons: Vec<WeaponDrop<'static>>,
 }
 
@@ -136,6 +139,7 @@ impl Level {
             exit: None,
             intels: Vec::new(),
             pickups: Vec::new(),
+            decorations: Vec::new(),
             weapons: Vec::new(),
         }
     }
@@ -170,6 +174,8 @@ impl Level {
                     .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?),
                 "INTELS" => ret.intels = bincode::deserialize_from(&mut reader)
                     .map(|l: Vec<(f32, f32)>| l.into_iter().map(|(x, y)| Point2::new(x, y)).collect())
+                    .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?,
+                "DECORATIONS" => ret.decorations = bincode::deserialize_from(&mut reader)
                     .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?,
                 "PICKUPS" => ret.pickups = bincode::deserialize_from(&mut reader)
                     .map(|l: Vec<((f32, f32), u8)>| l.into_iter().map(|((x, y), i)| (Point2::new(x, y), i)).collect())
@@ -210,6 +216,11 @@ impl Level {
             let intels: Vec<_> = self.intels.iter().map(|p| (p.x, p.y)).collect();
             bincode::serialize_into(&mut file, &intels)
                 .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?;
+        }
+        if !self.decorations.is_empty() {
+            writeln!(file, "\nDECORATIONS")?;
+            bincode::serialize_into(&mut file, &self.decorations)
+            .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?;
         }
         if !self.pickups.is_empty() {
             writeln!(file, "\nPICKUPS")?;

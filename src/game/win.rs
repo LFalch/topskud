@@ -89,7 +89,7 @@ impl Win {
             Content::None | Content::File(_) => return,
         }
 
-        s.switch(StateSwitch::PlayWith{health: self.health, wep: self.weapon, lvl});
+        s.switch(StateSwitch::PlayWith{health: self.health, wep: self.weapon, lvl: Box::new(lvl)});
     }
 }
 

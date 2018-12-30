@@ -4,7 +4,7 @@ use crate::{
     io::tex::{Sprite, PosText},
     io::snd::Sound,
     ext::BoolExt,
-    obj::{Object, enemy::Enemy, pickup::PICKUPS, weapon::WEAPONS}
+    obj::{Object, enemy::Enemy, decoration::{DecorationObj, DECORATIONS}, pickup::PICKUPS, weapon::WEAPONS}
 };
 use ggez::{
     Context, GameResult,
@@ -26,14 +26,30 @@ enum Tool {
     Selector(Selection),
 }
 
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 enum Insertion {
     Material(Material),
     Intel,
     Enemy{rot: f32},
     Pickup(u8),
     Weapon(u8),
+    Decoration{i: usize, rot: f32},
     Exit,
+}
+impl ::std::cmp::PartialEq for Insertion {
+    fn eq(&self, rhs: &Self) -> bool {
+        use self::Insertion::*;
+        match (self, rhs) {
+            (Material(m), Material(n)) if m == n => true,
+            (Intel, Intel) => true,
+            (Enemy{..}, Enemy{..}) => true,
+            (Pickup(i), Pickup(j)) if i == j => true,
+            (Weapon(i), Weapon(j)) if i == j => true,
+            (Decoration{i, ..}, Decoration{i: j, ..}) if i == j => true,
+            (Exit, Exit) => true,
+            _ => false
+        }
+    }
 }
 
 #[derive(Default, Debug, PartialEq, Clone)]
@@ -43,6 +59,7 @@ struct Selection {
     intels: Vec<usize>,
     pickups: Vec<usize>,
     weapons: Vec<usize>,
+    decorations: Vec<usize>,
     moving: Option<Point2>,
 }
 
@@ -76,9 +93,7 @@ struct EntitiesBar {
     palette: &'static [EntityItem]
 }
 
-mod is_fns;
-
-type EntityItem = (Sprite, Insertion, fn(Insertion) -> bool);
+type EntityItem = (Sprite, Insertion);
 
 impl EntitiesBar {
     #[allow(clippy::new_ret_no_self)]
@@ -97,9 +112,9 @@ impl EntitiesBar {
             .. Default::default()
         };
 
-        for (spr, _, is_selected) in self.palette {
+        for (spr, ins) in self.palette {
             if let Some(cur) = cur {
-                if (is_selected)(cur) {
+                if ins == &cur {
                     graphics::set_color(ctx, YELLOW)?;
                     graphics::circle(ctx, DrawMode::Fill, drawparams.dest, 17., 0.5)?;
                 }
@@ -112,7 +127,7 @@ impl EntitiesBar {
     fn click(&self, mouse: Point2) -> Option<Insertion> {
         if mouse.y >= self.ent_text.pos.y && mouse.y < self.ent_text.pos.y+32. {
             let mut range = self.ent_text.pos.x + 82.;
-            for (_, ins, _) in self.palette {
+            for (_, ins) in self.palette {
                 if mouse.x >= range && mouse.x < range + 32. {
                     return Some(*ins);
                 }
@@ -127,20 +142,27 @@ impl Editor {
     #[allow(clippy::new_ret_no_self)]
     pub fn new(ctx: &mut Context, s: &State, level: Option<Level>) -> GameResult<Box<dyn GameState>> {
         let mat_text = s.assets.text(ctx, Point2::new(2., 18.0), "Materials:")?;
-        use self::is_fns::*;
-        let entities_bar = EntitiesBar::new(Point2::new(453., 18.0), ctx, s, &[
-            (Sprite::Enemy, Insertion::Enemy{rot: 0.}, is_enemy),
-            (Sprite::Goal, Insertion::Exit, is_exit),
-            (Sprite::Intel, Insertion::Intel, is_intel),
-            (Sprite::HealthPack, Insertion::Pickup(0), is_hp),
-            (Sprite::Armour, Insertion::Pickup(1), is_armour),
-            (Sprite::Adrenaline, Insertion::Pickup(2), is_adrenaline),
-            (Sprite::Glock, Insertion::Weapon(0), is_glock),
-            (Sprite::FiveSeven, Insertion::Weapon(1), is_five_seven),
-            (Sprite::Magnum, Insertion::Weapon(2), is_magnum),
-            (Sprite::M4, Insertion::Weapon(3), is_m4a1),
-            (Sprite::Ak47, Insertion::Weapon(4), is_ak47),
-            (Sprite::Arwp, Insertion::Weapon(5), is_arwp),
+        let entities_bar = EntitiesBar::new(Point2::new(392., 18.0), ctx, s, &[
+            (Sprite::Enemy, Insertion::Enemy{rot: 0.}),
+            (Sprite::Goal, Insertion::Exit),
+            (Sprite::Intel, Insertion::Intel),
+            (Sprite::HealthPack, Insertion::Pickup(0)),
+            (Sprite::Armour, Insertion::Pickup(1)),
+            (Sprite::Adrenaline, Insertion::Pickup(2)),
+            (Sprite::Glock, Insertion::Weapon(0)),
+            (Sprite::FiveSeven, Insertion::Weapon(1)),
+            (Sprite::Magnum, Insertion::Weapon(2)),
+            (Sprite::M4, Insertion::Weapon(3)),
+            (Sprite::Ak47, Insertion::Weapon(4)),
+            (Sprite::Arwp, Insertion::Weapon(5)),
+            (Sprite::Chair1, Insertion::Decoration{i: 0, rot: 0.}),
+            (Sprite::Chair2, Insertion::Decoration{i: 1, rot: 0.}),
+            (Sprite::ChairBoss, Insertion::Decoration{i: 2, rot: 0.}),
+            (Sprite::LampPost, Insertion::Decoration{i: 3, rot: 0.}),
+            (Sprite::OfficePlant, Insertion::Decoration{i: 4, rot: 0.}),
+            (Sprite::OfficePlant2, Insertion::Decoration{i: 5, rot: 0.}),
+            (Sprite::OfficePlant3, Insertion::Decoration{i: 6, rot: 0.}),
+            (Sprite::Trashcan, Insertion::Decoration{i: 7, rot: 0.}),
         ])?;
 
         let save;
@@ -188,8 +210,10 @@ impl GameState for Editor {
         let v = speed * Vector2::new(s.input.hor(), s.input.ver());
         self.pos += v * DELTA;
 
-        if let Tool::Inserter(Insertion::Enemy{ref mut rot}) = self.current {
-            *rot += self.rotation_speed * DELTA;
+        match self.current {
+            Tool::Inserter(Insertion::Enemy{ref mut rot}) => *rot += self.rotation_speed * DELTA,
+            Tool::Inserter(Insertion::Decoration{ref mut rot, ..}) => *rot += self.rotation_speed * DELTA,
+            _ => (),
         }
         Ok(())
     }
@@ -205,6 +229,7 @@ impl GameState for Editor {
         Ok(())
     }
 
+    #[allow(clippy::cyclomatic_complexity)]
     fn draw(&mut self, s: &State, ctx: &mut Context) -> GameResult<()> {
         graphics::set_color(ctx, graphics::WHITE)?;
         self.level.grid.draw(ctx, &s.assets)?;
@@ -268,6 +293,16 @@ impl GameState for Editor {
             graphics::set_color(ctx, graphics::WHITE)?;
             enemy.draw(ctx, &s.assets)?;
         }
+        for (i, decoration) in self.level.decorations.iter().enumerate() {
+            if let Tool::Selector(Selection{ref decorations, ..})= self.current {
+                if decorations.contains(&i) {
+                    graphics::set_color(ctx, YELLOW)?;
+                    graphics::circle(ctx, DrawMode::Fill, decoration.obj.pos, 17., 0.5)?;
+                }
+            }
+            graphics::set_color(ctx, graphics::WHITE)?;
+            decoration.draw(ctx, &s.assets)?;
+        }
 
         // Draw init pick-up-ables on top of enemies so they're visible
         for (i, pickup) in self.level.pickups.iter().enumerate() {
@@ -313,6 +348,11 @@ impl GameState for Editor {
                     .. Default::default()
                 };
                 graphics::draw_ex(ctx, s.assets.get_img(Sprite::Intel), drawparams)?;
+            }
+            for &i in &selection.decorations {
+                let mut dec = self.level.decorations[i].clone();
+                dec.obj.pos += dist;
+                dec.draw(ctx, &s.assets)?;
             }
             for &i in &selection.pickups {
                 let pickup = self.level.pickups[i];
@@ -380,6 +420,16 @@ impl GameState for Editor {
                 };
                 graphics::draw_ex(ctx, s.assets.get_img(Sprite::Enemy), drawparams)?;
             }
+            Tool::Inserter(Insertion::Decoration{i, rot}) => {
+                let drawparams = graphics::DrawParam {
+                    dest,
+                    rotation: rot,
+                    offset: Point2::new(0.5, 0.5),
+                    color: Some(TRANS),
+                    .. Default::default()
+                };
+                graphics::draw_ex(ctx, s.assets.get_img(DECORATIONS[i].spr), drawparams)?;
+            }
             Tool::Inserter(Insertion::Exit) => {
                 let drawparams = graphics::DrawParam {
                     dest,
@@ -438,6 +488,7 @@ impl GameState for Editor {
                     mut intels,
                     mut pickups,
                     mut weapons,
+                    mut decorations,
                     exit, moving: _,
                 } = ::std::mem::replace(selection, Selection::default());
 
@@ -452,6 +503,10 @@ impl GameState for Editor {
                 for intel in intels.into_iter().rev() {
                     self.level.intels.remove(intel);
                 }
+                decorations.sort();
+                for decoration in decorations.into_iter().rev() {
+                    self.level.decorations.remove(decoration);
+                }
                 pickups.sort();
                 for pickup in pickups.into_iter().rev() {
                     self.level.pickups.remove(pickup);
@@ -461,8 +516,26 @@ impl GameState for Editor {
                     self.level.weapons.remove(weapon);
                 }
             }
-            Comma => self.rotation_speed += 6.,
-            Period => self.rotation_speed -= 6.,
+            Comma => {
+                self.rotation_speed = 0.;
+                if s.modifiers.shift {
+                    match self.current {
+                        Tool::Inserter(Insertion::Enemy{ref mut rot}) => *rot -= std::f32::consts::FRAC_PI_4,
+                        Tool::Inserter(Insertion::Decoration{ref mut rot, ..}) => *rot -= std::f32::consts::FRAC_PI_4,
+                        _ => (),
+                    }
+                }
+            }
+            Period => {
+                self.rotation_speed = 0.;
+                if s.modifiers.shift {
+                    match self.current {
+                        Tool::Inserter(Insertion::Enemy{ref mut rot}) => *rot += std::f32::consts::FRAC_PI_4,
+                        Tool::Inserter(Insertion::Decoration{ref mut rot, ..}) => *rot += std::f32::consts::FRAC_PI_4,
+                        _ => (),
+                    }
+                }
+            }
             Up if s.modifiers.ctrl => self.level.grid.shorten(),
             Down if s.modifiers.ctrl => self.level.grid.heighten(),
             Left if s.modifiers.ctrl => self.level.grid.thin(),
@@ -482,6 +555,11 @@ impl GameState for Editor {
                 }
                 for &i in &selection.intels {
                     if (self.level.intels[i] - mousepos).norm() <= 16. {
+                        return selection.moving = Some(mousepos);
+                    }
+                }
+                for &i in &selection.decorations {
+                    if (self.level.decorations[i].obj.pos - mousepos).norm() <= 16. {
                         return selection.moving = Some(mousepos);
                     }
                 }
@@ -537,6 +615,9 @@ impl GameState for Editor {
                             for i in selection.intels.iter().rev() {
                                 self.level.intels[*i] += dist;
                             }
+                            for i in selection.decorations.iter().rev() {
+                                self.level.decorations[*i].obj.pos += dist;
+                            }
                             for i in selection.pickups.iter().rev() {
                                 self.level.pickups[*i].0 += dist;
                             }
@@ -566,6 +647,12 @@ impl GameState for Editor {
                                     return
                                 }
                             }
+                            for (i, decoration) in self.level.decorations.iter().enumerate() {
+                                if (decoration.obj.pos - mousepos).norm() <= 16. && !selection.decorations.contains(&i) {
+                                    selection.decorations.push(i);
+                                    return
+                                }
+                            }
                             for (i, &pickup) in self.level.pickups.iter().enumerate() {
                                 if (pickup.0 - mousepos).norm() <= 16. && !selection.pickups.contains(&i) {
                                     selection.pickups.push(i);
@@ -589,6 +676,9 @@ impl GameState for Editor {
                         self.level.enemies.push(Enemy::new(Object::with_rot(mousepos, rot)));
                         self.level.weapons.push(WEAPONS[0].make_drop(mousepos));
                     },
+                    Tool::Inserter(Insertion::Decoration{i, rot}) => {
+                        self.level.decorations.push(DecorationObj::new(Object::with_rot(mousepos, rot), i));
+                    },
                     Tool::Inserter(Insertion::Pickup(i)) => {
                         self.level.pickups.push((mousepos, i));
                     },
@@ -602,11 +692,11 @@ impl GameState for Editor {
             _ => ()
         }
     }
-    fn key_down(&mut self, s: &mut State,_ctx: &mut Context,  keycode: Keycode) {
+    fn key_down(&mut self, s: &mut State, _ctx: &mut Context, keycode: Keycode) {
         use self::Keycode::*;
         match keycode {
-            Comma => self.rotation_speed -= 6.,
-            Period => self.rotation_speed += 6.,
+            Comma if !s.modifiers.shift => self.rotation_speed -= 6.,
+            Period if !s.modifiers.shift => self.rotation_speed += 6.,
             Q => self.level.start_point = Some(self.mousepos(&s)),
             _ => return,
         }

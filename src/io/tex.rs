@@ -96,6 +96,7 @@ sprites! {
     HealthPack, health_pack, 32., 32.,
     Armour, armour, 32., 32.,
     Trashcan, trashcan, 32., 32.,
+    LampPost, lamp_post, 32., 32.,
     Chair1, chair1, 32., 32.,
     Chair2, chair2, 32., 32.,
     ChairBoss, chair_boss, 32., 32.,
