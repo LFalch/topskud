@@ -174,7 +174,7 @@ impl Level {
                     .map(|l: Vec<((f32, f32), u8)>| l.into_iter().map(|((x, y), i)| (Point2::new(x, y), i)).collect())
                     .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?,
                 "WEAPONS" => ret.weapons = bincode::deserialize_from(&mut reader)
-                    .map(|l: Vec<((f32, f32), u8)>| l.into_iter().map(|((x, y), i)| WEAPONS[i as usize].make_instance().into_drop(Point2::new(x, y))).collect())
+                    .map(|l: Vec<((f32, f32), u8)>| l.into_iter().map(|((x, y), i)| WEAPONS[i as usize].make_drop(Point2::new(x, y))).collect())
                     .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?,
                 "END" => break,
                 _ => return Err("Bad section".to_string())?
