@@ -61,7 +61,7 @@ impl Debug for PickupType {
     }
 }
 
-pub const PICKUPS: [PickupType; 2] = [
+pub const PICKUPS: [PickupType; 3] = [
     PickupType {
         spr: Sprite::HealthPack,
         ability: health_pack
@@ -69,6 +69,10 @@ pub const PICKUPS: [PickupType; 2] = [
     PickupType {
         spr: Sprite::Armour,
         ability: armour
+    },
+    PickupType {
+        spr: Sprite::Adrenaline,
+        ability: adrenaline,
     }
 ];
 fn health_pack(_p: &Pickup, pl: &mut Player) {
@@ -76,4 +80,7 @@ fn health_pack(_p: &Pickup, pl: &mut Player) {
 }
 fn armour(_p: &Pickup, pl: &mut Player) {
     pl.health.armour = 100.;
+}
+fn adrenaline(_p: &Pickup, pl: &mut Player) {
+    pl.health.hp += 100.;
 }

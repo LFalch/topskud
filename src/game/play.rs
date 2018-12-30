@@ -1,4 +1,5 @@
 use crate::{
+    ext::FloatExt,
     util::{
         BLUE, GREEN, RED,
         angle_to_vec, angle_from_vec,
@@ -336,24 +337,16 @@ impl GameState for Play {
         Ok(())
     }
     fn draw_hud(&mut self, s: &State, ctx: &mut Context) -> GameResult<()> {
-        fn min(a: f32, b: f32) -> f32 {
-            if a < b {
-                a
-            } else {
-                b
-            }
-        }
-
         graphics::set_color(ctx, graphics::BLACK)?;
         graphics::rectangle(ctx, DrawMode::Fill, Rect{x: 1., y: 1., w: 102., h: 26.})?;
         graphics::rectangle(ctx, DrawMode::Fill, Rect{x: 1., y: 29., w: 102., h: 26.})?;
         graphics::rectangle(ctx, DrawMode::Fill, Rect{x: 1., y: 57., w: 102., h: 26.})?;
         graphics::set_color(ctx, GREEN)?;
-        graphics::rectangle(ctx, DrawMode::Fill, Rect{x: 2., y: 2., w: self.world.player.health.hp, h: 24.})?;
+        graphics::rectangle(ctx, DrawMode::Fill, Rect{x: 2., y: 2., w: self.world.player.health.hp.limit(0., 100.), h: 24.})?;
         graphics::set_color(ctx, BLUE)?;
-        graphics::rectangle(ctx, DrawMode::Fill, Rect{x: 2., y: 30., w: self.world.player.health.armour, h: 24.})?;
+        graphics::rectangle(ctx, DrawMode::Fill, Rect{x: 2., y: 30., w: self.world.player.health.armour.limit(0., 100.), h: 24.})?;
         graphics::set_color(ctx, RED)?;
-        graphics::rectangle(ctx, DrawMode::Fill, Rect{x: 2., y: 58., w: min(1., self.world.player.wep.loading_time)*100., h: 24.})?;
+        graphics::rectangle(ctx, DrawMode::Fill, Rect{x: 2., y: 58., w: self.world.player.wep.loading_time.limit(0., 1.)*100., h: 24.})?;
         graphics::set_color(ctx, WHITE)?;
         self.hp_text.draw_text(ctx)?;
         self.arm_text.draw_text(ctx)?;

@@ -5,9 +5,29 @@ pub trait BoolExt {
 }
 
 impl BoolExt for bool {
+    /// so `true` becomes `false` and vice versa
+    #[inline]
     fn toggle(&mut self) {
-        // so `true` becomes `false` and vice versa
         *self = !*self;
+    }
+}
+
+/// Extensions for floats
+pub trait FloatExt {
+    /// Toggle the value
+    fn limit(self, min: Self, max: Self) -> Self;
+}
+
+impl FloatExt for f32 {
+    #[inline]
+    fn limit(self, min: Self, max: Self) -> Self {
+        if self < min {
+            min
+        } else if self > max {
+            max
+        } else {
+            self
+        }
     }
 }
 

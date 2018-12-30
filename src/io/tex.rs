@@ -101,6 +101,7 @@ sprites! {
     Ak47, ak47, 32., 32.,
     Magnum, magnum, 32., 32.,
     Arwp, arwp, 64., 32.,
+    Adrenaline, adrenaline, 32., 32.,
 }
 
 impl Assets {

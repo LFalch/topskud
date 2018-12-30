@@ -133,6 +133,7 @@ impl Editor {
             (Sprite::Intel, Insertion::Intel, is_intel),
             (Sprite::HealthPack, Insertion::Pickup(0), is_hp),
             (Sprite::Armour, Insertion::Pickup(1), is_armour),
+            (Sprite::Adrenaline, Insertion::Pickup(2), is_adrenaline),
             (Sprite::Glock, Insertion::Weapon(0), is_glock),
             (Sprite::FiveSeven, Insertion::Weapon(1), is_five_seven),
             (Sprite::Magnum, Insertion::Weapon(2), is_magnum),

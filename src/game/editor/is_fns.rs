@@ -40,6 +40,14 @@ pub(super) fn is_armour(ins: Insertion) -> bool {
         false
     }
 }
+#[inline]
+pub(super) fn is_adrenaline(ins: Insertion) -> bool {
+    if let Insertion::Pickup(2) = ins {
+        true
+    } else {
+        false
+    }
+}
 
 #[inline]
 pub(super) fn is_glock(ins: Insertion) -> bool {
