@@ -50,6 +50,7 @@ pub struct Weapon {
     pub shot_snd: Sound,
     pub cock_snd: Sound,
     pub reload_snd: Sound,
+    pub click_snd: Sound,
     pub impact_snd: Sound,
     pub entity_sprite: Sprite,
 }
@@ -165,6 +166,9 @@ impl<'a> WeaponInstance<'a> {
             mplayer.play(ctx, self.weapon.shot_snd)?;
             Ok(Some(BulletMaker(self.weapon)))
         } else {
+            if self.cur_clip == 0 {
+                mplayer.play(ctx, self.weapon.click_snd)?;
+            }
             Ok(None)
         }
     }
