@@ -133,7 +133,7 @@ impl GameState for Play {
         self.arm_text.update_text(&s.assets, ctx, &format!("{:02.0}", self.world.player.health.armour))?;
         if let Some(wep) = self.world.player.wep {
             self.reload_text.update_text(&s.assets, ctx, &format!("{:.1}s", wep.loading_time))?;
-            self.wep_text.update_text(&s.assets, ctx, &format!("{}", wep))?;
+            self.wep_text.update_text(&s.assets, ctx, &format!("{} ({:.3} {:.1}s)", wep, wep.jerk, wep.jerk_decay))?;
         }
         if let Some(i) = self.cur_pickup {
             self.status_text.update_text(&s.assets, ctx, &format!("Press F to pick up {}", self.world.weapons[i]))?;
@@ -157,14 +157,14 @@ impl GameState for Play {
 
 
                 if self.world.player.health.is_dead() {
-                    s.switch(StateSwitch::Lose(Statistics{
+                    s.switch(StateSwitch::Lose(Box::new(Statistics{
                         hits: self.bloods.len(),
                         misses: self.misses,
                         enemies_left: self.world.enemies.len(),
                         health_left: self.initial.0,
                         level: self.level.clone(),
                         weapon: self.initial.1,
-                    }));
+                    })));
                     s.mplayer.play(ctx, Sound::Death)?;
                 } else {
                     s.mplayer.play(ctx, Sound::Hurt)?;
@@ -292,14 +292,14 @@ impl GameState for Play {
             self.victory_time += DELTA;
         }
         if self.victory_time >= 2. {
-            s.switch(StateSwitch::Win(Statistics{
+            s.switch(StateSwitch::Win(Box::new(Statistics{
                 level: self.level.clone(),
                 hits: self.bloods.len(),
                 misses: self.misses,
                 enemies_left: self.world.enemies.len(),
                 health_left: self.world.player.health,
                 weapon: self.world.player.wep,
-            }));
+            })));
         }
         Ok(())
     }

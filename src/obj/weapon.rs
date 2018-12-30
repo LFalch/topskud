@@ -53,10 +53,13 @@ pub struct Weapon {
     pub click_snd: Sound,
     pub impact_snd: Sound,
     pub entity_sprite: Sprite,
+    pub spray_pattern: &'static [f32],
+    pub spray_decay: f32,
+    pub spray_repeat: usize,
 }
 
 mod consts;
-pub use self::consts::*;
+pub use self::consts::WEAPONS;
 
 impl Weapon {
     pub fn make_instance(&self) -> WeaponInstance<'_> {
@@ -65,6 +68,9 @@ impl Weapon {
             weapon: self,
             cur_clip,
             loading_time: 0.,
+            jerk: 0.,
+            jerk_decay: 0.,
+            spray_index: 0,
             ammo: cur_clip*self.clips.get(),
         }
     }
@@ -98,6 +104,9 @@ pub struct WeaponInstance<'a> {
     pub cur_clip: u16,
     pub ammo: u16,
     pub loading_time: f32,
+    pub jerk: f32,
+    pub jerk_decay: f32,
+    pub spray_index: usize,
     pub weapon: &'a Weapon,
 }
 
@@ -122,12 +131,22 @@ impl<'a> WeaponInstance<'a> {
         let WeaponDrop{cur_clip, ammo, weapon, ..} = wd;
         Self {
             loading_time: 0.,
+            jerk: 0.,
+            jerk_decay: 0.,
+            spray_index: 0,
             cur_clip,
             ammo,
             weapon,
         }
     }
     pub fn update(&mut self, ctx: &mut Context, mplayer: &mut MediaPlayer) -> GameResult<()> {
+        if self.jerk_decay <= DELTA {
+            self.jerk = 0.;
+            self.jerk_decay = 0.;
+            self.spray_index = 0;
+        } else {
+            self.jerk_decay -= DELTA;
+        }
         if self.loading_time <= DELTA {
             self.loading_time = 0.;
         } else {
@@ -163,8 +182,18 @@ impl<'a> WeaponInstance<'a> {
             if self.cur_clip > 0 {
                 self.loading_time = self.weapon.fire_rate;
             }
+
+            let jerk = self.jerk;
+
+            self.jerk_decay = self.weapon.spray_decay;
+            self.jerk += self.weapon.spray_pattern[self.spray_index];
+            self.spray_index += 1; 
+            if self.spray_index >= self.weapon.spray_pattern.len() {
+                self.spray_index -= self.weapon.spray_repeat;
+            }
+
             mplayer.play(ctx, self.weapon.shot_snd)?;
-            Ok(Some(BulletMaker(self.weapon)))
+            Ok(Some(BulletMaker(self.weapon, jerk)))
         } else {
             if self.cur_clip == 0 {
                 mplayer.play(ctx, self.weapon.click_snd)?;
@@ -174,9 +203,10 @@ impl<'a> WeaponInstance<'a> {
     }
 }
 
-pub struct BulletMaker<'a>(&'a Weapon);
+pub struct BulletMaker<'a>(&'a Weapon, f32);
 impl<'a> BulletMaker<'a> {
-    pub fn make(self, obj: Object) -> Bullet<'a> {
+    pub fn make(self, mut obj: Object) -> Bullet<'a> {
+        obj.rot += self.1;
         Bullet {
             obj,
             weapon: self.0

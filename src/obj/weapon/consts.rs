@@ -36,6 +36,17 @@ macro_rules! weapons {
     };
 }
 
+use std::f32::consts::PI;
+const DEG2RAD: f32 = PI / 180.;
+
+macro_rules! spray {
+    ($($val:expr),+) => {
+        &[$(
+            $val * DEG2RAD
+        ),+]
+    };
+}
+
 weapons!{
     // 0
     GLOCK {
@@ -53,6 +64,9 @@ weapons!{
         reload_snd: Sound::Reload,
         impact_snd: Sound::Impact,
         entity_sprite: Sprite::Glock,
+        spray_pattern: spray![6., -8., 4., -6., 2.5, 6., 4.],
+        spray_decay: 0.43,
+        spray_repeat: 2,
     };
     // 1
     FIVE_SEVEN {
@@ -70,6 +84,9 @@ weapons!{
         reload_snd: Sound::Reload,
         impact_snd: Sound::Impact,
         entity_sprite: Sprite::FiveSeven,
+        spray_pattern: spray![4., 6., -8., 4., -6., 4., -8., 6., 4.],
+        spray_decay: 0.34,
+        spray_repeat: 5,
     };
     // 2
     MAGNUM {
@@ -78,7 +95,7 @@ weapons!{
         clips: nzu16!(4),
         damage: 111.,
         penetration: 0.05,
-        fire_rate: 0.8,
+        fire_rate: 0.72,
         reload_time: 3.2,
         fire_mode: FireMode::SemiAutomatic,
         shot_snd: Sound::Shot1,
@@ -87,6 +104,9 @@ weapons!{
         reload_snd: Sound::Reload,
         impact_snd: Sound::Impact,
         entity_sprite: Sprite::Magnum,
+        spray_pattern: spray![6., 2., -2.],
+        spray_decay: 0.85,
+        spray_repeat: 2,
     };
     // 3
     M4A1 {
@@ -104,6 +124,9 @@ weapons!{
         reload_snd: Sound::ReloadM4,
         impact_snd: Sound::Impact,
         entity_sprite: Sprite::M4,
+        spray_pattern: spray![3.3, 4.2, -3., 3., -3., 2., -4., 3., 2.],
+        spray_decay: 0.2,
+        spray_repeat: 5,
     };
     // 4
     AK47 {
@@ -121,6 +144,9 @@ weapons!{
         reload_snd: Sound::Reload,
         impact_snd: Sound::Impact,
         entity_sprite: Sprite::Ak47,
+        spray_pattern: spray![-3.3, -4.2, 3., -3., 3., -2., 4., -3., -2., 3.],
+        spray_decay: 0.13,
+        spray_repeat: 5,
     };
     // 5
     ARWP {
@@ -129,7 +155,7 @@ weapons!{
         clips: nzu16!(4),
         damage: 130.,
         penetration: 0.8,
-        fire_rate: 1.,
+        fire_rate: 0.92,
         reload_time: 3.5,
         fire_mode: FireMode::BoltAction,
         shot_snd: Sound::Shot1,
@@ -138,5 +164,8 @@ weapons!{
         reload_snd: Sound::ReloadM4,
         impact_snd: Sound::Impact,
         entity_sprite: Sprite::Arwp,
+        spray_pattern: spray![5.6, 1., -1.],
+        spray_decay: 1.,
+        spray_repeat: 2,
     };
 }
