@@ -35,7 +35,7 @@ pub enum StateSwitch {
         health: Health,
         wep: WeaponInstance<'static>,
     },
-    Lose(Statistics, Level),
+    Lose(Statistics),
     Win(Statistics),
 }
 
@@ -160,7 +160,7 @@ impl EventHandler for Master {
                 Menu => menu::Menu::new(ctx, &mut self.state),
                 Editor(l) => editor::Editor::new(ctx, &self.state, l),
                 Win(stats) => win::Win::new(ctx, &mut self.state, stats),
-                Lose(stats, l) => lose::Lose::new(ctx, &mut self.state, stats, l),
+                Lose(stats) => lose::Lose::new(ctx, &mut self.state, stats),
             }?;
         }
 

@@ -138,6 +138,7 @@ impl Editor {
             (Sprite::Magnum, Insertion::Weapon(2), is_magnum),
             (Sprite::M4, Insertion::Weapon(3), is_m4a1),
             (Sprite::Ak47, Insertion::Weapon(4), is_ak47),
+            (Sprite::Arwp, Insertion::Weapon(5), is_arwp),
         ])?;
 
         let save;
@@ -147,9 +148,9 @@ impl Editor {
             return Err(GameError::UnknownError("Cannot load editor without file".to_owned()));
         }
 
-        let level = level.unwrap_or_else(|| {
-            Level::load(&save).unwrap_or_else(|_| Level::new(32, 32))
-        });
+        let level = level
+            .or_else(|| Level::load(&save).ok())
+            .unwrap_or_else(|| Level::new(32, 32));
 
         let x = f32::from(level.grid.width()) * 16.;
         let y = f32::from(level.grid.height()) * 16.;

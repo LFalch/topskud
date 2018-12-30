@@ -117,4 +117,20 @@ weapons!{
         impact_snd: Sound::Impact,
         entity_sprite: Sprite::Ak47,
     };
+    // 5
+    ARWP {
+        name: "ARWP",
+        clip_size: nzu16!(10),
+        clips: nzu16!(4),
+        damage: 130.,
+        penetration: 0.8,
+        fire_rate: 1.,
+        reload_time: 3.5,
+        fire_mode: FireMode::BoltAction,
+        shot_snd: Sound::Shot1,
+        cock_snd: Sound::Cock,
+        reload_snd: Sound::Reload,
+        impact_snd: Sound::Impact,
+        entity_sprite: Sprite::Arwp,
+    };
 }

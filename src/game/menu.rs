@@ -25,7 +25,7 @@ pub struct Menu {
 
 enum Callback {
     SwitchPlay(PathBuf),
-    SwitchEditor(PathBuf),
+    SwitchEditor,
     Campaign(PathBuf),
 }
 
@@ -58,7 +58,7 @@ impl Menu {
             Content::File(p) => {
                 vec![
                     Button::new(ctx, &s.assets, button_rect(w, 0.), "Play", Callback::SwitchPlay(p.clone()))?,
-                    Button::new(ctx, &s.assets, button_rect(w, 1.), "Editor", Callback::SwitchEditor(p.clone()))?,
+                    Button::new(ctx, &s.assets, button_rect(w, 1.), "Editor", Callback::SwitchEditor)?,
                 ]
             }
             Content::None => {
@@ -118,10 +118,7 @@ impl GameState for Menu {
                             let lvl = Level::load(&p).unwrap();
                             s.switch(StateSwitch::Play{lvl, health: Health::default(), wep: WEAPONS[1].make_instance()})
                         },
-                        Callback::SwitchEditor(p) => {
-                            let l = Level::load(&p).ok();
-                            s.switch(StateSwitch::Editor(l))
-                        },
+                        Callback::SwitchEditor => s.switch(StateSwitch::Editor(None)),
                     }
                 }
             }

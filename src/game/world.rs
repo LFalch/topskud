@@ -41,6 +41,7 @@ pub struct Statistics {
     pub misses: usize,
     pub enemies_left: usize,
     pub health_left: Health,
+    pub level: Level,
     pub weapon: WeaponInstance<'static>,
 }
 

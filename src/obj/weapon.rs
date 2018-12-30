@@ -67,6 +67,15 @@ impl Weapon {
             ammo: cur_clip*self.clips.get(),
         }
     }
+    pub fn make_drop(&self, pos: Point2) -> WeaponDrop<'_> {
+        let cur_clip = self.clip_size.get();
+        WeaponDrop {
+            pos,
+            cur_clip,
+            ammo: cur_clip*self.clips.get(),
+            weapon: self,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]

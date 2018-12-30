@@ -140,8 +140,9 @@ impl GameState for Play {
                         misses: self.misses,
                         enemies_left: self.world.enemies.len(),
                         health_left: self.initial.0,
+                        level: self.level.clone(),
                         weapon: self.initial.1,
-                    }, self.level.clone()));
+                    }));
                     s.mplayer.play(ctx, Sound::Death)?;
                 } else {
                     s.mplayer.play(ctx, Sound::Hurt)?;
@@ -264,6 +265,7 @@ impl GameState for Play {
         }
         if self.victory_time >= 2. {
             s.switch(StateSwitch::Win(Statistics{
+                level: self.level.clone(),
                 hits: self.bloods.len(),
                 misses: self.misses,
                 enemies_left: self.world.enemies.len(),

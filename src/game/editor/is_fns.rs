@@ -81,3 +81,11 @@ pub(super) fn is_ak47(ins: Insertion) -> bool {
         false
     }
 }
+#[inline]
+pub(super) fn is_arwp(ins: Insertion) -> bool {
+    if let Insertion::Weapon(5) = ins {
+        true
+    } else {
+        false
+    }
+}

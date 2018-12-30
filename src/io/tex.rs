@@ -100,6 +100,7 @@ sprites! {
     M4, m4, 32., 32.,
     Ak47, ak47, 32., 32.,
     Magnum, magnum, 32., 32.,
+    Arwp, arwp, 64., 32.,
 }
 
 impl Assets {
