@@ -70,7 +70,8 @@ pub struct Editor {
     level: Level,
     current: Tool,
     mat_text: PosText,
-    entities_bar: EntitiesBar,
+    entities_bar: InsertionBar,
+    extra_bar: InsertionBar,
     draw_visibility_cones: bool,
     rotation_speed: f32,
     snap_on_grid: bool,
@@ -88,17 +89,17 @@ const PALETTE: [Material; 9] = [
     Material::Stairs,
 ];
 
-struct EntitiesBar {
+struct InsertionBar {
     ent_text: PosText,
     palette: &'static [EntityItem]
 }
 
 type EntityItem = (Sprite, Insertion);
 
-impl EntitiesBar {
+impl InsertionBar {
     #[allow(clippy::new_ret_no_self)]
-    fn new(p: Point2, ctx: &mut Context, s: &State, palette: &'static [EntityItem]) -> GameResult<Self> {
-        let ent_text = s.assets.text(ctx, p, "Entities:")?;
+    fn new(p: Point2, ctx: &mut Context, s: &State, text: &str, palette: &'static [EntityItem]) -> GameResult<Self> {
+        let ent_text = s.assets.text(ctx, p, text)?;
         Ok(Self {
             ent_text,
             palette
@@ -142,7 +143,7 @@ impl Editor {
     #[allow(clippy::new_ret_no_self)]
     pub fn new(ctx: &mut Context, s: &State, level: Option<Level>) -> GameResult<Box<dyn GameState>> {
         let mat_text = s.assets.text(ctx, Point2::new(2., 18.0), "Materials:")?;
-        let entities_bar = EntitiesBar::new(Point2::new(392., 18.0), ctx, s, &[
+        let entities_bar = InsertionBar::new(Point2::new(392., 18.0), ctx, s, "Entitites:", &[
             (Sprite::Enemy, Insertion::Enemy{rot: 0.}),
             (Sprite::Goal, Insertion::Exit),
             (Sprite::Intel, Insertion::Intel),
@@ -163,6 +164,14 @@ impl Editor {
             (Sprite::OfficePlant2, Insertion::Decoration{i: 5, rot: 0.}),
             (Sprite::OfficePlant3, Insertion::Decoration{i: 6, rot: 0.}),
             (Sprite::Trashcan, Insertion::Decoration{i: 7, rot: 0.}),
+        ])?;
+        let extra_bar = InsertionBar::new(Point2::new(392., 52.0), ctx, s, "", &[
+            (Sprite::ManholeCover, Insertion::Decoration{i: 8, rot: 0.}),
+            (Sprite::ManholeCover2, Insertion::Decoration{i: 9, rot: 0.}),
+            (Sprite::DeskLamp, Insertion::Decoration{i: 10, rot: 0.}),
+            (Sprite::WallLight, Insertion::Decoration{i: 11, rot: 0.}),
+            (Sprite::WallLight2, Insertion::Decoration{i: 12, rot: 0.}),
+            (Sprite::WallLight3, Insertion::Decoration{i: 13, rot: 0.}),
         ])?;
 
         let save;
@@ -186,6 +195,7 @@ impl Editor {
             draw_visibility_cones: false,
             mat_text,
             entities_bar,
+            extra_bar,
             level,
             rotation_speed: 0.,
             snap_on_grid: false,
@@ -465,10 +475,12 @@ impl GameState for Editor {
         }
 
         self.entities_bar.draw(ctx, s, if let Tool::Inserter(ins) = self.current{Some(ins)}else{None})?;
+        self.extra_bar.draw(ctx, s, if let Tool::Inserter(ins) = self.current{Some(ins)}else{None})?;
 
         graphics::set_color(ctx, graphics::WHITE)?;
         self.mat_text.draw_text(ctx)?;
-        self.entities_bar.ent_text.draw_text(ctx)
+        self.entities_bar.ent_text.draw_text(ctx)?;
+        self.extra_bar.ent_text.draw_text(ctx)
     }
     fn key_up(&mut self, s: &mut State, _ctx: &mut Context, keycode: Keycode) {
         use self::Keycode::*;
@@ -587,7 +599,14 @@ impl GameState for Editor {
         use self::MouseButton::*;
         let mousepos = self.mousepos(&s);
         match btn {
-            Left => if s.mouse.y <= 64. {
+            Left => {
+                
+            if let Some(ins) = self.extra_bar.click(s.mouse) {
+                self.current = Tool::Inserter(ins);
+                return
+            }
+                
+            if s.mouse.y <= 64. {
                 if s.mouse.x > START_X && s.mouse.x < START_X + PALETTE.len() as f32 * 36. {
                     let i = ((s.mouse.x - START_X) / 36.) as usize;
 
@@ -687,7 +706,7 @@ impl GameState for Editor {
                     },
                     Tool::Inserter(Insertion::Intel) => self.level.intels.push(mousepos),
                 }
-            }
+            }}
             Middle => self.level.start_point = Some(self.mousepos(&s)),
             _ => ()
         }

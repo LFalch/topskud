@@ -24,6 +24,12 @@ pub const DECORATIONS: &[DecorationDecl] = &[
     decl(Sprite::OfficePlant2, false),
     decl(Sprite::OfficePlant3, false),
     decl(Sprite::Trashcan, true),
+    decl(Sprite::ManholeCover, false),
+    decl(Sprite::ManholeCover2, false),
+    decl(Sprite::DeskLamp, false),
+    decl(Sprite::WallLight, false),
+    decl(Sprite::WallLight2, false),
+    decl(Sprite::WallLight3, false),
 ];
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
