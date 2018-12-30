@@ -59,7 +59,7 @@ pub struct Editor {
     snap_on_grid: bool,
 }
 
-const PALETTE: [Material; 8] = [
+const PALETTE: [Material; 9] = [
     Material::Grass,
     Material::Dirt,
     Material::Floor,
@@ -68,6 +68,7 @@ const PALETTE: [Material; 8] = [
     Material::Sand,
     Material::Concrete,
     Material::WoodFloor,
+    Material::Stairs,
 ];
 
 struct EntitiesBar {
@@ -127,7 +128,7 @@ impl Editor {
     pub fn new(ctx: &mut Context, s: &State, level: Option<Level>) -> GameResult<Box<dyn GameState>> {
         let mat_text = s.assets.text(ctx, Point2::new(2., 18.0), "Materials:")?;
         use self::is_fns::*;
-        let entities_bar = EntitiesBar::new(Point2::new(342., 18.0), ctx, s, &[
+        let entities_bar = EntitiesBar::new(Point2::new(453., 18.0), ctx, s, &[
             (Sprite::Enemy, Insertion::Enemy{rot: 0.}, is_enemy),
             (Sprite::Goal, Insertion::Exit, is_exit),
             (Sprite::Intel, Insertion::Intel, is_intel),

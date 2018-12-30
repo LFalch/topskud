@@ -112,6 +112,7 @@ mat!{
     Sand = 5, Sand, false,
     Concrete = 6, Concrete, true,
     WoodFloor = 7, WoodFloor, false,
+    Stairs = 8, Stairs, false,
     Missing = 255, Missing, true,
 }
 
