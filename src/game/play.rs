@@ -269,7 +269,7 @@ impl GameState for Play {
         };
         if let Some(wep) = &mut self.world.player.wep {
             wep.update(ctx, &mut s.mplayer)?;
-            if s.mouse_down.left && wep.weapon.fire_mode.is_auto() {
+            if wep.cur_clip > 0 && s.mouse_down.left && wep.weapon.fire_mode.is_auto() {
                 if let Some(bm) = wep.shoot(ctx, &mut s.mplayer)? {
                     let pos = self.world.player.obj.pos + 16. * angle_to_vec(self.world.player.obj.rot);
                     let mut bul = Object::new(pos);
