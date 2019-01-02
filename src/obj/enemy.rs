@@ -130,25 +130,6 @@ impl Enemy {
         let dist = p-self.obj.pos;
         let dir = angle_to_vec(self.obj.rot);
 
-        if na::angle(&dir, &dist) <= VISIBILITY {
-            let distance = dist.norm();
-
-            let intervals = (distance / 16.).ceil() as u16;
-            let ray = dist.normalize() * (distance / f32::from(intervals));
-
-            let mut ray_end = self.obj.pos;
-
-            for _ in 0..intervals {
-                let (x, y) = Grid::snap(ray_end);
-                if grid.is_solid(x, y) {
-                    return false
-                }
-
-                ray_end += ray;
-            }
-            true
-        } else {
-            false
-        }
+        na::angle(&dir, &dist) <= VISIBILITY && grid.ray_cast(self.obj.pos, dist, true).full()
     }
 }

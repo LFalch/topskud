@@ -1,5 +1,5 @@
 use crate::{
-    util::Point2,
+    util::{Point2, Vector2},
     io::tex::{Assets, Sprite},
     obj::{
         player::Player,
@@ -332,6 +332,60 @@ impl Grid {
             }
         }
     }
+    pub fn ray_cast(&self, from: Point2, dist: Vector2, finite: bool) -> RayCast {
+        let dest = from + dist;
+
+        let mut cur = from;
+        let (mut gx, mut gy) = Self::snap(cur);
+        let x_dir = Direction::new(dist.x);
+        let y_dir = Direction::new(dist.y);
+
+        loop {
+            if finite && (cur - dest).dot(&dist) / dist.norm() >= 0. {
+                break RayCast::Full(dest);
+            }
+
+            let mat = self.get(gx, gy);
+
+            if let Some(mat) = mat {
+                if mat.solid() {
+                    break RayCast::Half(cur);
+                }
+                if cur.x < 0. || cur.y < 0. {
+                    break RayCast::OffEdge(cur); 
+                }
+            } else {
+                break RayCast::OffEdge(cur);
+            }
+
+            let nearest_corner = Point2::new(x_dir.on(f32::from(gx) * 32.), y_dir.on(f32::from(gy) * 32.));
+            let distance = nearest_corner - cur;
+
+            let time = (distance.x/dist.x, distance.y/dist.y);
+
+            if time.0 < time.1 {
+                // Going along x
+                cur.x = nearest_corner.x;
+                cur.y += time.0 * dist.y;
+
+                gx = if let Some(n) = x_dir.on_u16(gx) {
+                    n
+                } else {
+                    break RayCast::OffEdge(cur);
+                }
+            } else {
+                // Going along y
+                cur.y = nearest_corner.y;
+                cur.x += time.1 * dist.x;
+
+                gy = if let Some(n) = y_dir.on_u16(gy) {
+                    n
+                } else {
+                    break RayCast::OffEdge(cur);
+                }
+            }
+        }
+    }
     pub fn draw(&self, ctx: &mut Context, assets: &Assets) -> GameResult<()> {
         for (i, mat) in self.mats.iter().enumerate() {
             let x = f32::from(i as u16 % self.width) * 32.;
@@ -340,5 +394,65 @@ impl Grid {
             mat.draw(ctx, assets, x, y)?;
         }
         Ok(())
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
+enum Direction {
+    Pos,
+    Neg,
+}
+
+impl Direction {
+    #[inline]
+    fn new(n: f32) -> Self {
+        if n.is_sign_negative() {
+            Direction::Neg
+        } else {
+            Direction::Pos
+        }
+    }
+    #[inline]
+    fn on_u16(self, n: u16) -> Option<u16> {
+        match self {
+            Direction::Pos => Some(n + 1),
+            Direction::Neg => n.checked_sub(1),
+        }
+    }
+    #[inline]
+    fn on(self, n: f32) -> f32 {
+        match self {
+            Direction::Pos => n + 32.,
+            Direction::Neg => n,
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
+pub enum RayCast {
+    Full(Point2),
+    Half(Point2),
+    OffEdge(Point2),
+}
+
+impl RayCast {
+    pub fn full(self) -> bool {
+        match self {
+            RayCast::Full(_) => true,
+            _ => false,
+        }
+    }
+    pub fn half(self) -> bool {
+        match self {
+            RayCast::Half(_) => true,
+            _ => false,
+        }
+    }
+    pub fn into_point(self) -> Point2 {
+        match self {
+            RayCast::Full(p) => p,
+            RayCast::Half(p) => p,
+            RayCast::OffEdge(p) => p,
+        }
     }
 }
