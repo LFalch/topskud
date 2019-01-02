@@ -53,6 +53,7 @@ pub struct Weapon {
     pub click_snd: Sound,
     pub impact_snd: Sound,
     pub entity_sprite: Sprite,
+    pub hands_sprite: Sprite,
     pub spray_pattern: &'static [f32],
     pub spray_decay: f32,
     pub spray_repeat: usize,

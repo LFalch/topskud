@@ -78,7 +78,7 @@ pub struct Play {
 impl Play {
     #[allow(clippy::new_ret_no_self)]
     pub fn new(ctx: &mut Context, s: &mut State, level: Level, pl: Option<(Health, Option<WeaponInstance<'static>>)>) -> GameResult<Box<dyn GameState>> {
-        let mut player = Player::new(level.start_point.unwrap_or_else(|| Point2::new(500., 500.)));
+        let mut player = Player::from_point(level.start_point.unwrap_or_else(|| Point2::new(500., 500.)));
         if let Some((h, w)) = pl {
             player = player.with_health(h).with_weapon(w);
         };
@@ -115,7 +115,7 @@ impl Play {
                         eprintln!("Warning: player has no weapon");
                     }
 
-                    for enemy_pos in world.enemies.iter().filter_map(|enemy| if enemy.wep.is_none() {Some(enemy.obj.pos)}else{None}) {
+                    for enemy_pos in world.enemies.iter().filter_map(|enemy| if enemy.pl.wep.is_none() {Some(enemy.pl.obj.pos)}else{None}) {
                         eprintln!("Warning: enemy at {:.2} has no weapon", enemy_pos)
                     }
 
@@ -216,11 +216,11 @@ impl GameState for Play {
                     vel: player_vel,
                 };
 
-                if let Some(wep) = &mut enemy.wep {
+                if let Some(wep) = &mut enemy.pl.wep {
                     if let Some(bm) = wep.shoot(ctx, &mut s.mplayer)? {
-                        let pos = enemy.obj.pos + 20. * angle_to_vec(enemy.obj.rot);
+                        let pos = enemy.pl.obj.pos + 20. * angle_to_vec(enemy.pl.obj.rot);
                         let mut bul = Object::new(pos);
-                        bul.rot = enemy.obj.rot;
+                        bul.rot = enemy.pl.obj.rot;
 
                         self.world.bullets.push(bm.make(bul));
                     }
@@ -229,10 +229,10 @@ impl GameState for Play {
             enemy.update(ctx, &mut s.mplayer)?;
             let mut dead = None;
             for (i, bullet) in self.world.bullets.iter().enumerate().rev() {
-                let dist = bullet.obj.pos - enemy.obj.pos;
+                let dist = bullet.obj.pos - enemy.pl.obj.pos;
                 if dist.norm() < 16. {
                     dead = Some(i);
-                    bullet.apply_damage(&mut enemy.health);
+                    bullet.apply_damage(&mut enemy.pl.health);
 
                     if !enemy.behaviour.chasing() {
                         enemy.behaviour = Chaser::LookAround{
@@ -242,7 +242,7 @@ impl GameState for Play {
                     s.mplayer.play(ctx, Sound::Hit)?;
 
                     self.bloods.push(BloodSplatter::new(bullet.obj.clone()));
-                    if enemy.health.is_dead() {
+                    if enemy.pl.health.is_dead() {
                         s.mplayer.play(ctx, Sound::Death)?;
                         deads.push(e);
                     } else {
@@ -256,7 +256,7 @@ impl GameState for Play {
             }
         }
         for i in deads {
-            let Enemy{wep, obj: Object{pos, ..}, ..} = self.world.enemies.remove(i);
+            let Enemy{pl: Player{wep, obj: Object{pos, ..}, ..}, ..} = self.world.enemies.remove(i);
             if let Some(wep) = wep {
                 self.world.weapons.push(wep.into_drop(pos));
             }
@@ -357,7 +357,7 @@ impl GameState for Play {
             graphics::draw_ex(ctx, s.assets.get_img(wep.weapon.entity_sprite), drawparams)?;
         }
 
-        self.world.player.draw(ctx, &s.assets)?;
+        self.world.player.draw_player(ctx, &s.assets)?;
 
         for enemy in &self.world.enemies {
             enemy.draw(ctx, &s.assets)?;

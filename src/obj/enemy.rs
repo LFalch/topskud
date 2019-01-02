@@ -13,7 +13,7 @@ use crate::{
     game::{DELTA, world::Grid},
 };
 
-use super::{Object, health::Health, weapon::WeaponInstance};
+use super::{Object, player::Player};
 
 #[derive(Debug, Clone)]
 pub enum Chaser {
@@ -44,13 +44,9 @@ impl Default for Chaser {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Enemy {
-    pub obj: Object,
+    pub pl: Player,
     #[serde(skip)]
     pub behaviour: Chaser,
-    #[serde(skip)]
-    pub wep: Option<WeaponInstance<'static>>,
-    #[serde(skip)]
-    pub health: Health,
 }
 
 pub const VISIBILITY: f32 = ::std::f32::consts::FRAC_PI_4;
@@ -58,23 +54,23 @@ pub const VISIBILITY: f32 = ::std::f32::consts::FRAC_PI_4;
 impl Enemy {
     pub fn new(obj: Object) -> Enemy {
         Enemy {
-            obj,
-            wep: None,
-            health: Health::default(),
+            pl: Player::new(obj),
             behaviour: Chaser::NoIntel,
         }
     }
     pub fn draw_visibility_cone(&self, ctx: &mut Context, length: f32) -> GameResult<()> {
-        let dir1 = angle_to_vec(self.obj.rot - VISIBILITY);
-        let dir2 = angle_to_vec(self.obj.rot + VISIBILITY);
-        graphics::line(ctx, &[self.obj.pos, self.obj.pos + (length * dir1)], 1.5)?;
-        graphics::line(ctx, &[self.obj.pos, self.obj.pos + (length * dir2)], 1.5)
+        let Object{pos, rot} = self.pl.obj;
+        let dir1 = angle_to_vec(rot - VISIBILITY);
+        let dir2 = angle_to_vec(rot + VISIBILITY);
+        graphics::line(ctx, &[pos, pos + (length * dir1)], 1.5)?;
+        graphics::line(ctx, &[pos, pos + (length * dir2)], 1.5)
     }
+    #[inline]
     pub fn draw(&self, ctx: &mut Context, a: &Assets) -> GameResult<()> {
-        self.obj.draw(ctx, a.get_img(Sprite::Enemy))
+        self.pl.draw(ctx, a, Sprite::Enemy)
     }
     fn look_towards(&mut self, dist: Vector2) -> bool{
-        let dir = angle_to_vec(self.obj.rot);
+        let dir = angle_to_vec(self.pl.obj.rot);
 
         let rotation = na::angle(&dir, &dist);
 
@@ -82,18 +78,18 @@ impl Enemy {
 
         if rotation > ROTATION {
             if dir.perp(&dist) > 0. {
-                self.obj.rot += ROTATION;
+                self.pl.obj.rot += ROTATION;
             } else {
-                self.obj.rot -= ROTATION;
+                self.pl.obj.rot -= ROTATION;
             }
             false
         } else {
-            self.obj.rot = angle_from_vec(dist);
+            self.pl.obj.rot = angle_from_vec(dist);
             true
         }
     }
     pub fn update(&mut self, ctx: &mut Context, mplayer: &mut MediaPlayer) -> GameResult<()> {
-        if let Some(wep) = &mut self.wep {
+        if let Some(wep) = &mut self.pl.wep {
             wep.update(ctx, mplayer)?;
             if wep.cur_clip == 0 && wep.loading_time == 0. {
                 wep.reload(ctx, mplayer)?;
@@ -105,7 +101,7 @@ impl Enemy {
                 pos: player_pos,
                 vel
             } => {
-                let dist = player_pos-self.obj.pos;
+                let dist = player_pos-self.pl.obj.pos;
                 self.look_towards(dist);
 
                 let distance = dist.norm();
@@ -113,7 +109,7 @@ impl Enemy {
 
                 if distance >= CHASE_SPEED {
                     let displace = CHASE_SPEED * dist / distance;
-                    self.obj.pos += displace;
+                    self.pl.obj.pos += displace;
                 } else {
                     self.behaviour = Chaser::LookAround{dir: vel};
                 }
@@ -127,9 +123,9 @@ impl Enemy {
         Ok(())
     }
     pub fn can_see(&self, p: Point2, grid: &Grid) -> bool {
-        let dist = p-self.obj.pos;
-        let dir = angle_to_vec(self.obj.rot);
+        let dist = p-self.pl.obj.pos;
+        let dir = angle_to_vec(self.pl.obj.rot);
 
-        na::angle(&dir, &dist) <= VISIBILITY && grid.ray_cast(self.obj.pos, dist, true).full()
+        na::angle(&dir, &dist) <= VISIBILITY && grid.ray_cast(self.pl.obj.pos, dist, true).full()
     }
 }

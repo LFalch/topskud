@@ -95,6 +95,7 @@ sprites! {
     Intel, intel, 32., 32.,
     HealthPack, health_pack, 32., 32.,
     Armour, armour, 32., 32.,
+    Adrenaline, adrenaline, 32., 32.,
     Trashcan, trashcan, 32., 32.,
     LampPost, lamp_post, 32., 32.,
     Chair1, chair1, 32., 32.,
@@ -111,12 +112,17 @@ sprites! {
     WallLight3, wall_light3, 32., 32.,
     RoadMark, road_mark, 32., 32.,
     Glock, glock, 32., 32.,
+    GlockHands, glock_hands, 32., 32.,
     FiveSeven, five_seven, 32., 32.,
+    FiveSevenHands, five_seven_hands, 32., 32.,
     M4, m4, 32., 32.,
+    M4Hands, m4_hands, 32., 32.,
     Ak47, ak47, 32., 32.,
+    Ak47Hands, ak47_hands, 32., 32.,
     Magnum, magnum, 32., 32.,
+    MagnumHands, magnum_hands, 32., 32.,
     Arwp, arwp, 64., 32.,
-    Adrenaline, adrenaline, 32., 32.,
+    ArwpHands, arwp_hands, 32., 32.,
 }
 
 impl Assets {

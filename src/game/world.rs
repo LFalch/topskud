@@ -43,24 +43,24 @@ impl World {
         for enemy in &mut self.enemies {
             let mut dead = None;
             for (w, weapon) in self.weapons.iter().enumerate() {
-                if (weapon.pos - enemy.obj.pos).norm() <= 16. {
+                if (weapon.pos - enemy.pl.obj.pos).norm() <= 16. {
                     dead = Some(w);
                     break;
                 }
             }
             if let Some(i) = dead {
-                enemy.wep = Some(WeaponInstance::from_drop(self.weapons.remove(i)));
+                enemy.pl.wep = Some(WeaponInstance::from_drop(self.weapons.remove(i)));
             }
             let mut deads = Vec::new();
             for (p, pickup) in self.pickups.iter().enumerate() {
-                if (pickup.pos - enemy.obj.pos).norm() <= 16. {
+                if (pickup.pos - enemy.pl.obj.pos).norm() <= 16. {
                     deads.push(p);
                     break;
                 }
             }
             for i in deads.into_iter() {
                 let pickup = self.pickups.remove(i);
-                pickup.apply(&mut enemy.health);
+                pickup.apply(&mut enemy.pl.health);
             }
         }
     }
