@@ -55,11 +55,12 @@ macro_rules! sprites {
 
                 Ok(Assets {
                     texes,
-                    font: Font::new(ctx, "/common/FiraMono.ttf", 14)?,
-                    big_font: Font::new(ctx, "/common/FiraMono.ttf", 21)?,
+                    font: Font::new(ctx, "/common/DroidSansMono.ttf", 14)?,
+                    big_font: Font::new(ctx, "/common/DroidSansMono.ttf", 21)?,
                 })
             }
             /// Gets the `Image` to draw from the sprite
+            #[inline]
             pub fn get_img(&self, s: Sprite) -> &Image {
                 &self.texes[&s]
             }

@@ -363,7 +363,7 @@ impl GameState for Play {
             enemy.draw(ctx, &s.assets)?;
         }
         for bullet in &self.world.bullets {
-            bullet.obj.draw(ctx, s.assets.get_img(Sprite::Bullet))?;
+            bullet.draw(ctx, &s.assets)?;
         }
 
         Ok(())
