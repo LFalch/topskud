@@ -1,150 +1,138 @@
+use std::collections::HashMap;
+
 use ggez::{Context, GameResult};
 use ggez::audio::{Source, SoundData};
 
-macro_rules! ending {
-    (WAV) => (".wav");
-    (OGG) => (".ogg");
-    (LOOP_OGG) => (".ogg");
-    (FLAC) => (".flac");
-}
-
 const EFFECTS_LIMIT: usize = 25;
 
-macro_rules! media_type {
-    (WAV) => (());
-    (FLAC) => (());
-    (OGG) => (Source);
-    (LOOP_OGG) => (Source);
-}
-
-macro_rules! play {
-    (WAV, $ctx:expr, $self:expr, $snd:ident) => ({
-        let src = new_source($ctx, $self.data.$snd.clone())?;
-        src.play()?;
-
-        let deads: Vec<_> =
-        $self.effects.iter().enumerate().rev().filter_map(|(i, src)| if !src.playing() {
-            Some(i)
-        } else {None}).collect();
-
-        for i in deads {
-            $self.effects.remove(i);
-        }
-        if $self.effects.len() < EFFECTS_LIMIT {
-            $self.effects.push(src);
-        }
-    });
-    (FLAC, $ctx:expr, $self:expr, $snd:ident) => (
-        play!(WAV, $ctx, $self, $snd);
-    );
-    (OGG, $ctx:expr, $self:expr, $snd:ident) => ({
-        $self.$snd.play()?;
-    });
-    (LOOP_OGG, $ctx:expr, $self:expr, $snd:ident) => (
-        play!(OGG, $ctx, $self, $snd);
-    );
-}
-
-macro_rules! new_cache {
-    (LOOP_OGG, $ctx:expr, $data:expr) => ({
-        let mut src = Source::from_data($ctx, $data)?;
-        src.set_repeat(true);
+#[inline]
+fn new_source(ctx: &mut Context, data: &SoundData) -> GameResult<Source> {
+    Source::from_data(ctx, data.clone()).map(|mut src| {
+        src.set_volume(0.1);
         src
-    });
-    (OGG, $ctx:expr, $data:expr) => (Source::from_data($ctx, $data)?);
-    (FLAC, $ctx:expr, $data:expr) => (new_cache!(FLAC, $ctx, $data));
-    (WAV, $ctx:expr, $data:expr) => (());
+    })
 }
 
-macro_rules! stop {
-    (WAV, $ctx:expr, $self:ident, $snd:ident) => (
-        unreachable!()
-    );
-    (FLAC, $ctx:expr, $self:ident, $snd:ident) => (
-        stop!(WAV, $ctx, $self, $snd)
-    );
-    (OGG, $ctx:expr, $self:ident, $snd:ident) => (
-        $self.$snd.stop();
-    );
-    (LOOP_OGG, $ctx:expr, $self:ident, $snd:ident) => ({
-        stop!(OGG, $ctx, $self, $snd);
-        $self.$snd = new_cache!(LOOP_OGG, $ctx, $self.data.$snd.clone());
-    });
+#[derive(Debug, Copy, Clone)]
+enum SoundType {
+    Wave,
+    #[allow(dead_code)]
+    Flac,
+    Ogg,
+    OggLoop,
+}
+
+impl SoundType {
+    #[inline]
+    fn is_loop(self) -> bool {
+        match self {
+            SoundType::OggLoop => true,
+            _ => false,
+        }
+    }
+}
+macro_rules! ending {
+    (Wave) => (".wav");
+    (Ogg) => (".ogg");
+    (OggLoop) => (".ogg");
+    (Flac) => (".flac");
+}
+
+macro_rules! music {
+    (Wave; $b:block) => (());
+    (Flac; $b:block) => (());
+    (Ogg; $b:block) => ($b);
+    (OggLoop; $b:block) => (music!(Ogg; $b));
 }
 
 macro_rules! sounds {
     ($(
         $name:ident,
-        $snd:ident,
-        $ty:ident,
+        $snd:expr,
+        $typ:ident,
     )*) => (
-        #[derive(Debug, Copy, Clone)]
+        #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
         pub enum Sound {
             $($name,)*
         }
-
-        pub struct SoundAssets {
-            $(
-                $snd: SoundData,
-            )*
-        }
-
-        impl SoundAssets {
-            #[allow(clippy::new_ret_no_self)]
-            pub fn new(ctx: &mut Context) -> GameResult<Self> {
-                $(
-                    let $snd = SoundData::new(ctx, concat!("/", stringify!($snd), ending!($ty)))?;
-                )*
-
-                Ok(SoundAssets {
+        impl Sound {
+            #[inline]
+            fn sound_type(self) -> SoundType {
+                match self {
                     $(
-                        $snd,
+                        Sound::$name => SoundType::$typ,
                     )*
-                })
+                }
             }
         }
-
         pub struct MediaPlayer {
-            data: SoundAssets,
+            data: HashMap<Sound, SoundData>,
+            music_sources: HashMap<Sound, Source>,
             effects: Vec<Source>,
-            $(
-                #[allow(dead_code)]
-                $snd: media_type!($ty),
-            )*
         }
-
-        fn new_source(ctx: &mut Context, data: SoundData) -> GameResult<Source> {
-            Source::from_data(ctx, data.clone()).map(|mut src| {
-                src.set_volume(0.1);
-                src
-            })
-        }
-
         impl MediaPlayer {
             #[allow(clippy::new_ret_no_self)]
             pub fn new(ctx: &mut Context) -> GameResult<Self> {
-                let data = SoundAssets::new(ctx)?;
-                Ok(MediaPlayer {
+                let mut data = HashMap::new();
+                $(
+                    data.insert($name, SoundData::new(ctx, concat!("/sounds/", $snd, ending!($typ)))?);
+                )*
+                let mut ret = MediaPlayer {
                     effects: Vec::with_capacity(10),
-                    $(
-                        $snd: new_cache!($ty, ctx, data.$snd.clone()),
-                    )*
+                    music_sources: HashMap::new(),
                     data,
-                })
+                };
+                $(
+                    music!($typ; {
+                        ret.music_sources.insert($name, ret.new_cache(ctx, Sound::$name, Sound::$name.sound_type().is_loop())?);
+                    });
+                )*
+
+                Ok(ret)
             }
             pub fn play(&mut self, ctx: &mut Context, s: Sound) -> GameResult<()> {
-                match s {
-                    $(
-                        Sound::$name => play!($ty, ctx, self, $snd),
-                    )*
+                match s.sound_type() {
+                    SoundType::Wave | SoundType::Flac => {
+                        let src = new_source(ctx, &self.data[&s])?;
+                        src.play()?;
+
+                        self.clear_effetcs();
+
+                        if self.effects.len() < EFFECTS_LIMIT {
+                            self.effects.push(src);
+                        }
+                        Ok(())
+                    },
+                    SoundType::Ogg | SoundType::OggLoop => {
+                        self.music_sources[&s].play()
+                    },
                 }
-                Ok(())
+            }
+            fn clear_effetcs(&mut self) {
+                let deads: Vec<_> =
+                self.effects.iter().enumerate().rev().filter_map(|(i, src)| if !src.playing() {
+                    Some(i)
+                } else {None}).collect();
+
+                for i in deads {
+                    self.effects.remove(i);
+                }
+            }
+            fn new_cache(&self, ctx: &mut Context, s: Sound, repeat: bool) -> GameResult<Source> {
+                Source::from_data(ctx, self.data[&s].clone())
+                    .map(|mut src| {
+                        src.set_repeat(repeat);
+                        src
+                    })
             }
             pub fn stop(&mut self, ctx: &mut Context, s: Sound) -> GameResult<()> {
-                match s {
-                    $(
-                        Sound::$name => stop!($ty, ctx, self, $snd),
-                    )*
+                match s.sound_type() {
+                    SoundType::Wave | SoundType::Flac => panic!("{:?} can't be stopped", s),
+                    SoundType::Ogg => self.music_sources[&s].stop(),
+                    SoundType::OggLoop => {
+                        self.music_sources[&s].stop();
+                        self.music_sources.insert(s, self.new_cache(ctx, s, true)?);
+                    }
                 }
                 Ok(())
             }
@@ -152,21 +140,23 @@ macro_rules! sounds {
     );
 }
 
+use self::Sound::*;
+
 sounds! {
-    Shot1, shot1, WAV,
-    Shot2, shot2, WAV,
-    Cock, cock, WAV,
-    Cock2, cock2, WAV,
-    CockAk47, cock_ak47, WAV,
-    Reload, reload, WAV,
-    ReloadM4, reload_m4, WAV,
-    ReloadAk47, reload_ak47, WAV,
-    ClickPistol, click_pistol, WAV,
-    ClickUzi, click_uzi, WAV,
-    Impact, impact, WAV,
-    Hit, hit, WAV,
-    Hurt, hurt, WAV,
-    Death, death, WAV,
-    Victory, victory, OGG,
-    Music, music, LOOP_OGG,
+    Shot1, "shot1", Wave,
+    Shot2, "shot2", Wave,
+    Cock, "cock", Wave,
+    Cock2, "cock2", Wave,
+    CockAk47, "cock_ak47", Wave,
+    Reload, "reload", Wave,
+    ReloadM4, "reload_m4", Wave,
+    ReloadAk47, "reload_ak47", Wave,
+    ClickPistol, "click_pistol", Wave,
+    ClickUzi, "click_uzi", Wave,
+    Impact, "impact", Wave,
+    Hit, "hit", Wave,
+    Hurt, "hurt", Wave,
+    Death, "death", Wave,
+    Victory, "victory", Ogg,
+    Music, "music", OggLoop,
 }
