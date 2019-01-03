@@ -1,14 +1,16 @@
+use std::collections::HashMap;
+
 use ggez::{Context, GameResult};
 use ggez::graphics::{Image, Font, Text, Point2, Drawable, DrawParam};
 
 macro_rules! sprites {
     ($(
         $name:ident,
-        $tex:ident,
+        $tex:expr,
         $width:expr,
         $height:expr,
     )*) => (
-        #[derive(Debug, Copy, Clone, Serialize, Deserialize)]
+        #[derive(Debug, Copy, Clone, Serialize, Deserialize, Eq, PartialEq, Hash)]
         /// An object to reference a sprite in the `Assets`
         #[allow(missing_docs)]
         pub enum Sprite {
@@ -35,9 +37,7 @@ macro_rules! sprites {
         }
         /// All the assets
         pub struct Assets {
-            $(
-                $tex: Image,
-            )*
+            texes: HashMap<Sprite, Image>,
             /// The font used for all the text
             pub font: Font,
             pub big_font: Font,
@@ -47,25 +47,22 @@ macro_rules! sprites {
             /// Initialises the assets with the context
             #[allow(clippy::new_ret_no_self)]
             pub fn new(ctx: &mut Context) -> GameResult<Self> {
+                let mut texes = HashMap::new();
                 $(
-                    let $tex = Image::new(ctx, concat!("/", stringify!($tex), ".png"))?;
+                    texes.insert(Sprite::$name, Image::new(ctx, concat!("/", $tex, ".png"))?);
                 )*
+                texes.shrink_to_fit();
 
                 Ok(Assets {
-                    $(
-                        $tex,
-                    )*
-                    font: Font::new(ctx, "/FiraMono.ttf", 14)?,
-                    big_font: Font::new(ctx, "/FiraMono.ttf", 21)?,
+                    texes,
+                    font: Font::new(ctx, "/common/DroidSansMono.ttf", 14)?,
+                    big_font: Font::new(ctx, "/common/DroidSansMono.ttf", 21)?,
                 })
             }
             /// Gets the `Image` to draw from the sprite
+            #[inline]
             pub fn get_img(&self, s: Sprite) -> &Image {
-                match s {
-                    $(
-                        Sprite::$name => &self.$tex,
-                    )*
-                }
+                &self.texes[&s]
             }
         }
     );
@@ -73,50 +70,56 @@ macro_rules! sprites {
 
 /// Load all assets and specify their dimensions
 sprites! {
-    Player, player, 32., 32.,
-    Enemy, enemy, 32., 32.,
-    Crosshair, crosshair, 32., 32.,
-    Wall, wall, 32., 32.,
-    Grass, grass, 32., 32.,
-    Floor, floor, 32., 32.,
-    Dirt, dirt, 32., 32.,
-    WoodFloor, wood_floor, 32., 32.,
-    Missing, missing, 32., 32.,
-    Bullet, bullet, 16., 16.,
-    Hole, hole, 8., 8.,
-    Asphalt, asphalt, 32., 32.,
-    Concrete, concrete, 32., 32.,
-    Sand, sand, 32., 32.,
-    Stairs, stairs, 32., 32.,
-    Blood1, blood1, 32., 32.,
-    Blood2, blood2, 32., 32.,
-    Blood3, blood3, 32., 32.,
-    Goal, goal, 32., 32.,
-    Intel, intel, 32., 32.,
-    HealthPack, health_pack, 32., 32.,
-    Armour, armour, 32., 32.,
-    Trashcan, trashcan, 32., 32.,
-    LampPost, lamp_post, 32., 32.,
-    Chair1, chair1, 32., 32.,
-    Chair2, chair2, 32., 32.,
-    ChairBoss, chair_boss, 32., 32.,
-    OfficePlant, officeplant, 32., 32.,
-    OfficePlant2, officeplant2, 32., 32.,
-    OfficePlant3, officeplant3, 32., 32.,
-    ManholeCover, manhole_cover, 32., 32.,
-    ManholeCover2, manhole_cover2, 32., 32.,
-    DeskLamp, desk_lamp, 32., 32.,
-    WallLight, wall_light, 32., 32.,
-    WallLight2, wall_light2, 32., 32.,
-    WallLight3, wall_light3, 32., 32.,
-    RoadMark, road_mark, 32., 32.,
-    Glock, glock, 32., 32.,
-    FiveSeven, five_seven, 32., 32.,
-    M4, m4, 32., 32.,
-    Ak47, ak47, 32., 32.,
-    Magnum, magnum, 32., 32.,
-    Arwp, arwp, 64., 32.,
-    Adrenaline, adrenaline, 32., 32.,
+    Player, "common/player", 32., 32.,
+    Enemy, "common/enemy", 32., 32.,
+    Crosshair, "common/crosshair", 32., 32.,
+    Wall, "materials/wall", 32., 32.,
+    Grass, "materials/grass", 32., 32.,
+    Floor, "materials/floor", 32., 32.,
+    Dirt, "materials/dirt", 32., 32.,
+    WoodFloor, "materials/wood_floor", 32., 32.,
+    Missing, "materials/missing", 32., 32.,
+    Bullet, "common/bullet", 16., 16.,
+    Hole, "common/hole", 8., 8.,
+    Asphalt, "materials/asphalt", 32., 32.,
+    Concrete, "materials/concrete", 32., 32.,
+    Sand, "materials/sand", 32., 32.,
+    Stairs, "materials/stairs", 32., 32.,
+    Blood1, "common/blood1", 32., 32.,
+    Blood2, "common/blood2", 32., 32.,
+    Blood3, "common/blood3", 32., 32.,
+    Goal, "common/goal", 32., 32.,
+    Intel, "common/intel", 32., 32.,
+    HealthPack, "pickups/health_pack", 32., 32.,
+    Armour, "pickups/armour", 32., 32.,
+    Adrenaline, "pickups/adrenaline", 32., 32.,
+    Trashcan, "decorations/trashcan", 32., 32.,
+    LampPost, "decorations/lamp_post", 32., 32.,
+    Chair1, "decorations/chair1", 32., 32.,
+    Chair2, "decorations/chair2", 32., 32.,
+    ChairBoss, "decorations/chair_boss", 32., 32.,
+    OfficePlant, "decorations/officeplant", 32., 32.,
+    OfficePlant2, "decorations/officeplant2", 32., 32.,
+    OfficePlant3, "decorations/officeplant3", 32., 32.,
+    ManholeCover, "decorations/manhole_cover", 32., 32.,
+    ManholeCover2, "decorations/manhole_cover2", 32., 32.,
+    DeskLamp, "decorations/desk_lamp", 32., 32.,
+    WallLight, "decorations/wall_light", 32., 32.,
+    WallLight2, "decorations/wall_light2", 32., 32.,
+    WallLight3, "decorations/wall_light3", 32., 32.,
+    RoadMark, "decorations/road_mark", 32., 32.,
+    Glock, "weapons/glock", 32., 32.,
+    GlockHands, "weapons/glock_hands", 32., 32.,
+    FiveSeven, "weapons/five_seven", 32., 32.,
+    FiveSevenHands, "weapons/five_seven_hands", 32., 32.,
+    M4, "weapons/m4", 32., 32.,
+    M4Hands, "weapons/m4_hands", 32., 32.,
+    Ak47, "weapons/ak47", 32., 32.,
+    Ak47Hands, "weapons/ak47_hands", 32., 32.,
+    Magnum, "weapons/magnum", 32., 32.,
+    MagnumHands, "weapons/magnum_hands", 32., 32.,
+    Arwp, "weapons/arwp", 64., 32.,
+    ArwpHands, "weapons/arwp_hands", 32., 32.,
 }
 
 impl Assets {

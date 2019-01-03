@@ -294,7 +294,7 @@ impl GameState for Editor {
             if let Tool::Selector(Selection{ref enemies, ..})= self.current {
                 if enemies.contains(&i) {
                     graphics::set_color(ctx, YELLOW)?;
-                    graphics::circle(ctx, DrawMode::Fill, enemy.obj.pos, 17., 0.5)?;
+                    graphics::circle(ctx, DrawMode::Fill, enemy.pl.obj.pos, 17., 0.5)?;
                 }
             }
             if self.draw_visibility_cones {
@@ -349,7 +349,7 @@ impl GameState for Editor {
             graphics::set_color(ctx, TRANS)?;
             for &i in &selection.enemies {
                 let mut enem = self.level.enemies[i].clone();
-                enem.obj.pos += dist;
+                enem.pl.obj.pos += dist;
                 enem.draw(ctx, &s.assets)?;
             }
             for &i in &selection.intels {
@@ -562,7 +562,7 @@ impl GameState for Editor {
         if let Left = btn {
             if let Tool::Selector(ref mut selection) = self.current {
                 for &i in &selection.enemies {
-                    if (self.level.enemies[i].obj.pos - mousepos).norm() <= 16. {
+                    if (self.level.enemies[i].pl.obj.pos - mousepos).norm() <= 16. {
                         return selection.moving = Some(mousepos);
                     }
                 }
@@ -630,7 +630,7 @@ impl GameState for Editor {
                                 }
                             }
                             for i in selection.enemies.iter().rev() {
-                                self.level.enemies[*i].obj.pos += dist;
+                                self.level.enemies[*i].pl.obj.pos += dist;
                             }
                             for i in selection.intels.iter().rev() {
                                 self.level.intels[*i] += dist;
@@ -650,7 +650,7 @@ impl GameState for Editor {
                                 *selection = Selection::default();
                             }
                             for (i, enemy) in self.level.enemies.iter().enumerate() {
-                                if (enemy.obj.pos - mousepos).norm() <= 16. && !selection.enemies.contains(&i) {
+                                if (enemy.pl.obj.pos - mousepos).norm() <= 16. && !selection.enemies.contains(&i) {
                                     selection.enemies.push(i);
                                     return
                                 }
