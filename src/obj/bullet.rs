@@ -46,14 +46,6 @@ impl Bullet<'_> {
         if cast.full() {
             Hit::None
         } else {
-            let mut pos = start;
-            const HOLE_RADIUS: f32 = 4.;
-            const MULT: f32 = HOLE_RADIUS / (SPEED * DELTA);
-            let d = MULT * d_pos;
-            while !grid.is_solid_tuple(Grid::snap(pos-2.*d)) {
-                pos += d;
-            }
-            self.obj.pos = pos;
             Hit::Wall
         }
     }

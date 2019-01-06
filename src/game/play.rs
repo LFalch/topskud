@@ -152,6 +152,8 @@ impl GameState for Play {
                 Hit::None => (),
                 Hit::Wall => {
                     s.mplayer.play(ctx, bullet.weapon.impact_snd)?;
+                    let dir = angle_to_vec(bullet.obj.rot);
+                    bullet.obj.pos += Vector2::new(5.*dir.x.signum(), 5.*dir.y.signum());
                     self.holes.add(bullet.obj.drawparams());
                     self.misses += 1;
                     deads.push(i);
