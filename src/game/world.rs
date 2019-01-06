@@ -309,10 +309,15 @@ impl Grid {
         x.saturating_add(y.saturating_mul(self.width)) as usize
     }
     pub fn snap_coords(x: f32, y: f32) -> (u16, u16) {
-        let x = (x / 32.) as u16;
-        let y = (y / 32.) as u16;
+        fn db32omin(n: f32) -> u16 {
+            if n < 0. {
+                std::u16::MAX
+            } else {
+                (n / 32.) as u16
+            }
+        }
 
-        (x, y)
+        (db32omin(x), db32omin(y))
     }
     pub fn get(&self, x: u16, y: u16) -> Option<Material> {
         if x < self.width {
@@ -320,6 +325,10 @@ impl Grid {
         } else {
             None
         }
+    }
+    #[inline(always)]
+    pub fn is_solid_tuple(&self, (x, y): (u16, u16)) -> bool {
+        self.is_solid(x, y)
     }
     pub fn is_solid(&self, x: u16, y: u16) -> bool {
         self.get(x, y).map(|m| m.solid()).unwrap_or(true)
@@ -385,6 +394,27 @@ impl Grid {
                 }
             }
         }
+    }
+    pub fn dist_line_circle(line_start: Point2, line_dist: Vector2, circle_center: Point2) -> f32 {
+        let c = circle_center - line_start;
+
+        let d_len = line_dist.norm();
+
+        let c_on_d_len = c.dot(&line_dist) / d_len;
+        let c_on_d = c_on_d_len / d_len * line_dist;
+
+        let closest_point = if c_on_d_len < 0. {
+            // Closest point is start point
+            line_start
+        } else if c_on_d_len <= d_len {
+            // Closest point is betweeen start and end point
+            line_start + c_on_d
+        } else {
+            // Closest point is end point
+            line_start + line_dist
+        };
+
+        (circle_center - closest_point).norm()
     }
     pub fn draw(&self, ctx: &mut Context, assets: &Assets) -> GameResult<()> {
         for (i, mat) in self.mats.iter().enumerate() {

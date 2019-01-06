@@ -144,31 +144,59 @@ impl GameState for Play {
 
         let mut deads = Vec::new();
         for (i, bullet) in self.world.bullets.iter_mut().enumerate().rev() {
-            bullet.obj.pos += 660. * DELTA * angle_to_vec(bullet.obj.rot);
-            if bullet.obj.is_on_solid(&self.world.grid) {
-                s.mplayer.play(ctx, bullet.weapon.impact_snd)?;
-                self.holes.add(bullet.obj.drawparams());
-                self.misses += 1;
-                deads.push(i);
-            } else if (bullet.obj.pos-self.world.player.obj.pos).norm() <= 16. {
-                deads.push(i);
-                self.bloods.push(BloodSplatter::new(bullet.obj.clone()));
-                bullet.apply_damage(&mut self.world.player.health);
-                s.mplayer.play(ctx, Sound::Hit)?;
+            let hit = bullet.update(&self.world.grid, &mut self.world.player, &mut *self.world.enemies);
+            
+            use crate::obj::bullet::Hit;
 
+            match hit {
+                Hit::None => (),
+                Hit::Wall => {
+                    s.mplayer.play(ctx, bullet.weapon.impact_snd)?;
+                    self.holes.add(bullet.obj.drawparams());
+                    self.misses += 1;
+                    deads.push(i);
+                }
+                Hit::Player => {
+                    deads.push(i);
+                    self.bloods.push(BloodSplatter::new(bullet.obj.clone()));
+                    s.mplayer.play(ctx, Sound::Hit)?;
 
-                if self.world.player.health.is_dead() {
-                    s.switch(StateSwitch::Lose(Box::new(Statistics{
-                        hits: self.bloods.len(),
-                        misses: self.misses,
-                        enemies_left: self.world.enemies.len(),
-                        health_left: self.initial.0,
-                        level: self.level.clone(),
-                        weapon: self.initial.1,
-                    })));
-                    s.mplayer.play(ctx, Sound::Death)?;
-                } else {
-                    s.mplayer.play(ctx, Sound::Hurt)?;
+                    if self.world.player.health.is_dead() {
+                        s.switch(StateSwitch::Lose(Box::new(Statistics{
+                            hits: self.bloods.len(),
+                            misses: self.misses,
+                            enemies_left: self.world.enemies.len(),
+                            health_left: self.initial.0,
+                            level: self.level.clone(),
+                            weapon: self.initial.1,
+                        })));
+                        s.mplayer.play(ctx, Sound::Death)?;
+                    } else {
+                        s.mplayer.play(ctx, Sound::Hurt)?;
+                    }
+                }
+                Hit::Enemy(e) => {
+                    deads.push(i);
+                    let enemy = &self.world.enemies[e];
+                    s.mplayer.play(ctx, Sound::Hit)?;
+
+                    self.bloods.push(BloodSplatter::new(bullet.obj.clone()));
+                    if enemy.pl.health.is_dead() {
+                        s.mplayer.play(ctx, Sound::Death)?;
+
+                        let Enemy{pl: Player{wep, obj: Object{pos, ..}, ..}, ..}
+                            = self.world.enemies.remove(e);
+                        if let Some(wep) = wep {
+                            self.world.weapons.push(wep.into_drop(pos));
+                        }
+                    } else {
+                        if !enemy.behaviour.chasing() {
+                            self.world.enemies[e].behaviour = Chaser::LookAround{
+                                dir: bullet.obj.pos - enemy.pl.obj.pos
+                            };
+                        }
+                        s.mplayer.play(ctx, Sound::Hurt)?;
+                    }
                 }
             }
         }
@@ -208,8 +236,7 @@ impl GameState for Play {
         // Define player velocity here already because enemies need it
         let player_vel = Vector2::new(s.input.hor(), s.input.ver());
 
-        let mut deads = Vec::new();
-        for (e, enemy) in self.world.enemies.iter_mut().enumerate().rev() {
+        for enemy in self.world.enemies.iter_mut() {
             if enemy.can_see(self.world.player.obj.pos, &self.world.grid) {
                 enemy.behaviour = Chaser::LastKnown{
                     pos: self.world.player.obj.pos,
@@ -227,39 +254,6 @@ impl GameState for Play {
                 }
             }
             enemy.update(ctx, &mut s.mplayer)?;
-            let mut dead = None;
-            for (i, bullet) in self.world.bullets.iter().enumerate().rev() {
-                let dist = bullet.obj.pos - enemy.pl.obj.pos;
-                if dist.norm() < 16. {
-                    dead = Some(i);
-                    bullet.apply_damage(&mut enemy.pl.health);
-
-                    if !enemy.behaviour.chasing() {
-                        enemy.behaviour = Chaser::LookAround{
-                            dir: dist
-                        };
-                    }
-                    s.mplayer.play(ctx, Sound::Hit)?;
-
-                    self.bloods.push(BloodSplatter::new(bullet.obj.clone()));
-                    if enemy.pl.health.is_dead() {
-                        s.mplayer.play(ctx, Sound::Death)?;
-                        deads.push(e);
-                    } else {
-                        s.mplayer.play(ctx, Sound::Hurt)?;
-                    }
-                    break
-                }
-            }
-            if let Some(i) = dead {
-                self.world.bullets.remove(i);
-            }
-        }
-        for i in deads {
-            let Enemy{pl: Player{wep, obj: Object{pos, ..}, ..}, ..} = self.world.enemies.remove(i);
-            if let Some(wep) = wep {
-                self.world.weapons.push(wep.into_drop(pos));
-            }
         }
 
         let speed = if s.modifiers.shift {
@@ -271,7 +265,7 @@ impl GameState for Play {
             wep.update(ctx, &mut s.mplayer)?;
             if wep.cur_clip > 0 && s.mouse_down.left && wep.weapon.fire_mode.is_auto() {
                 if let Some(bm) = wep.shoot(ctx, &mut s.mplayer)? {
-                    let pos = self.world.player.obj.pos + 16. * angle_to_vec(self.world.player.obj.rot);
+                    let pos = self.world.player.obj.pos + 20. * angle_to_vec(self.world.player.obj.rot);
                     let mut bul = Object::new(pos);
                     bul.rot = self.world.player.obj.rot;
 
@@ -398,7 +392,7 @@ impl GameState for Play {
         if let MouseButton::Left = btn {
             if let Some(wep) = &mut self.world.player.wep {
                 if let Some(bm) = wep.shoot(ctx, &mut s.mplayer).unwrap() {
-                    let pos = self.world.player.obj.pos + 16. * angle_to_vec(self.world.player.obj.rot);
+                    let pos = self.world.player.obj.pos + 20. * angle_to_vec(self.world.player.obj.rot);
                     let mut bul = Object::new(pos);
                     bul.rot = self.world.player.obj.rot;
 
