@@ -10,8 +10,31 @@ pub mod bullet;
 pub mod pickup;
 pub mod decoration;
 
-use crate::game::world::Grid;
-use crate::game::DELTA;
+use crate::{
+    io::tex::Assets,
+    game::{world::Grid, DELTA},
+};
+
+use self::player::Player;
+
+pub trait GameObj {
+    /// Clones the object from `as_obj`
+    #[inline]
+    fn to_obj(&self) -> Object {
+        self.as_obj().clone()
+    }
+    fn as_obj(&self) -> &Object;
+    fn as_mut_obj(&mut self) -> &mut Object;
+    fn draw(&self, ctx: &mut Context, a: &Assets) -> GameResult<()>;
+    #[inline]
+    fn cast_player(&self) -> Option<&Player> {
+        None
+    }
+    #[inline]
+    fn cast_player_mut(&mut self) -> Option<&mut Player> {
+        None
+    }
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 /// A simple object that can be drawn to the screen
