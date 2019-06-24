@@ -128,7 +128,7 @@ impl Play {
 }
 
 impl GameState for Play {
-    #[allow(clippy::cyclomatic_complexity)]
+    #[allow(clippy::cognitive_complexity)]
     fn update(&mut self, s: &mut State, ctx: &mut Context) -> GameResult<()> {
         self.hp_text.update_text(&s.assets, ctx, &format!("{:02.0}", self.world.player.health.hp))?;
         self.arm_text.update_text(&s.assets, ctx, &format!("{:02.0}", self.world.player.health.armour))?;

@@ -35,7 +35,7 @@ impl Bullet<'_> {
             self.apply_damage(&mut player.health);
             return Hit::Player;
         }
-        for (i, enem) in enemies.into_iter().enumerate() {
+        for (i, enem) in enemies.iter_mut().enumerate() {
             if Grid::dist_line_circle(start, d_pos, enem.pl.obj.pos) <= 16. {
                 self.apply_damage(&mut enem.pl.health);
                 return Hit::Enemy(i);

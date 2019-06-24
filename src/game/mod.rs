@@ -51,7 +51,6 @@ pub trait GameState {
         Ok(())
     }
     fn draw_hud(&mut self, _: &State, _: &mut Context) -> GameResult<()>;
-
     fn key_down(&mut self, _: &mut State, _: &mut Context, _: Keycode) {
 
     }

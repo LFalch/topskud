@@ -190,7 +190,7 @@ impl Level {
         loop {
             let mut buf = String::with_capacity(16);
             reader.read_line(&mut buf)?;
-            match &*buf.trim_right() {
+            match &*buf.trim_end() {
                 "" => continue,
                 "GRD" => ret.grid = bincode::deserialize_from(&mut reader)
                 .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?,

@@ -68,7 +68,7 @@ macro_rules! sprites {
     );
 }
 
-/// Load all assets and specify their dimensions
+// Load all assets and specify their dimensions
 sprites! {
     Player, "common/player", 32., 32.,
     Enemy, "common/enemy", 32., 32.,

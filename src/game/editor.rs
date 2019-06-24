@@ -240,7 +240,7 @@ impl GameState for Editor {
         Ok(())
     }
 
-    #[allow(clippy::cyclomatic_complexity)]
+    #[allow(clippy::cognitive_complexity)]
     fn draw(&mut self, s: &State, ctx: &mut Context) -> GameResult<()> {
         graphics::set_color(ctx, graphics::WHITE)?;
         self.level.grid.draw(ctx, &s.assets)?;

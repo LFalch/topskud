@@ -35,14 +35,14 @@ impl Player {
     #[inline]
     pub fn with_health(self, health: Health) -> Self {
         Self {
-            health: health,
+            health,
             .. self
         }
     }
     #[inline]
     pub fn with_weapon(self, wep: Option<WeaponInstance<'static>>) -> Self {
         Self {
-            wep: wep,
+            wep,
             .. self
         }
     }
