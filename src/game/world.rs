@@ -1,7 +1,9 @@
 use crate::{
     util::{Point2, Vector2},
     io::tex::{Assets, Sprite},
+    io::save::Point2Def,
     obj::{
+        Object,
         player::Player,
         enemy::Enemy,
         health::Health,
@@ -118,6 +120,44 @@ mat!{
     Missing = 255, Missing, true,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum Entity {
+    SimpleEnemy {
+        obj: Object,
+        weapon: usize,
+    },
+    Enemy {
+        obj: Object,
+        health: Health,
+        weapon: usize,
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DataLevel {
+    pub grid: Grid,
+    #[serde(with = "Point2Def")]
+    pub start_point: Point2,
+    #[serde(with = "opt_point")]
+    pub exit: Option<Point2>,
+    pub entities: Vec<Entity>,
+}
+
+mod opt_point {
+    use serde::{Serialize, Deserialize, Serializer, Deserializer};
+    use crate::util::Point2;
+
+    #[inline]
+    pub fn serialize<S: Serializer>(p: &Option<Point2>, s: S) -> Result<S::Ok, S::Error> {
+        p.map(|p| (p.x, p.y)).serialize(s)
+    }
+    #[inline]
+    pub fn deserialize<'de, D: Deserializer<'de>>(d: D) -> Result<Option<Point2>, D::Error> {
+        <Option<(f32, f32)>>::deserialize(d).map(|p| p.map(|(x, y)| Point2::new(x, y)))
+    }
+}
+
+
 #[derive(Debug, Clone)]
 pub struct Level {
     pub grid: Grid,
@@ -132,7 +172,7 @@ pub struct Level {
 
 impl Level {
     pub fn new(width: u16, height: u16) -> Self {
-        Level {
+        Self {
             grid: Grid::new(width, height),
             start_point: None,
             enemies: Vec::new(),
@@ -395,6 +435,10 @@ impl Grid {
             }
         }
     }
+    /// Distance between a line section and a circle
+    /// 
+    /// The general formula for distance between a line and cirlcle here would be inadequate
+    /// since here the line has a finite length so we need to check if the smalleset distance is in that finite line section.
     pub fn dist_line_circle(line_start: Point2, line_dist: Vector2, circle_center: Point2) -> f32 {
         let c = circle_center - line_start;
 

@@ -16,7 +16,7 @@ use crate::game::DELTA;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 /// A simple object that can be drawn to the screen
 pub struct Object {
-    #[serde(serialize_with = "crate::io::save::point_ser", deserialize_with = "crate::io::save::point_des")]
+    #[serde(with = "crate::io::save::Point2Def")]
     /// The position of the object
     pub pos: Point2,
     /// The rotation of the obejct in radians
