@@ -429,4 +429,11 @@ impl GameState for Play {
             _ => return,
         }
     }
+
+    fn get_world(&self) -> Option<&World> {
+        Some(&self.world)
+    }
+    fn get_mut_world(&mut self) -> Option<&mut World> {
+        Some(&mut self.world)
+    }
 }

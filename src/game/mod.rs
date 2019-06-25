@@ -1,7 +1,4 @@
-use std::{
-    any::Any,
-    path::{Path, PathBuf}
-};
+use std::path::{Path, PathBuf};
 use crate::{
     util::{Vector2, Point2},
     ext::{MouseDown, InputState, Modifiers, BoolExt},
@@ -66,6 +63,13 @@ pub trait GameState {
     fn mouse_up(&mut self, _: &mut State, _: &mut Context, _: MouseButton) {
 
     }
+
+    fn get_world(&self) -> Option<&world::World> {
+        None
+    }
+    fn get_mut_world(&mut self) -> Option<&mut world::World> {
+        None
+    }
 }
 
 #[derive(Debug)]
@@ -83,22 +87,45 @@ impl Console {
             prompt_str: String::with_capacity(32),
         })
     }
-    fn execute(&mut self, ctx: &mut Context, state: &mut State, gs: &mut (dyn GameState + 'static)) -> GameResult<()> {
-        let mut new_history = format!("> {}", self.prompt_str);
+    fn history_line(&mut self, ctx: &mut Context, a: &Assets, line: &str) -> GameResult<()> {
+        self.history.push(a.raw_text(ctx, line)?.into_inner());
+        Ok(())
+    }
+    fn execute(&mut self, ctx: &mut Context, state: &mut State, gs: &mut dyn GameState) -> GameResult<()> {
+        self.history_line(ctx, &state.assets, &format!("> {}", self.prompt_str))?;
+
+        let cap = self.prompt_str.capacity();
+        let prompt = mem::replace(&mut self.prompt_str, String::with_capacity(cap));
+        let args: Vec<_> = prompt.split(' ').collect();
         
-        match &*self.prompt_str {
-            // "god" => if let Some(play) = gs.downcast_mut::<play::Play>() {
-                
-            // },
-            "hello" => new_history.push_str("\nHello!"),
-            cmd => new_history.push_str(&format!("\n\tUnknown command `{}'!", cmd)),
-        }
-
-        self.prompt_str.clear();
-
-        for line in new_history.lines() {
-            let l = line.trim();
-            self.history.push(state.assets.raw_text(ctx, l)?.into_inner());
+        match args[0] {
+            "" => (),
+            "pi" => if let Some(world) = gs.get_mut_world() {
+                world.intels.clear();
+                self.history_line(ctx, &state.assets, "Intels got")?;
+            } else {
+                self.history_line(ctx, &state.assets, "No world")?;
+            },
+            "clear" => self.history.clear(),
+            "fa" => if let Some(world) = gs.get_mut_world() {
+                world.player.health.hp = 100.;
+                world.player.health.armour = 100.;
+            } else {
+                self.history_line(ctx, &state.assets, "No world")?;
+            },
+            "god" => if let Some(world) = gs.get_mut_world() {
+                if world.player.health.hp.is_finite() {
+                    world.player.health.hp = std::f32::INFINITY;
+                    self.history_line(ctx, &state.assets, "Degreelessness")?;
+                } else {
+                    world.player.health.hp = 100.;
+                    self.history_line(ctx, &state.assets, "God off")?;
+                }
+            } else {
+                self.history_line(ctx, &state.assets, "No world")?;
+            },
+            "hello" => self.history_line(ctx, &state.assets, "Hello!")?,
+            cmd => self.history_line(ctx, &state.assets, &format!("\tUnknown command `{}'!", cmd))?,
         }
 
         Ok(())
