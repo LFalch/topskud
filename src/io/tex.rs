@@ -129,9 +129,13 @@ sprites! {
 }
 
 impl Assets {
+    #[inline]
+    pub fn raw_text(&self, context: &mut Context, text: &str) -> GameResult<Text> {
+        Text::new(context, text, &self.font)
+    }
     /// Make a positional text object
     pub fn text(&self, context: &mut Context, pos: Point2, text: &str) -> GameResult<PosText> {
-        let text = Text::new(context, text, &self.font)?;
+        let text = self.raw_text(context, text)?;
         Ok(PosText {
             pos,
             text
@@ -153,7 +157,7 @@ impl Assets {
 /// Used for convenience so it's easier to update the text and rememeber their coordinates on the screen
 pub struct PosText {
     pub pos: Point2,
-    text: Text
+    pub(crate) text: Text
 }
 
 impl PosText {

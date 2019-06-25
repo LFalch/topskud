@@ -1,16 +1,19 @@
-use std::path::{Path, PathBuf};
+use std::{
+    any::Any,
+    path::{Path, PathBuf}
+};
 use crate::{
     util::{Vector2, Point2},
-    ext::{MouseDown, InputState, Modifiers},
+    ext::{MouseDown, InputState, Modifiers, BoolExt},
     io::{
         snd::MediaPlayer,
-        tex::Assets,
+        tex::{Assets, PosText},
     },
     obj::{health::Health, weapon::WeaponInstance},
 };
 use ggez::{
     Context, GameResult,
-    graphics::{self, Matrix4},
+    graphics::{self, Matrix4, DrawMode, Rect, Image, Drawable},
     timer,
     event::{EventHandler, MouseButton, MouseState, Keycode, Mod}
 };
@@ -65,9 +68,48 @@ pub trait GameState {
     }
 }
 
+#[derive(Debug)]
+pub struct Console {
+    history: Vec<Image>,
+    prompt: PosText,
+    prompt_str: String,
+}
+
+impl Console {
+    fn new(ctx: &mut Context, assets: &Assets) -> GameResult<Self> {
+        Ok(Console {
+            history: vec![assets.raw_text(ctx, "Welcome t' console")?.into_inner()],
+            prompt: assets.text(ctx, Point2::new(0., 200.), "> ")?,
+            prompt_str: String::with_capacity(32),
+        })
+    }
+    fn execute(&mut self, ctx: &mut Context, state: &mut State, gs: &mut (dyn GameState + 'static)) -> GameResult<()> {
+        let mut new_history = format!("> {}", self.prompt_str);
+        
+        match &*self.prompt_str {
+            // "god" => if let Some(play) = gs.downcast_mut::<play::Play>() {
+                
+            // },
+            "hello" => new_history.push_str("\nHello!"),
+            cmd => new_history.push_str(&format!("\n\tUnknown command `{}'!", cmd)),
+        }
+
+        self.prompt_str.clear();
+
+        for line in new_history.lines() {
+            let l = line.trim();
+            self.history.push(state.assets.raw_text(ctx, l)?.into_inner());
+        }
+
+        Ok(())
+    }
+}
+
 pub struct Master {
     gs: Box<dyn GameState>,
     state: State,
+    console_open: bool,
+    console: Console,
 }
 
 pub enum Content {
@@ -132,6 +174,8 @@ impl Master {
         };
 
         Ok(Master {
+            console: Console::new(ctx, &state.assets)?,
+            console_open: false,
             gs: Menu::new(ctx, &mut state)?,
             state,
         })
@@ -153,24 +197,34 @@ use std::mem;
 impl EventHandler for Master {
     // Handle the game logic
     fn update(&mut self, ctx: &mut Context) -> GameResult<()> {
-        if let Some(gsb) = mem::replace(&mut self.state.switch_state, None) {
-            use self::StateSwitch::*;
-            self.gs = match gsb {
-                PlayWith{lvl, health, wep} => play::Play::new(ctx, &mut self.state, *lvl, Some((health, wep))),
-                Play(lvl) => play::Play::new(ctx, &mut self.state, lvl, None),
-                Menu => menu::Menu::new(ctx, &mut self.state),
-                Editor(l) => editor::Editor::new(ctx, &self.state, l),
-                Win(stats) => win::Win::new(ctx, &mut self.state, *stats),
-                Lose(stats) => lose::Lose::new(ctx, &mut self.state, *stats),
-            }?;
-        }
+        if self.console_open {
+            if self.console.prompt_str != self.console.prompt.text.contents()[2..] {
+                self.console.prompt.update_text(&self.state.assets, ctx, &format!("> {}", self.console.prompt_str))?;
+            }
 
-        // Run this for every 1/60 of a second has passed since last update
-        // Can in theory become slow
-        while timer::check_update_time(ctx, DESIRED_FPS) {
-            self.gs.update(&mut self.state, ctx)?;
+            while timer::check_update_time(ctx, DESIRED_FPS) {}
+
+            Ok(())
+        } else {
+            if let Some(gsb) = mem::replace(&mut self.state.switch_state, None) {
+                use self::StateSwitch::*;
+                self.gs = match gsb {
+                    PlayWith{lvl, health, wep} => play::Play::new(ctx, &mut self.state, *lvl, Some((health, wep))),
+                    Play(lvl) => play::Play::new(ctx, &mut self.state, lvl, None),
+                    Menu => menu::Menu::new(ctx, &mut self.state),
+                    Editor(l) => editor::Editor::new(ctx, &self.state, l),
+                    Win(stats) => win::Win::new(ctx, &mut self.state, *stats),
+                    Lose(stats) => lose::Lose::new(ctx, &mut self.state, *stats),
+                }?;
+            }
+
+            // Run this for every 1/60 of a second has passed since last update
+            // Can in theory become slow
+            while timer::check_update_time(ctx, DESIRED_FPS) {
+                self.gs.update(&mut self.state, ctx)?;
+            }
+            self.gs.logic(&mut self.state, ctx)
         }
-        self.gs.logic(&mut self.state, ctx)
     }
 
     // Draws everything
@@ -189,6 +243,19 @@ impl EventHandler for Master {
         graphics::apply_transformations(ctx)?;
 
         self.gs.draw_hud(&self.state, ctx)?;
+
+        if self.console_open {
+            graphics::set_color(ctx, graphics::BLACK)?;
+            graphics::rectangle(ctx, DrawMode::Fill, Rect::new(0., 0., self.state.width as f32, self.state.height as f32 / 3.))?;
+
+            graphics::set_color(ctx, graphics::WHITE)?;
+            let mut pos = Point2::new(0., 0.);
+            for line in &self.console.history {
+                line.draw(ctx, pos, 0.)?;
+                pos.y += line.height() as f32;
+            }
+            self.console.prompt.draw_text(ctx)?;
+        }
 
         // Flip the buffers to see what we just drew
         graphics::present(ctx);
@@ -214,6 +281,7 @@ impl EventHandler for Master {
             LShift => self.state.modifiers.shift = true,
             LCtrl => self.state.modifiers.ctrl = true,
             LAlt => self.state.modifiers.alt = true,
+            Escape if self.console_open => self.console_open = false,
             Escape => ctx.quit().unwrap(),
             _ => (),
         }
@@ -235,9 +303,17 @@ impl EventHandler for Master {
             LShift => self.state.modifiers.shift = false,
             LCtrl => self.state.modifiers.ctrl = false,
             LAlt => self.state.modifiers.alt = false,
+            Less => self.console_open.toggle(),
+            Backspace if self.console_open => {self.console.prompt_str.pop();},
+            Return if self.console_open => self.console.execute(ctx, &mut self.state, &mut *self.gs).unwrap(),
             _ => (),
         }
         self.gs.key_up(&mut self.state, ctx, keycode)
+    }
+    fn text_input_event(&mut self, _ctx: &mut Context, text: String) {
+        if self.console_open {
+            self.console.prompt_str.push_str(&text);
+        }
     }
     /// Handle mouse down event
     fn mouse_button_down_event(&mut self, ctx: &mut Context, btn: MouseButton, _x: i32, _y: i32) {
