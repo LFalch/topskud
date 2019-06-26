@@ -7,25 +7,41 @@ extern crate serde_derive;
 
 use std::env::args;
 
-use ggez::{
-    ContextBuilder,
-    conf,
-    event::run,
-};
+use ggez::{conf, event::run, ContextBuilder};
 
-pub mod io;
-pub mod obj;
 pub mod ext;
 pub mod game;
+pub mod io;
+pub mod obj;
 
 pub mod util {
     use ggez::graphics::Color;
-    pub use ggez::graphics::{Vector2, Point2};
+    pub use ggez::graphics::{Point2, Vector2};
 
-    pub const TRANS: Color = Color{r:1.,g:1.,b:1.,a:0.5};
-    pub const GREEN: Color = Color{r:0.1,g:0.7,b:0.1,a:1.};
-    pub const RED: Color = Color{r:1.,g:0.,b:0.,a:1.};
-    pub const BLUE: Color = Color{r:0.,g:0.,b:1.,a:1.};
+    pub const TRANS: Color = Color {
+        r: 1.,
+        g: 1.,
+        b: 1.,
+        a: 0.5,
+    };
+    pub const GREEN: Color = Color {
+        r: 0.1,
+        g: 0.7,
+        b: 0.1,
+        a: 1.,
+    };
+    pub const RED: Color = Color {
+        r: 1.,
+        g: 0.,
+        b: 0.,
+        a: 1.,
+    };
+    pub const BLUE: Color = Color {
+        r: 0.,
+        g: 0.,
+        b: 1.,
+        a: 1.,
+    };
 
     /// Makes a unit vector from a given direction angle
     pub fn angle_to_vec(angle: f32) -> Vector2 {
@@ -60,7 +76,8 @@ fn main() {
     let mut ctx = ContextBuilder::new("tds", "LFalch")
         .window_setup(conf::WindowSetup::default().title("TDS"))
         .window_mode(window_mode)
-        .build().unwrap();
+        .build()
+        .unwrap();
 
     // Add the workspace directory to the filesystem when running with cargo
     // This is only used in development
@@ -79,7 +96,7 @@ fn main() {
             // Run the game loop
             match run(&mut ctx, &mut game) {
                 Ok(_) => (),
-                Err(e) => eprintln!("Error occured: {}", e)
+                Err(e) => eprintln!("Error occured: {}", e),
             }
         }
     }

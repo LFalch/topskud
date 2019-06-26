@@ -1,18 +1,15 @@
 use std::num::NonZeroU16;
 
-use crate::io::{
-    snd::Sound,
-    tex::Sprite,
-};
 use super::{FireMode, Weapon};
+use crate::io::{snd::Sound, tex::Sprite};
 
 macro_rules! nzu16 {
     (0) => {
         unimplemented!()
     };
     ($n:expr) => {
-        unsafe{NonZeroU16::new_unchecked($n)}
-    }
+        unsafe { NonZeroU16::new_unchecked($n) }
+    };
 }
 
 macro_rules! weapons {
@@ -47,7 +44,7 @@ macro_rules! spray {
     };
 }
 
-weapons!{
+weapons! {
     // 0
     GLOCK {
         name: "Glack",

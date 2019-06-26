@@ -1,11 +1,8 @@
 use crate::{
-    util::Point2,
     io::tex::{Assets, Sprite},
+    util::Point2,
 };
-use ggez::{
-    GameResult, Context,
-    graphics::self,
-};
+use ggez::{graphics, Context, GameResult};
 
 use std::fmt::{self, Debug};
 
@@ -14,7 +11,7 @@ use super::health::Health;
 #[derive(Debug, Clone)]
 pub struct Pickup {
     pub pos: Point2,
-    pub pickup_type: &'static PickupType
+    pub pickup_type: &'static PickupType,
 }
 
 impl Pickup {
@@ -22,7 +19,7 @@ impl Pickup {
     pub fn new(pos: Point2, i: u8) -> Self {
         Self {
             pos,
-            pickup_type: &PICKUPS[i as usize]
+            pickup_type: &PICKUPS[i as usize],
         }
     }
     #[inline]
@@ -47,7 +44,7 @@ impl PickupType {
         let drawparams = graphics::DrawParam {
             dest: pos,
             offset: Point2::new(0.5, 0.5),
-            .. Default::default()
+            ..Default::default()
         };
         graphics::draw_ex(ctx, assets.get_img(self.spr), drawparams)
     }
@@ -64,16 +61,16 @@ impl Debug for PickupType {
 pub const PICKUPS: [PickupType; 3] = [
     PickupType {
         spr: Sprite::HealthPack,
-        ability: health_pack
+        ability: health_pack,
     },
     PickupType {
         spr: Sprite::Armour,
-        ability: armour
+        ability: armour,
     },
     PickupType {
         spr: Sprite::Adrenaline,
         ability: adrenaline,
-    }
+    },
 ];
 fn health_pack(health: &mut Health) {
     health.hp = 100.;

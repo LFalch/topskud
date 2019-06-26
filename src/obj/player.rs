@@ -1,14 +1,14 @@
-use ggez::{Context, GameResult, graphics};
+use ggez::{graphics, Context, GameResult};
 
 use crate::{
-    util::{Point2, angle_to_vec},
     io::{
         snd::MediaPlayer,
         tex::{Assets, Sprite},
     },
+    util::{angle_to_vec, Point2},
 };
 
-use super::{Object, health::Health, weapon::WeaponInstance};
+use super::{health::Health, weapon::WeaponInstance, Object};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Player {
@@ -34,23 +34,17 @@ impl Player {
     }
     #[inline]
     pub fn with_health(self, health: Health) -> Self {
-        Self {
-            health,
-            .. self
-        }
+        Self { health, ..self }
     }
     #[inline]
     pub fn with_weapon(self, wep: Option<WeaponInstance<'static>>) -> Self {
-        Self {
-            wep,
-            .. self
-        }
+        Self { wep, ..self }
     }
 
     /// Draw the object
     // pub fn draw(&self, ctx: &mut Context, img: &Image) -> GameResult<()> {
-        // let drawparams = self.drawparams();
-        // graphics::draw_ex(ctx, img, drawparams)
+    // let drawparams = self.drawparams();
+    // graphics::draw_ex(ctx, img, drawparams)
     // }
 
     #[inline]
@@ -60,8 +54,8 @@ impl Player {
     pub fn draw(&self, ctx: &mut Context, a: &Assets, sprite: Sprite) -> GameResult<()> {
         if let Some(wep) = self.wep {
             let dp = graphics::DrawParam {
-                dest: self.obj.pos+angle_to_vec(self.obj.rot)*16.,
-                .. self.obj.drawparams()
+                dest: self.obj.pos + angle_to_vec(self.obj.rot) * 16.,
+                ..self.obj.drawparams()
             };
 
             graphics::draw_ex(ctx, a.get_img(wep.weapon.hands_sprite), dp)?;

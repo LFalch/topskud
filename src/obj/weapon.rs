@@ -1,26 +1,24 @@
-use std::num::NonZeroU16;
 use std::fmt::{self, Display};
+use std::num::NonZeroU16;
 
 use crate::{
-    util::Point2,
     game::DELTA,
     io::{
-        snd::{Sound, MediaPlayer},
+        snd::{MediaPlayer, Sound},
         tex::Sprite,
     },
+    util::Point2,
 };
 use ggez::{Context, GameResult};
 
-use super::{Object, bullet::Bullet};
+use super::{bullet::Bullet, Object};
 
 #[derive(Debug, Clone, Copy)]
 pub enum FireMode {
     Automatic,
     SemiAutomatic,
     BoltAction,
-    PumpAction{
-        shell_load: u8,
-    }
+    PumpAction { shell_load: u8 },
 }
 
 impl FireMode {
@@ -72,7 +70,7 @@ impl Weapon {
             jerk: 0.,
             jerk_decay: 0.,
             spray_index: 0,
-            ammo: cur_clip*self.clips.get(),
+            ammo: cur_clip * self.clips.get(),
         }
     }
     pub fn make_drop(&self, pos: Point2) -> WeaponDrop<'_> {
@@ -80,7 +78,7 @@ impl Weapon {
         WeaponDrop {
             pos,
             cur_clip,
-            ammo: cur_clip*self.clips.get(),
+            ammo: cur_clip * self.clips.get(),
             weapon: self,
         }
     }
@@ -119,7 +117,12 @@ impl Display for WeaponInstance<'_> {
 
 impl<'a> WeaponInstance<'a> {
     pub fn into_drop(self, pos: Point2) -> WeaponDrop<'a> {
-        let WeaponInstance{cur_clip, ammo, weapon, ..} = self;
+        let WeaponInstance {
+            cur_clip,
+            ammo,
+            weapon,
+            ..
+        } = self;
         WeaponDrop {
             pos,
             cur_clip,
@@ -129,7 +132,12 @@ impl<'a> WeaponInstance<'a> {
     }
     #[allow(clippy::needless_pass_by_value)]
     pub fn from_drop(wd: WeaponDrop<'a>) -> Self {
-        let WeaponDrop{cur_clip, ammo, weapon, ..} = wd;
+        let WeaponDrop {
+            cur_clip,
+            ammo,
+            weapon,
+            ..
+        } = wd;
         Self {
             loading_time: 0.,
             jerk: 0.,
@@ -161,7 +169,7 @@ impl<'a> WeaponInstance<'a> {
     pub fn reload(&mut self, ctx: &mut Context, mplayer: &mut MediaPlayer) -> GameResult<()> {
         let clip_size = self.weapon.clip_size.get();
         if self.cur_clip == clip_size || self.ammo == 0 {
-            return Ok(())
+            return Ok(());
         }
 
         self.loading_time = self.weapon.reload_time;
@@ -177,7 +185,11 @@ impl<'a> WeaponInstance<'a> {
         }
         mplayer.play(ctx, self.weapon.reload_snd)
     }
-    pub fn shoot(&mut self, ctx: &mut Context, mplayer: &mut MediaPlayer) -> GameResult<Option<BulletMaker<'a>>> {
+    pub fn shoot(
+        &mut self,
+        ctx: &mut Context,
+        mplayer: &mut MediaPlayer,
+    ) -> GameResult<Option<BulletMaker<'a>>> {
         if self.cur_clip > 0 && self.loading_time == 0. {
             self.cur_clip -= 1;
             if self.cur_clip > 0 {
@@ -188,7 +200,7 @@ impl<'a> WeaponInstance<'a> {
 
             self.jerk_decay = self.weapon.spray_decay;
             self.jerk += self.weapon.spray_pattern[self.spray_index];
-            self.spray_index += 1; 
+            self.spray_index += 1;
             if self.spray_index >= self.weapon.spray_pattern.len() {
                 self.spray_index -= self.weapon.spray_repeat;
             }
@@ -210,7 +222,7 @@ impl<'a> BulletMaker<'a> {
         obj.rot += self.1;
         Bullet {
             obj,
-            weapon: self.0
+            weapon: self.0,
         }
     }
 }

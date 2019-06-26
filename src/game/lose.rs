@@ -1,18 +1,18 @@
 use crate::{
-    util::{RED, Point2},
-    io::{
-        tex::PosText,
-        btn::Button,
-    },
+    io::{btn::Button, tex::PosText},
     obj::{health::Health, weapon::WeaponInstance},
+    util::{Point2, RED},
 };
 use ggez::{
-    Context, GameResult,
+    event::{Keycode, MouseButton},
     graphics::{self, Rect},
-    event::{MouseButton, Keycode}
+    Context, GameResult,
 };
 
-use super::{State, Content, GameState, StateSwitch, world::{Statistics, Level}};
+use super::{
+    world::{Level, Statistics},
+    Content, GameState, State, StateSwitch,
+};
 
 /// The state of the game
 pub struct Lose {
@@ -24,22 +24,58 @@ pub struct Lose {
     edit_btn: Option<Button<()>>,
     level: Level,
     health: Health,
-    weapon: Option<WeaponInstance<'static>>
+    weapon: Option<WeaponInstance<'static>>,
 }
 
 impl Lose {
     #[allow(clippy::new_ret_no_self, clippy::needless_pass_by_value)]
-    pub fn new(ctx: &mut Context, s: &mut State, stats: Statistics) -> GameResult<Box<dyn GameState>> {
+    pub fn new(
+        ctx: &mut Context,
+        s: &mut State,
+        stats: Statistics,
+    ) -> GameResult<Box<dyn GameState>> {
         let w = s.width as f32;
-        let you_died = s.assets.text(ctx, Point2::new(s.width as f32/ 2., 10.), "You died!")?;
-        let hits_text = s.assets.text(ctx, Point2::new(4., 20.), &format!("Hits: {}", stats.hits))?;
-        let misses_text = s.assets.text(ctx, Point2::new(4., 36.), &format!("Misses: {}", stats.misses))?;
-        let enemies_text = s.assets.text(ctx, Point2::new(4., 52.), &format!("Enemies left: {}", stats.enemies_left))?;
-        let restart_btn = Button::new(ctx, &s.assets, Rect{x: 3. * w / 7., y: 64., w: w / 7., h: 64.}, "Restart", ())?;
+        let you_died = s
+            .assets
+            .text(ctx, Point2::new(s.width as f32 / 2., 10.), "You died!")?;
+        let hits_text =
+            s.assets
+                .text(ctx, Point2::new(4., 20.), &format!("Hits: {}", stats.hits))?;
+        let misses_text = s.assets.text(
+            ctx,
+            Point2::new(4., 36.),
+            &format!("Misses: {}", stats.misses),
+        )?;
+        let enemies_text = s.assets.text(
+            ctx,
+            Point2::new(4., 52.),
+            &format!("Enemies left: {}", stats.enemies_left),
+        )?;
+        let restart_btn = Button::new(
+            ctx,
+            &s.assets,
+            Rect {
+                x: 3. * w / 7.,
+                y: 64.,
+                w: w / 7.,
+                h: 64.,
+            },
+            "Restart",
+            (),
+        )?;
         let edit_btn = if let Content::File(_) = s.content {
-            Some(
-                Button::new(ctx, &s.assets, Rect{x: 3. * w / 7., y: 132., w: w / 7., h: 64.}, "Edit", ())?
-            )
+            Some(Button::new(
+                ctx,
+                &s.assets,
+                Rect {
+                    x: 3. * w / 7.,
+                    y: 132.,
+                    w: w / 7.,
+                    h: 64.,
+                },
+                "Edit",
+                (),
+            )?)
         } else {
             None
         };
@@ -60,7 +96,11 @@ impl Lose {
         s.switch(StateSwitch::Editor(Some(self.level.clone())));
     }
     fn restart(&self, s: &mut State) {
-        s.switch(StateSwitch::PlayWith{lvl: Box::new(self.level.clone()), health: self.health, wep: self.weapon})
+        s.switch(StateSwitch::PlayWith {
+            lvl: Box::new(self.level.clone()),
+            health: self.health,
+            wep: self.weapon,
+        })
     }
 }
 

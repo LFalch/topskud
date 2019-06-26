@@ -1,28 +1,27 @@
-use std::path::{Path, PathBuf};
+use self::world::Level;
 use crate::{
-    util::{Vector2, Point2},
-    ext::{MouseDown, InputState, Modifiers, BoolExt},
+    ext::{BoolExt, InputState, Modifiers, MouseDown},
     io::{
         snd::MediaPlayer,
         tex::{Assets, PosText},
     },
     obj::{health::Health, weapon::WeaponInstance},
+    util::{Point2, Vector2},
 };
 use ggez::{
-    Context, GameResult,
-    graphics::{self, Matrix4, DrawMode, Rect, Image, Drawable},
-    timer,
-    event::{EventHandler, MouseButton, MouseState, Keycode, Mod}
+    event::{EventHandler, Keycode, Mod, MouseButton, MouseState},
+    graphics::{self, DrawMode, Drawable, Image, Matrix4, Rect},
+    timer, Context, GameResult,
 };
-use self::world::Level;
+use std::path::{Path, PathBuf};
 
+pub mod editor;
+pub mod lose;
+pub mod menu;
+pub mod play;
+pub mod win;
 /// Stuff related to things in the world
 pub mod world;
-pub mod editor;
-pub mod play;
-pub mod menu;
-pub mod lose;
-pub mod win;
 
 use self::menu::Menu;
 use self::world::Statistics;
@@ -31,7 +30,7 @@ pub enum StateSwitch {
     Menu,
     Editor(Option<Level>),
     Play(Level),
-    PlayWith{
+    PlayWith {
         lvl: Box<Level>,
         health: Health,
         wep: Option<WeaponInstance<'static>>,
@@ -51,18 +50,10 @@ pub trait GameState {
         Ok(())
     }
     fn draw_hud(&mut self, _: &State, _: &mut Context) -> GameResult<()>;
-    fn key_down(&mut self, _: &mut State, _: &mut Context, _: Keycode) {
-
-    }
-    fn key_up(&mut self, _: &mut State, _: &mut Context, _: Keycode) {
-
-    }
-    fn mouse_down(&mut self, _: &mut State, _: &mut Context, _: MouseButton) {
-
-    }
-    fn mouse_up(&mut self, _: &mut State, _: &mut Context, _: MouseButton) {
-
-    }
+    fn key_down(&mut self, _: &mut State, _: &mut Context, _: Keycode) {}
+    fn key_up(&mut self, _: &mut State, _: &mut Context, _: Keycode) {}
+    fn mouse_down(&mut self, _: &mut State, _: &mut Context, _: MouseButton) {}
+    fn mouse_up(&mut self, _: &mut State, _: &mut Context, _: MouseButton) {}
 
     fn get_world(&self) -> Option<&world::World> {
         None
@@ -93,41 +84,54 @@ impl Console {
         self.history.push(a.raw_text(ctx, line)?.into_inner());
         Ok(())
     }
-    fn execute(&mut self, ctx: &mut Context, state: &mut State, gs: &mut dyn GameState) -> GameResult<()> {
+    fn execute(
+        &mut self,
+        ctx: &mut Context,
+        state: &mut State,
+        gs: &mut dyn GameState,
+    ) -> GameResult<()> {
         self.history_line(ctx, &state.assets, &format!("> {}", self.prompt_str))?;
 
         let cap = self.prompt_str.capacity();
         let prompt = mem::replace(&mut self.prompt_str, String::with_capacity(cap));
         let args: Vec<_> = prompt.split(' ').collect();
-        
+
         match args[0] {
             "" => (),
-            "pi" => if let Some(world) = gs.get_mut_world() {
-                world.intels.clear();
-                self.history_line(ctx, &state.assets, "Intels got")?;
-            } else {
-                self.history_line(ctx, &state.assets, "No world")?;
-            },
-            "clear" => self.history.clear(),
-            "fa" => if let Some(world) = gs.get_mut_world() {
-                world.player.health.hp = 100.;
-                world.player.health.armour = 100.;
-            } else {
-                self.history_line(ctx, &state.assets, "No world")?;
-            },
-            "god" => if let Some(world) = gs.get_mut_world() {
-                if world.player.health.hp.is_finite() {
-                    world.player.health.hp = std::f32::INFINITY;
-                    self.history_line(ctx, &state.assets, "Degreelessness")?;
+            "pi" => {
+                if let Some(world) = gs.get_mut_world() {
+                    world.intels.clear();
+                    self.history_line(ctx, &state.assets, "Intels got")?;
                 } else {
-                    world.player.health.hp = 100.;
-                    self.history_line(ctx, &state.assets, "God off")?;
+                    self.history_line(ctx, &state.assets, "No world")?;
                 }
-            } else {
-                self.history_line(ctx, &state.assets, "No world")?;
-            },
+            }
+            "clear" => self.history.clear(),
+            "fa" => {
+                if let Some(world) = gs.get_mut_world() {
+                    world.player.health.hp = 100.;
+                    world.player.health.armour = 100.;
+                } else {
+                    self.history_line(ctx, &state.assets, "No world")?;
+                }
+            }
+            "god" => {
+                if let Some(world) = gs.get_mut_world() {
+                    if world.player.health.hp.is_finite() {
+                        world.player.health.hp = std::f32::INFINITY;
+                        self.history_line(ctx, &state.assets, "Degreelessness")?;
+                    } else {
+                        world.player.health.hp = 100.;
+                        self.history_line(ctx, &state.assets, "God off")?;
+                    }
+                } else {
+                    self.history_line(ctx, &state.assets, "No world")?;
+                }
+            }
             "hello" => self.history_line(ctx, &state.assets, "Hello!")?,
-            cmd => self.history_line(ctx, &state.assets, &format!("  Unknown command `{}'!", cmd))?,
+            cmd => {
+                self.history_line(ctx, &state.assets, &format!("  Unknown command `{}'!", cmd))?
+            }
         }
 
         let mut history_h = 0.;
@@ -136,9 +140,9 @@ impl Console {
             history_h += i.height() as f32;
             PROMPT_Y < history_h
         });
-        
+
         if let Some(i) = i {
-            self.history.drain(0..self.history.len()-i);
+            self.history.drain(0..self.history.len() - i);
         }
 
         Ok(())
@@ -155,7 +159,7 @@ pub struct Master {
 pub enum Content {
     Campaign(Campaign),
     File(PathBuf),
-    None
+    None,
 }
 
 /// The state of the game
@@ -239,7 +243,11 @@ impl EventHandler for Master {
     fn update(&mut self, ctx: &mut Context) -> GameResult<()> {
         if self.console_open {
             if self.console.prompt_str != self.console.prompt.text.contents()[2..] {
-                self.console.prompt.update_text(&self.state.assets, ctx, &format!("> {}", self.console.prompt_str))?;
+                self.console.prompt.update_text(
+                    &self.state.assets,
+                    ctx,
+                    &format!("> {}", self.console.prompt_str),
+                )?;
             }
 
             while timer::check_update_time(ctx, DESIRED_FPS) {}
@@ -249,7 +257,9 @@ impl EventHandler for Master {
             if let Some(gsb) = mem::replace(&mut self.state.switch_state, None) {
                 use self::StateSwitch::*;
                 self.gs = match gsb {
-                    PlayWith{lvl, health, wep} => play::Play::new(ctx, &mut self.state, *lvl, Some((health, wep))),
+                    PlayWith { lvl, health, wep } => {
+                        play::Play::new(ctx, &mut self.state, *lvl, Some((health, wep)))
+                    }
                     Play(lvl) => play::Play::new(ctx, &mut self.state, lvl, None),
                     Menu => menu::Menu::new(ctx, &mut self.state),
                     Editor(l) => editor::Editor::new(ctx, &self.state, l),
@@ -273,7 +283,12 @@ impl EventHandler for Master {
         graphics::clear(ctx);
 
         // Offset the current drawing with a translation from the `offset`
-        graphics::push_transform(ctx, Some(Matrix4::new_translation(&self.state.offset.fixed_resize(0.))));
+        graphics::push_transform(
+            ctx,
+            Some(Matrix4::new_translation(
+                &self.state.offset.fixed_resize(0.),
+            )),
+        );
         graphics::apply_transformations(ctx)?;
 
         self.gs.draw(&self.state, ctx)?;
@@ -286,7 +301,16 @@ impl EventHandler for Master {
 
         if self.console_open {
             graphics::set_color(ctx, graphics::BLACK)?;
-            graphics::rectangle(ctx, DrawMode::Fill, Rect::new(0., 0., self.state.width as f32, self.state.height as f32 / 3.))?;
+            graphics::rectangle(
+                ctx,
+                DrawMode::Fill,
+                Rect::new(
+                    0.,
+                    0.,
+                    self.state.width as f32,
+                    self.state.height as f32 / 3.,
+                ),
+            )?;
 
             graphics::set_color(ctx, graphics::WHITE)?;
             let mut pos = Point2::new(0., 0.);
@@ -308,7 +332,7 @@ impl EventHandler for Master {
     fn key_down_event(&mut self, ctx: &mut Context, keycode: Keycode, _: Mod, repeat: bool) {
         // If this is a repeat event, we don't care
         if repeat {
-            return
+            return;
         }
 
         use self::Keycode::*;
@@ -331,7 +355,7 @@ impl EventHandler for Master {
     fn key_up_event(&mut self, ctx: &mut Context, keycode: Keycode, _: Mod, repeat: bool) {
         // Still don't care about repeats
         if repeat {
-            return
+            return;
         }
 
         use self::Keycode::*;
@@ -344,8 +368,13 @@ impl EventHandler for Master {
             LCtrl => self.state.modifiers.ctrl = false,
             LAlt => self.state.modifiers.alt = false,
             Less => self.console_open.toggle(),
-            Backspace if self.console_open => {self.console.prompt_str.pop();},
-            Return if self.console_open => self.console.execute(ctx, &mut self.state, &mut *self.gs).unwrap(),
+            Backspace if self.console_open => {
+                self.console.prompt_str.pop();
+            }
+            Return if self.console_open => self
+                .console
+                .execute(ctx, &mut self.state, &mut *self.gs)
+                .unwrap(),
             _ => (),
         }
         self.gs.key_up(&mut self.state, ctx, keycode)
@@ -362,7 +391,7 @@ impl EventHandler for Master {
             Left => self.state.mouse_down.left = true,
             Middle => self.state.mouse_down.middle = true,
             Right => self.state.mouse_down.right = true,
-            _ => ()
+            _ => (),
         }
         self.gs.mouse_down(&mut self.state, ctx, btn)
     }
@@ -373,19 +402,26 @@ impl EventHandler for Master {
             Left => self.state.mouse_down.left = false,
             Middle => self.state.mouse_down.middle = false,
             Right => self.state.mouse_down.right = false,
-            _ => ()
+            _ => (),
         }
         self.gs.mouse_up(&mut self.state, ctx, btn)
     }
     /// Handles mouse movement events
-    fn mouse_motion_event(&mut self, _: &mut Context, _: MouseState, x: i32, y: i32, _: i32, _: i32) {
+    fn mouse_motion_event(
+        &mut self,
+        _: &mut Context,
+        _: MouseState,
+        x: i32,
+        y: i32,
+        _: i32,
+        _: i32,
+    ) {
         self.state.mouse = Point2::new(x as f32, y as f32);
     }
     fn quit_event(&mut self, _ctx: &mut Context) -> bool {
         false
     }
 }
-
 
 use std::fs::File;
 use std::io::{BufRead, BufReader};
@@ -406,10 +442,7 @@ impl Campaign {
             levels.push(Level::load(&line.trim())?);
         }
 
-        Ok(Campaign {
-            levels,
-            current: 0,
-        })
+        Ok(Campaign { levels, current: 0 })
     }
     pub fn next_level(&mut self) -> Option<Level> {
         let ret = self.levels.get(self.current).cloned();

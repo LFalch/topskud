@@ -1,36 +1,30 @@
 use ggez::{
-    Context, GameResult,
-    nalgebra as na,
-    graphics::{self, Point2, Vector2}
+    graphics::{self, Point2, Vector2},
+    nalgebra as na, Context, GameResult,
 };
 
 use crate::{
-    util::{angle_from_vec, angle_to_vec},
+    game::{world::Grid, DELTA},
     io::{
         snd::MediaPlayer,
         tex::{Assets, Sprite},
     },
-    game::{DELTA, world::Grid},
+    util::{angle_from_vec, angle_to_vec},
 };
 
-use super::{Object, player::Player};
+use super::{player::Player, Object};
 
 #[derive(Debug, Clone)]
 pub enum Chaser {
     NoIntel,
-    LastKnown{
-        pos: Point2,
-        vel: Vector2,
-    },
-    LookAround {
-        dir: Vector2,
-    }
+    LastKnown { pos: Point2, vel: Vector2 },
+    LookAround { dir: Vector2 },
 }
 
 impl Chaser {
     pub fn chasing(&self) -> bool {
         match *self {
-            Chaser::LastKnown{..} => true,
+            Chaser::LastKnown { .. } => true,
             _ => false,
         }
     }
@@ -59,7 +53,7 @@ impl Enemy {
         }
     }
     pub fn draw_visibility_cone(&self, ctx: &mut Context, length: f32) -> GameResult<()> {
-        let Object{pos, rot} = self.pl.obj;
+        let Object { pos, rot } = self.pl.obj;
         let dir1 = angle_to_vec(rot - VISIBILITY);
         let dir2 = angle_to_vec(rot + VISIBILITY);
         graphics::line(ctx, &[pos, pos + (length * dir1)], 1.5)?;
@@ -69,7 +63,7 @@ impl Enemy {
     pub fn draw(&self, ctx: &mut Context, a: &Assets) -> GameResult<()> {
         self.pl.draw(ctx, a, Sprite::Enemy)
     }
-    fn look_towards(&mut self, dist: Vector2) -> bool{
+    fn look_towards(&mut self, dist: Vector2) -> bool {
         let dir = angle_to_vec(self.pl.obj.rot);
 
         let rotation = na::angle(&dir, &dist);
@@ -97,11 +91,11 @@ impl Enemy {
         }
         match self.behaviour {
             Chaser::NoIntel => (),
-            Chaser::LastKnown{
+            Chaser::LastKnown {
                 pos: player_pos,
-                vel
+                vel,
             } => {
-                let dist = player_pos-self.pl.obj.pos;
+                let dist = player_pos - self.pl.obj.pos;
                 self.look_towards(dist);
 
                 let distance = dist.norm();
@@ -111,10 +105,10 @@ impl Enemy {
                     let displace = CHASE_SPEED * dist / distance;
                     self.pl.obj.pos += displace;
                 } else {
-                    self.behaviour = Chaser::LookAround{dir: vel};
+                    self.behaviour = Chaser::LookAround { dir: vel };
                 }
             }
-            Chaser::LookAround{dir} => {
+            Chaser::LookAround { dir } => {
                 if self.look_towards(dir) {
                     self.behaviour = Chaser::NoIntel;
                 }
@@ -123,7 +117,7 @@ impl Enemy {
         Ok(())
     }
     pub fn can_see(&self, p: Point2, grid: &Grid) -> bool {
-        let dist = p-self.pl.obj.pos;
+        let dist = p - self.pl.obj.pos;
         let dir = angle_to_vec(self.pl.obj.rot);
 
         na::angle(&dir, &dist) <= VISIBILITY && grid.ray_cast(self.pl.obj.pos, dist, true).full()

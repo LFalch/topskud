@@ -1,5 +1,5 @@
-use serde::{Serialize, Deserialize, Serializer, Deserializer};
-use crate::util::{Vector2, Point2};
+use crate::util::{Point2, Vector2};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 /// Serialize a `Vector2`
 #[allow(dead_code)]
@@ -27,7 +27,7 @@ fn p(p: &Point2) -> (f32, f32) {
 #[serde(remote = "Point2")]
 pub struct Point2Def {
     #[serde(getter = "p")]
-    coords: (f32, f32)
+    coords: (f32, f32),
 }
 
 impl From<Point2Def> for Point2 {

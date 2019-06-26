@@ -1,19 +1,15 @@
-use std::path::PathBuf;
 use crate::{
+    io::{btn::Button, snd::Sound, tex::PosText},
     util::Point2,
-    io::{
-        tex::PosText,
-        btn::Button,
-        snd::Sound,
-    },
 };
 use ggez::{
-    Context, GameResult,
+    event::MouseButton,
     graphics::{self, Rect},
-    event::{MouseButton}
+    Context, GameResult,
 };
+use std::path::PathBuf;
 
-use super::{Campaign, Content, State, GameState, StateSwitch, world::Level};
+use super::{world::Level, Campaign, Content, GameState, State, StateSwitch};
 
 /// The state of the game
 pub struct Menu {
@@ -30,7 +26,12 @@ enum Callback {
 
 // ↓
 fn button_rect(w: f32, i: f32) -> Rect {
-    Rect{x:3. * w / 7., y: 64. + i * 68., w:w / 7., h:64.}
+    Rect {
+        x: 3. * w / 7.,
+        y: 64. + i * 68.,
+        w: w / 7.,
+        h: 64.,
+    }
 }
 
 impl Menu {
@@ -39,41 +40,62 @@ impl Menu {
         let w = s.width as f32;
 
         let corner_text = if let Content::File(ref f) = s.content {
-            Some(s.assets.text(ctx, Point2::new(2., 2.), &format!("File: {}", f.display()))?)
+            Some(
+                s.assets
+                    .text(ctx, Point2::new(2., 2.), &format!("File: {}", f.display()))?,
+            )
         } else {
             None
         };
         s.mplayer.play(ctx, Sound::Music)?;
 
         let buttons = match &mut s.content {
-            Content::Campaign(_cam) => {
-                unreachable!()
-            }
+            Content::Campaign(_cam) => unreachable!(),
             Content::File(p) if p.extension().and_then(|s| s.to_str()) == Some("cmp") => {
-                vec![
-                    Button::new(ctx, &s.assets, button_rect(w, 0.), "Play campaign", Callback::Campaign(p.clone()))?,
-                ]
+                vec![Button::new(
+                    ctx,
+                    &s.assets,
+                    button_rect(w, 0.),
+                    "Play campaign",
+                    Callback::Campaign(p.clone()),
+                )?]
             }
-            Content::File(p) => {
-                vec![
-                    Button::new(ctx, &s.assets, button_rect(w, 0.), "Play", Callback::SwitchPlay(p.clone()))?,
-                    Button::new(ctx, &s.assets, button_rect(w, 1.), "Editor", Callback::SwitchEditor)?,
-                ]
-            }
-            Content::None => {
-                std::fs::read_dir("campaigns/")?
-                    .filter_map(Result::ok)
-                    .enumerate()
-                    .map(|(i, d)| Button::new(
-                        ctx, &s.assets, button_rect(w, i as f32), d.file_name().to_str().unwrap(), Callback::Campaign(d.path())
-                    ))
-                    .filter_map(Result::ok)
-                    .collect()
-            },
+            Content::File(p) => vec![
+                Button::new(
+                    ctx,
+                    &s.assets,
+                    button_rect(w, 0.),
+                    "Play",
+                    Callback::SwitchPlay(p.clone()),
+                )?,
+                Button::new(
+                    ctx,
+                    &s.assets,
+                    button_rect(w, 1.),
+                    "Editor",
+                    Callback::SwitchEditor,
+                )?,
+            ],
+            Content::None => std::fs::read_dir("campaigns/")?
+                .filter_map(Result::ok)
+                .enumerate()
+                .map(|(i, d)| {
+                    Button::new(
+                        ctx,
+                        &s.assets,
+                        button_rect(w, i as f32),
+                        d.file_name().to_str().unwrap(),
+                        Callback::Campaign(d.path()),
+                    )
+                })
+                .filter_map(Result::ok)
+                .collect(),
         };
 
         Ok(Box::new(Menu {
-            title_txt: s.assets.text_big(ctx, Point2::new(w / 2., 16.), "Main Menu")?,
+            title_txt: s
+                .assets
+                .text_big(ctx, Point2::new(w / 2., 16.), "Main Menu")?,
             buttons,
             corner_text,
         }))
@@ -112,11 +134,11 @@ impl GameState for Menu {
                             let lvl = cam.next_level().unwrap();
                             s.content = Content::Campaign(cam);
                             s.switch(StateSwitch::Play(lvl));
-                        },
+                        }
                         Callback::SwitchPlay(p) => {
                             let lvl = Level::load(&p).unwrap();
                             s.switch(StateSwitch::Play(lvl));
-                        },
+                        }
                         Callback::SwitchEditor => s.switch(StateSwitch::Editor(None)),
                     }
                 }

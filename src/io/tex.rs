@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
+use ggez::graphics::{DrawParam, Drawable, Font, Image, Point2, Text};
 use ggez::{Context, GameResult};
-use ggez::graphics::{Image, Font, Text, Point2, Drawable, DrawParam};
 
 macro_rules! sprites {
     ($(
@@ -136,18 +136,12 @@ impl Assets {
     /// Make a positional text object
     pub fn text(&self, context: &mut Context, pos: Point2, text: &str) -> GameResult<PosText> {
         let text = self.raw_text(context, text)?;
-        Ok(PosText {
-            pos,
-            text
-        })
+        Ok(PosText { pos, text })
     }
     /// Make a positional text object
     pub fn text_big(&self, context: &mut Context, pos: Point2, text: &str) -> GameResult<PosText> {
         let text = Text::new(context, text, &self.big_font)?;
-        Ok(PosText {
-            pos,
-            text
-        })
+        Ok(PosText { pos, text })
     }
 }
 
@@ -157,7 +151,7 @@ impl Assets {
 /// Used for convenience so it's easier to update the text and rememeber their coordinates on the screen
 pub struct PosText {
     pub pos: Point2,
-    pub(crate) text: Text
+    pub(crate) text: Text,
 }
 
 impl PosText {
@@ -169,7 +163,7 @@ impl PosText {
         let drawparams = DrawParam {
             dest: self.pos,
             offset: Point2::new(0.5, 0.5),
-            .. Default::default()
+            ..Default::default()
         };
         self.text.draw_ex(ctx, drawparams)
     }

@@ -1,14 +1,14 @@
+use ggez::graphics::{self, Image, Point2, Vector2};
 use ggez::{Context, GameResult};
-use ggez::graphics::{self, Point2, Vector2, Image};
 // use ggez::nalgebra as na;
 
-pub mod player;
+pub mod bullet;
+pub mod decoration;
 pub mod enemy;
 pub mod health;
-pub mod weapon;
-pub mod bullet;
 pub mod pickup;
-pub mod decoration;
+pub mod player;
+pub mod weapon;
 
 use crate::game::world::Grid;
 use crate::game::DELTA;
@@ -26,16 +26,10 @@ pub struct Object {
 impl Object {
     /// Make a new physics object
     pub fn new(pos: Point2) -> Self {
-        Object {
-            pos,
-            rot: 0.,
-        }
+        Object { pos, rot: 0. }
     }
     pub fn with_rot(pos: Point2, rot: f32) -> Self {
-        Object {
-            pos,
-            rot,
-        }
+        Object { pos, rot }
     }
     #[inline]
     pub fn drawparams(&self) -> graphics::DrawParam {
@@ -43,7 +37,7 @@ impl Object {
             dest: self.pos,
             rotation: self.rot,
             offset: Point2::new(0.5, 0.5),
-            .. Default::default()
+            ..Default::default()
         }
     }
     /// Draw the object

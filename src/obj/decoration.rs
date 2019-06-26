@@ -1,6 +1,4 @@
-use crate::{
-    io::tex::{Assets, Sprite},
-};
+use crate::io::tex::{Assets, Sprite};
 use ggez::{Context, GameResult};
 
 use super::Object;
@@ -42,9 +40,7 @@ pub struct DecorationObj {
 impl DecorationObj {
     #[inline]
     pub fn new(obj: Object, decl: usize) -> Self {
-        DecorationObj {
-            obj, decl
-        }
+        DecorationObj { obj, decl }
     }
     #[inline]
     pub fn draw(&self, ctx: &mut Context, a: &Assets) -> GameResult<()> {

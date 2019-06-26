@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
+use ggez::audio::{SoundData, Source};
 use ggez::{Context, GameResult};
-use ggez::audio::{Source, SoundData};
 
 const EFFECTS_LIMIT: usize = 25;
 
@@ -32,10 +32,18 @@ impl SoundType {
     }
 }
 macro_rules! ending {
-    (Wave) => (".wav");
-    (Ogg) => (".ogg");
-    (OggLoop) => (".ogg");
-    (Flac) => (".flac");
+    (Wave) => {
+        ".wav"
+    };
+    (Ogg) => {
+        ".ogg"
+    };
+    (OggLoop) => {
+        ".ogg"
+    };
+    (Flac) => {
+        ".flac"
+    };
 }
 
 macro_rules! music {

@@ -1,14 +1,11 @@
 use ggez::{Context, GameResult};
 
+use super::{enemy::Enemy, health::Health, player::Player, weapon::Weapon, Object};
 use crate::{
+    game::{world::Grid, DELTA},
+    io::tex::{Assets, Sprite},
     util::angle_to_vec,
-    game::{
-        DELTA,
-        world::Grid,
-    },
-    io::tex::{Assets, Sprite}
 };
-use super::{Object, player::Player, enemy::Enemy, health::Health, weapon::Weapon};
 
 #[derive(Debug, Clone)]
 pub struct Bullet<'a> {

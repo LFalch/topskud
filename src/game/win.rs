@@ -1,27 +1,27 @@
 use crate::{
-    util::Point2,
-    io::{
-        tex::PosText,
-        btn::Button,
-    },
+    io::{btn::Button, tex::PosText},
     obj::{health::Health, weapon::WeaponInstance},
+    util::Point2,
 };
 use ggez::{
-    Context, GameResult,
+    event::{Keycode, MouseButton},
     graphics::{self, Rect},
-    event::{MouseButton, Keycode}
+    Context, GameResult,
 };
 
-use super::{State, Content, GameState, StateSwitch, world::{Level, Statistics}};
+use super::{
+    world::{Level, Statistics},
+    Content, GameState, State, StateSwitch,
+};
 
 enum WinButtons {
     CampaignMode {
-        continue_btn: Button<()>
+        continue_btn: Button<()>,
     },
     FileMode {
         restart_btn: Button<()>,
         edit_btn: Button<()>,
-    }
+    },
 }
 
 /// The state of the game
@@ -34,30 +34,86 @@ pub struct Win {
     buttons: WinButtons,
     health: Health,
     level: Level,
-    weapon: Option<WeaponInstance<'static>>
+    weapon: Option<WeaponInstance<'static>>,
 }
 
 impl Win {
     #[allow(clippy::new_ret_no_self, clippy::needless_pass_by_value)]
-    pub fn new(ctx: &mut Context, s: &mut State, stats: Statistics) -> GameResult<Box<dyn GameState>> {
+    pub fn new(
+        ctx: &mut Context,
+        s: &mut State,
+        stats: Statistics,
+    ) -> GameResult<Box<dyn GameState>> {
         let w = s.width as f32;
 
-        let level_complete = s.assets.text(ctx, Point2::new(s.width as f32/ 2., 10.), "LEVEL COMPLETE")?;
-        let hits_text = s.assets.text(ctx, Point2::new(4., 20.), &format!("Hits: {}", stats.hits))?;
-        let misses_text = s.assets.text(ctx, Point2::new(4., 36.), &format!("Misses: {}", stats.misses))?;
-        let enemies_text = s.assets.text(ctx, Point2::new(4., 52.), &format!("Enemies left: {}", stats.enemies_left))?;
-        let health_text = s.assets.text(ctx, Point2::new(4., 68.), &format!("Health left: {:02.0} / {:02.0}", stats.health_left.hp, stats.health_left.armour))?;
+        let level_complete =
+            s.assets
+                .text(ctx, Point2::new(s.width as f32 / 2., 10.), "LEVEL COMPLETE")?;
+        let hits_text =
+            s.assets
+                .text(ctx, Point2::new(4., 20.), &format!("Hits: {}", stats.hits))?;
+        let misses_text = s.assets.text(
+            ctx,
+            Point2::new(4., 36.),
+            &format!("Misses: {}", stats.misses),
+        )?;
+        let enemies_text = s.assets.text(
+            ctx,
+            Point2::new(4., 52.),
+            &format!("Enemies left: {}", stats.enemies_left),
+        )?;
+        let health_text = s.assets.text(
+            ctx,
+            Point2::new(4., 68.),
+            &format!(
+                "Health left: {:02.0} / {:02.0}",
+                stats.health_left.hp, stats.health_left.armour
+            ),
+        )?;
 
         Ok(Box::new(Win {
             buttons: {
                 match s.content {
                     Content::File(_) => WinButtons::FileMode {
-                        restart_btn: Button::new(ctx, &s.assets, Rect{x: 3. * w / 7., y: 64., w: w / 7., h: 64.}, "Restart", ())?,
-                        edit_btn: Button::new(ctx, &s.assets, Rect{x: 3. * w / 7., y: 132., w: w / 7., h: 64.}, "Edit", ())?,
+                        restart_btn: Button::new(
+                            ctx,
+                            &s.assets,
+                            Rect {
+                                x: 3. * w / 7.,
+                                y: 64.,
+                                w: w / 7.,
+                                h: 64.,
+                            },
+                            "Restart",
+                            (),
+                        )?,
+                        edit_btn: Button::new(
+                            ctx,
+                            &s.assets,
+                            Rect {
+                                x: 3. * w / 7.,
+                                y: 132.,
+                                w: w / 7.,
+                                h: 64.,
+                            },
+                            "Edit",
+                            (),
+                        )?,
                     },
                     _ => WinButtons::CampaignMode {
-                        continue_btn: Button::new(ctx, &s.assets, Rect{x: 3. * w / 7., y: 64., w: w / 7., h: 64.}, "Continue", ())?,
-                    }
+                        continue_btn: Button::new(
+                            ctx,
+                            &s.assets,
+                            Rect {
+                                x: 3. * w / 7.,
+                                y: 64.,
+                                w: w / 7.,
+                                h: 64.,
+                            },
+                            "Continue",
+                            (),
+                        )?,
+                    },
                 }
             },
             level_complete,
@@ -83,13 +139,17 @@ impl Win {
                 if let Some(l) = cam.next_level() {
                     lvl = l;
                 } else {
-                    return
+                    return;
                 }
             }
             Content::None | Content::File(_) => return,
         }
 
-        s.switch(StateSwitch::PlayWith{health: self.health, wep: self.weapon, lvl: Box::new(lvl)});
+        s.switch(StateSwitch::PlayWith {
+            health: self.health,
+            wep: self.weapon,
+            lvl: Box::new(lvl),
+        });
     }
 }
 
@@ -97,11 +157,14 @@ impl GameState for Win {
     fn draw_hud(&mut self, _s: &State, ctx: &mut Context) -> GameResult<()> {
         graphics::set_color(ctx, graphics::WHITE)?;
         match &self.buttons {
-            WinButtons::FileMode{restart_btn, edit_btn} => {
+            WinButtons::FileMode {
+                restart_btn,
+                edit_btn,
+            } => {
                 restart_btn.draw(ctx)?;
                 edit_btn.draw(ctx)?;
             }
-            WinButtons::CampaignMode{continue_btn} => {
+            WinButtons::CampaignMode { continue_btn } => {
                 continue_btn.draw(ctx)?;
             }
         }
@@ -115,13 +178,18 @@ impl GameState for Win {
     }
     fn key_up(&mut self, s: &mut State, _ctx: &mut Context, keycode: Keycode) {
         use self::Keycode::*;
-        if let Return = keycode { self.continue_play(s) }
+        if let Return = keycode {
+            self.continue_play(s)
+        }
     }
     fn mouse_up(&mut self, s: &mut State, _ctx: &mut Context, btn: MouseButton) {
         use self::MouseButton::*;
         if let Left = btn {
             match &self.buttons {
-                WinButtons::FileMode{restart_btn, edit_btn} => {
+                WinButtons::FileMode {
+                    restart_btn,
+                    edit_btn,
+                } => {
                     if restart_btn.in_bounds(s.mouse) {
                         self.restart(s)
                     }
@@ -129,7 +197,7 @@ impl GameState for Win {
                         self.edit(s)
                     }
                 }
-                WinButtons::CampaignMode{continue_btn} => {
+                WinButtons::CampaignMode { continue_btn } => {
                     if continue_btn.in_bounds(s.mouse) {
                         self.continue_play(s)
                     }

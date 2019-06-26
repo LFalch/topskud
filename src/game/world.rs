@@ -1,30 +1,26 @@
 use crate::{
-    util::{Point2, Vector2},
-    io::tex::{Assets, Sprite},
     io::save::Point2Def,
+    io::tex::{Assets, Sprite},
     obj::{
-        Object,
-        player::Player,
+        bullet::Bullet,
+        decoration::DecorationObj,
         enemy::Enemy,
         health::Health,
-        bullet::Bullet,
-        weapon::{WeaponInstance, WeaponDrop, WEAPONS},
         pickup::Pickup,
-        decoration::DecorationObj,
-    }
+        player::Player,
+        weapon::{WeaponDrop, WeaponInstance, WEAPONS},
+        Object,
+    },
+    util::{Point2, Vector2},
 };
-use ggez::{
-    Context, GameResult,
-    graphics,
-    error::GameError,
-};
+use ggez::{error::GameError, graphics, Context, GameResult};
 
-use std::path::Path;
 use std::fs::File;
-use std::io::{Write, BufRead, BufReader};
+use std::io::{BufRead, BufReader, Write};
+use std::path::Path;
 
 use ::bincode;
-use serde::{Serialize, Deserialize, Serializer, Deserializer};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 #[derive(Debug)]
 /// All the objects in the current world
@@ -106,7 +102,7 @@ pub struct Statistics {
 
 include!("material_macro.rs");
 
-mat!{
+mat! {
     MISSING = Missing
     Grass = 0, Grass, false,
     Wall = 1, Wall, true,
@@ -130,7 +126,7 @@ pub enum Entity {
         obj: Object,
         health: Health,
         weapon: usize,
-    }
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -144,8 +140,8 @@ pub struct DataLevel {
 }
 
 mod opt_point {
-    use serde::{Serialize, Deserialize, Serializer, Deserializer};
     use crate::util::Point2;
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
     #[inline]
     pub fn serialize<S: Serializer>(p: &Option<Point2>, s: S) -> Result<S::Ok, S::Error> {
@@ -156,7 +152,6 @@ mod opt_point {
         <Option<(f32, f32)>>::deserialize(d).map(|p| p.map(|(x, y)| Point2::new(x, y)))
     }
 }
-
 
 #[derive(Debug, Clone)]
 pub struct Level {
@@ -192,39 +187,67 @@ impl Level {
             reader.read_line(&mut buf)?;
             match &*buf.trim_end() {
                 "" => continue,
-                "GRD" => ret.grid = bincode::deserialize_from(&mut reader)
-                .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?,
+                "GRD" => {
+                    ret.grid = bincode::deserialize_from(&mut reader)
+                        .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?
+                }
                 "GRID" => {
                     let (w, grid): (usize, Vec<u16>) = bincode::deserialize_from(&mut reader)
-                    .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?;
+                        .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?;
                     ret.grid = Grid {
                         mats: grid.into_iter().map(|n| Material::from(n as u8)).collect(),
-                        width: w as u16
+                        width: w as u16,
                     }
                 }
-                "START" => ret.start_point = Some(
-                    bincode::deserialize_from(&mut reader)
-                        .map(|(x, y)| Point2::new(x, y))
+                "START" => {
+                    ret.start_point = Some(
+                        bincode::deserialize_from(&mut reader)
+                            .map(|(x, y)| Point2::new(x, y))
+                            .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?,
+                    )
+                }
+                "ENEMIES" => {
+                    ret.enemies = bincode::deserialize_from(&mut reader)
                         .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?
-                ),
-                "ENEMIES" => ret.enemies = bincode::deserialize_from(&mut reader)
-                    .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?,
-                "POINT GOAL" => ret.exit = Some(bincode::deserialize_from(&mut reader)
-                    .map(|(x, y)| Point2::new(x, y))
-                    .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?),
-                "INTELS" => ret.intels = bincode::deserialize_from(&mut reader)
-                    .map(|l: Vec<(f32, f32)>| l.into_iter().map(|(x, y)| Point2::new(x, y)).collect())
-                    .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?,
-                "DECORATIONS" => ret.decorations = bincode::deserialize_from(&mut reader)
-                    .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?,
-                "PICKUPS" => ret.pickups = bincode::deserialize_from(&mut reader)
-                    .map(|l: Vec<((f32, f32), u8)>| l.into_iter().map(|((x, y), i)| (Point2::new(x, y), i)).collect())
-                    .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?,
-                "WEAPONS" => ret.weapons = bincode::deserialize_from(&mut reader)
-                    .map(|l: Vec<((f32, f32), u8)>| l.into_iter().map(|((x, y), i)| WEAPONS[i as usize].make_drop(Point2::new(x, y))).collect())
-                    .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?,
+                }
+                "POINT GOAL" => {
+                    ret.exit = Some(
+                        bincode::deserialize_from(&mut reader)
+                            .map(|(x, y)| Point2::new(x, y))
+                            .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?,
+                    )
+                }
+                "INTELS" => {
+                    ret.intels = bincode::deserialize_from(&mut reader)
+                        .map(|l: Vec<(f32, f32)>| {
+                            l.into_iter().map(|(x, y)| Point2::new(x, y)).collect()
+                        })
+                        .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?
+                }
+                "DECORATIONS" => {
+                    ret.decorations = bincode::deserialize_from(&mut reader)
+                        .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?
+                }
+                "PICKUPS" => {
+                    ret.pickups = bincode::deserialize_from(&mut reader)
+                        .map(|l: Vec<((f32, f32), u8)>| {
+                            l.into_iter()
+                                .map(|((x, y), i)| (Point2::new(x, y), i))
+                                .collect()
+                        })
+                        .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?
+                }
+                "WEAPONS" => {
+                    ret.weapons = bincode::deserialize_from(&mut reader)
+                        .map(|l: Vec<((f32, f32), u8)>| {
+                            l.into_iter()
+                                .map(|((x, y), i)| WEAPONS[i as usize].make_drop(Point2::new(x, y)))
+                                .collect()
+                        })
+                        .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?
+                }
                 "END" => break,
-                _ => return Err("Bad section".to_string())?
+                _ => return Err("Bad section".to_string())?,
             }
         }
 
@@ -239,17 +262,17 @@ impl Level {
         if let Some(start) = self.start_point {
             writeln!(file, "\nSTART")?;
             bincode::serialize_into(&mut file, &(start.x, start.y))
-            .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?;
+                .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?;
         }
         if !self.enemies.is_empty() {
             writeln!(file, "\nENEMIES")?;
             bincode::serialize_into(&mut file, &self.enemies)
-            .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?;
+                .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?;
         }
         if let Some(p) = self.exit {
             writeln!(file, "\nPOINT GOAL")?;
             bincode::serialize_into(&mut file, &(p.x, p.y))
-            .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?;
+                .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?;
         }
         if !self.intels.is_empty() {
             writeln!(file, "\nINTELS")?;
@@ -260,7 +283,7 @@ impl Level {
         if !self.decorations.is_empty() {
             writeln!(file, "\nDECORATIONS")?;
             bincode::serialize_into(&mut file, &self.decorations)
-            .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?;
+                .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?;
         }
         if !self.pickups.is_empty() {
             writeln!(file, "\nPICKUPS")?;
@@ -270,16 +293,22 @@ impl Level {
         }
         if !self.weapons.is_empty() {
             writeln!(file, "\nWEAPONS")?;
-            let pickups: Vec<((f32, f32), u8)> = self.weapons.iter().map(|w| ((w.pos.x, w.pos.y), {
-                let mut index = 0;
-                for (i, wep) in WEAPONS.iter().enumerate() {
-                    if wep.name == w.weapon.name {
-                        index = i;
-                        break
-                    }  
-                }
-                index as u8
-            })).collect();
+            let pickups: Vec<((f32, f32), u8)> = self
+                .weapons
+                .iter()
+                .map(|w| {
+                    ((w.pos.x, w.pos.y), {
+                        let mut index = 0;
+                        for (i, wep) in WEAPONS.iter().enumerate() {
+                            if wep.name == w.weapon.name {
+                                index = i;
+                                break;
+                            }
+                        }
+                        index as u8
+                    })
+                })
+                .collect();
             bincode::serialize_into(&mut file, &pickups)
                 .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?;
         }
@@ -290,7 +319,7 @@ impl Level {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Grid{
+pub struct Grid {
     width: u16,
     mats: Vec<Material>,
 }
@@ -299,7 +328,7 @@ impl Grid {
     pub fn new(width: u16, height: u16) -> Self {
         Grid {
             width,
-            mats: vec![Material::Grass; (width*height) as usize],
+            mats: vec![Material::Grass; (width * height) as usize],
         }
     }
     #[inline]
@@ -320,7 +349,7 @@ impl Grid {
     }
     pub fn thin(&mut self) {
         if self.width <= 1 {
-            return
+            return;
         }
         let width = self.width;
         for i in (1..=self.height()).rev().map(|i| i * width - 1) {
@@ -336,7 +365,7 @@ impl Grid {
     pub fn shorten(&mut self) {
         let new_len = self.mats.len() - self.width as usize;
         if new_len == 0 {
-            return
+            return;
         }
         self.mats.truncate(new_len);
     }
@@ -401,16 +430,17 @@ impl Grid {
                     break RayCast::Half(cur);
                 }
                 if cur.x < 0. || cur.y < 0. {
-                    break RayCast::OffEdge(cur); 
+                    break RayCast::OffEdge(cur);
                 }
             } else {
                 break RayCast::OffEdge(cur);
             }
 
-            let nearest_corner = Point2::new(x_dir.on(f32::from(gx) * 32.), y_dir.on(f32::from(gy) * 32.));
+            let nearest_corner =
+                Point2::new(x_dir.on(f32::from(gx) * 32.), y_dir.on(f32::from(gy) * 32.));
             let distance = nearest_corner - cur;
 
-            let time = (distance.x/dist.x, distance.y/dist.y);
+            let time = (distance.x / dist.x, distance.y / dist.y);
 
             if time.0 < time.1 {
                 // Going along x
@@ -436,7 +466,7 @@ impl Grid {
         }
     }
     /// Distance between a line section and a circle
-    /// 
+    ///
     /// The general formula for distance between a line and cirlcle here would be inadequate
     /// since here the line has a finite length so we need to check if the smalleset distance is in that finite line section.
     pub fn dist_line_circle(line_start: Point2, line_dist: Vector2, circle_center: Point2) -> f32 {
