@@ -8,7 +8,7 @@ use crate::{
     },
 };
 
-use super::{Object, health::Health, weapon::WeaponInstance};
+use super::{Object, health::Health, weapon::WeaponInstance, grenade::Utilities};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Player {
@@ -17,6 +17,8 @@ pub struct Player {
     pub wep: Option<WeaponInstance<'static>>,
     #[serde(skip)]
     pub health: Health,
+    #[serde(skip)]
+    pub utilities: Utilities,
 }
 
 impl Player {
@@ -26,6 +28,7 @@ impl Player {
             obj,
             wep: None,
             health: Health::default(),
+            utilities: Utilities::default(),
         }
     }
     #[inline]

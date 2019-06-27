@@ -126,6 +126,12 @@ impl Console {
             } else {
                 self.history_line(ctx, &state.assets, "No world")?;
             },
+            "gg" => if let Some(world) = gs.get_mut_world() {
+                world.player.utilities.grenades += 3;
+                self.history_line(ctx, &state.assets, "Gg'd")?;
+            } else {
+                self.history_line(ctx, &state.assets, "No world")?;
+            },
             "hello" => self.history_line(ctx, &state.assets, "Hello!")?,
             cmd => self.history_line(ctx, &state.assets, &format!("  Unknown command `{}'!", cmd))?,
         }

@@ -100,6 +100,7 @@ impl Play {
                     let mut world = World {
                         enemies: level.enemies,
                         bullets: Vec::new(),
+                        grenades: Vec::new(),
                         weapons: level.weapons,
                         player,
                         grid: level.grid,
@@ -140,6 +141,18 @@ impl GameState for Play {
             self.status_text.update_text(&s.assets, ctx, &format!("Press F to pick up {}", self.world.weapons[i]))?;
         } else {
             self.status_text.update_text(&s.assets, ctx, "")?;
+        }
+
+        let mut deads = Vec::new();
+        for (i, grenade) in self.world.grenades.iter_mut().enumerate().rev() {
+            let expl = grenade.update(&self.world.grid, &mut self.world.player, &mut *self.world.enemies);
+
+            if expl.is_some() {
+                deads.push(i);
+            }
+        }
+        for i in deads {
+            self.world.bullets.remove(i);
         }
 
         let mut deads = Vec::new();
@@ -361,6 +374,9 @@ impl GameState for Play {
         for bullet in &self.world.bullets {
             bullet.draw(ctx, &s.assets)?;
         }
+        for grenade in &self.world.grenades {
+            grenade.draw(ctx, &s.assets)?;
+        }
 
         Ok(())
     }
@@ -391,16 +407,28 @@ impl GameState for Play {
         graphics::draw_ex(ctx, s.assets.get_img(Sprite::Crosshair), drawparams)
     }
     fn mouse_up(&mut self, s: &mut State, ctx: &mut Context, btn: MouseButton) {
-        if let MouseButton::Left = btn {
-            if let Some(wep) = &mut self.world.player.wep {
-                if let Some(bm) = wep.shoot(ctx, &mut s.mplayer).unwrap() {
-                    let pos = self.world.player.obj.pos + 20. * angle_to_vec(self.world.player.obj.rot);
-                    let mut bul = Object::new(pos);
-                    bul.rot = self.world.player.obj.rot;
+        match btn {
+            MouseButton::Left => {
+                if let Some(wep) = &mut self.world.player.wep {
+                    if let Some(bm) = wep.shoot(ctx, &mut s.mplayer).unwrap() {
+                        let pos = self.world.player.obj.pos + 20. * angle_to_vec(self.world.player.obj.rot);
+                        let mut bul = Object::new(pos);
+                        bul.rot = self.world.player.obj.rot;
 
-                    self.world.bullets.push(bm.make(bul));
+                        self.world.bullets.push(bm.make(bul));
+                    }
                 }
             }
+            MouseButton::Right => {
+                if let Some(gm) = self.world.player.utilities.throw_grenade(ctx, &mut s.mplayer).unwrap() {
+                    let pos = self.world.player.obj.pos + 20. * angle_to_vec(self.world.player.obj.rot);
+                    let mut gren = Object::new(pos);
+                    gren.rot = self.world.player.obj.rot;
+
+                    self.world.grenades.push(gm.make(gren));
+                }
+            }
+            _ => (),
         }
     }
     fn key_up(&mut self, s: &mut State, ctx: &mut Context, keycode: Keycode) {

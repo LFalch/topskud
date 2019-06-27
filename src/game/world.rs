@@ -8,6 +8,7 @@ use crate::{
         enemy::Enemy,
         health::Health,
         bullet::Bullet,
+        grenade::Grenade,
         weapon::{WeaponInstance, WeaponDrop, WEAPONS},
         pickup::Pickup,
         decoration::DecorationObj,
@@ -35,6 +36,7 @@ pub struct World {
     pub intels: Vec<Point2>,
     pub enemies: Vec<Enemy>,
     pub bullets: Vec<Bullet<'static>>,
+    pub grenades: Vec<Grenade>,
     pub weapons: Vec<WeaponDrop<'static>>,
     pub decorations: Vec<DecorationObj>,
     pub pickups: Vec<Pickup>,
@@ -435,30 +437,40 @@ impl Grid {
             }
         }
     }
-    /// Distance between a line section and a circle
-    /// 
-    /// The general formula for distance between a line and cirlcle here would be inadequate
-    /// since here the line has a finite length so we need to check if the smalleset distance is in that finite line section.
-    pub fn dist_line_circle(line_start: Point2, line_dist: Vector2, circle_center: Point2) -> f32 {
+    /// Closest point on a line segment to a circle
+    pub fn closest_point_of_line_to_circle(line_start: Point2, line_dist: Vector2, circle_center: Point2) -> Point2 {
         let c = circle_center - line_start;
 
         let d_len = line_dist.norm();
 
         let c_on_d_len = c.dot(&line_dist) / d_len;
-        let c_on_d = c_on_d_len / d_len * line_dist;
 
-        let closest_point = if c_on_d_len < 0. {
+        if c_on_d_len < 0. {
             // Closest point is start point
             line_start
         } else if c_on_d_len <= d_len {
             // Closest point is betweeen start and end point
+            let c_on_d = c_on_d_len / d_len * line_dist;
             line_start + c_on_d
         } else {
             // Closest point is end point
             line_start + line_dist
-        };
+        }
+    }
+    /// Distance between a line section and a circle
+    /// 
+    /// The general formula for distance between a line and cirlcle here would be inadequate
+    /// since here the line has a finite length so we need to check if the smalleset distance is in that finite line section.
+    #[inline]
+    pub fn distance_line_circle(line_start: Point2, line_dist: Vector2, circle_center: Point2) -> Vector2 {
+        let closest_point = Self::closest_point_of_line_to_circle(line_start, line_dist, circle_center);
 
-        (circle_center - closest_point).norm()
+        circle_center - closest_point
+    }
+    /// Length of `distance_line_circle`
+    #[inline]
+    pub fn dist_line_circle(line_start: Point2, line_dist: Vector2, circle_center: Point2) -> f32 {
+        Self::distance_line_circle(line_start, line_dist, circle_center).norm()
     }
     pub fn draw(&self, ctx: &mut Context, assets: &Assets) -> GameResult<()> {
         for (i, mat) in self.mats.iter().enumerate() {
