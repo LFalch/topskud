@@ -72,6 +72,8 @@ pub trait GameState {
     }
 }
 
+const PROMPT_Y: f32 = 196.;
+
 #[derive(Debug)]
 pub struct Console {
     history: Vec<Image>,
@@ -83,7 +85,7 @@ impl Console {
     fn new(ctx: &mut Context, assets: &Assets) -> GameResult<Self> {
         Ok(Console {
             history: vec![assets.raw_text(ctx, "Welcome t' console")?.into_inner()],
-            prompt: assets.text(ctx, Point2::new(0., 200.), "> ")?,
+            prompt: assets.text(ctx, Point2::new(0., PROMPT_Y), "> ")?,
             prompt_str: String::with_capacity(32),
         })
     }
@@ -125,7 +127,18 @@ impl Console {
                 self.history_line(ctx, &state.assets, "No world")?;
             },
             "hello" => self.history_line(ctx, &state.assets, "Hello!")?,
-            cmd => self.history_line(ctx, &state.assets, &format!("\tUnknown command `{}'!", cmd))?,
+            cmd => self.history_line(ctx, &state.assets, &format!("  Unknown command `{}'!", cmd))?,
+        }
+
+        let mut history_h = 0.;
+
+        let i = self.history.iter().position(|i| {
+            history_h += i.height() as f32;
+            PROMPT_Y < history_h
+        });
+        
+        if let Some(i) = i {
+            self.history.drain(0..self.history.len()-i);
         }
 
         Ok(())
