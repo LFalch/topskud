@@ -1134,7 +1134,7 @@ dependencies = [
 
 [[package]]
 name = "tds"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
  "bincode 1.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "ggez 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)",
