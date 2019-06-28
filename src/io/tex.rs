@@ -126,6 +126,7 @@ sprites! {
     MagnumHands, "weapons/magnum_hands", 32., 32.,
     Arwp, "weapons/arwp", 64., 32.,
     ArwpHands, "weapons/arwp_hands", 32., 32.,
+    Pineapple, "weapons/pineapple", 32., 32.,
 }
 
 impl Assets {

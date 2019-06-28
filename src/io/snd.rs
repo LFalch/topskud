@@ -143,6 +143,8 @@ macro_rules! sounds {
 use self::Sound::*;
 
 sounds! {
+    Throw, "throw", Wave,
+    Boom, "boom", Wave,
     Shot1, "shot1", Wave,
     Shot2, "shot2", Wave,
     Cock, "cock", Wave,

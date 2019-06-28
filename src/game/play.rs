@@ -9,7 +9,7 @@ use crate::{
         tex::{Assets, Sprite, PosText},
         snd::Sound,
     },
-    obj::{Object, pickup::Pickup, player::Player, enemy::{Enemy, Chaser}, health::Health, weapon::WeaponInstance},
+    obj::{Object, pickup::Pickup, player::Player, enemy::{Enemy, Chaser}, health::Health, weapon::WeaponInstance, grenade::Explosion},
 };
 use ggez::{
     Context, GameResult,
@@ -147,12 +147,54 @@ impl GameState for Play {
         for (i, grenade) in self.world.grenades.iter_mut().enumerate().rev() {
             let expl = grenade.update(&self.world.grid, &mut self.world.player, &mut *self.world.enemies);
 
-            if expl.is_some() {
+            if let Some(Explosion{player_hit, enemy_hits}) = expl {
                 deads.push(i);
+                s.mplayer.play(ctx, Sound::Boom)?;
+
+                if player_hit {
+                    self.bloods.push(BloodSplatter::new(self.world.player.obj.clone()));
+                    s.mplayer.play(ctx, Sound::Hit)?;
+
+                    if self.world.player.health.is_dead() {
+                        s.switch(StateSwitch::Lose(Box::new(Statistics{
+                            hits: self.bloods.len(),
+                            misses: self.misses,
+                            enemies_left: self.world.enemies.len(),
+                            health_left: self.initial.0,
+                            level: self.level.clone(),
+                            weapon: self.initial.1,
+                        })));
+                        s.mplayer.play(ctx, Sound::Death)?;
+                    } else {
+                        s.mplayer.play(ctx, Sound::Hurt)?;
+                    }
+                }
+                for i in enemy_hits {
+                    let enemy = &self.world.enemies[i];
+                    s.mplayer.play(ctx, Sound::Hit)?;
+
+                    self.bloods.push(BloodSplatter::new(enemy.pl.obj.clone()));
+                    if enemy.pl.health.is_dead() {
+                        s.mplayer.play(ctx, Sound::Death)?;
+
+                        let Enemy{pl: Player{wep, obj: Object{pos, ..}, ..}, ..}
+                            = self.world.enemies.remove(i);
+                        if let Some(wep) = wep {
+                            self.world.weapons.push(wep.into_drop(pos));
+                        }
+                    } else {
+                        if !enemy.behaviour.chasing() {
+                            self.world.enemies[i].behaviour = Chaser::LookAround{
+                                dir: grenade.obj.pos - enemy.pl.obj.pos
+                            };
+                        }
+                        s.mplayer.play(ctx, Sound::Hurt)?;
+                    }
+                }
             }
         }
         for i in deads {
-            self.world.bullets.remove(i);
+            self.world.grenades.remove(i);
         }
 
         let mut deads = Vec::new();

@@ -387,26 +387,27 @@ impl Grid {
         let dest = from + dist;
 
         let mut cur = from;
+        let mut to_wall = Vector2::new(0., 0.);
         let (mut gx, mut gy) = Self::snap(cur);
         let x_dir = Direction::new(dist.x);
         let y_dir = Direction::new(dist.y);
 
         loop {
             if finite && (cur - dest).dot(&dist) / dist.norm() >= 0. {
-                break RayCast::Full(dest);
+                break RayCast::n_full(dest);
             }
 
             let mat = self.get(gx, gy);
 
             if let Some(mat) = mat {
                 if mat.solid() {
-                    break RayCast::Half(cur);
+                    break RayCast::n_half(cur, dest-cur, to_wall);
                 }
                 if cur.x < 0. || cur.y < 0. {
-                    break RayCast::OffEdge(cur); 
+                    break RayCast::n_off_edge(cur, dest-cur); 
                 }
             } else {
-                break RayCast::OffEdge(cur);
+                break RayCast::n_off_edge(cur, dest-cur);
             }
 
             let nearest_corner = Point2::new(x_dir.on(f32::from(gx) * 32.), y_dir.on(f32::from(gy) * 32.));
@@ -415,6 +416,8 @@ impl Grid {
             let time = (distance.x/dist.x, distance.y/dist.y);
 
             if time.0 < time.1 {
+                to_wall.x = dist.x.signum();
+                to_wall.y = 0.;
                 // Going along x
                 cur.x = nearest_corner.x;
                 cur.y += time.0 * dist.y;
@@ -422,9 +425,16 @@ impl Grid {
                 gx = if let Some(n) = x_dir.on_u16(gx) {
                     n
                 } else {
-                    break RayCast::OffEdge(cur);
+                    break RayCast::n_off_edge(cur, dest-cur);
                 }
             } else {
+                if time.0 - time.1 < std::f32::EPSILON {
+                    to_wall.x = dist.x.signum();
+                    to_wall.y = dist.y.signum();
+                } else {
+                    to_wall.x = 0.;
+                    to_wall.y = dist.y.signum();
+                }
                 // Going along y
                 cur.y = nearest_corner.y;
                 cur.x += time.1 * dist.x;
@@ -432,7 +442,7 @@ impl Grid {
                 gy = if let Some(n) = y_dir.on_u16(gy) {
                     n
                 } else {
-                    break RayCast::OffEdge(cur);
+                    break RayCast::n_off_edge(cur, dest-cur);
                 }
             }
         }
@@ -515,30 +525,66 @@ impl Direction {
 }
 
 #[derive(Debug, Copy, Clone)]
-pub enum RayCast {
-    Full(Point2),
-    Half(Point2),
-    OffEdge(Point2),
+pub struct RayCast {
+    result: RayCastResult,
+    point: Point2,
+    clip: Vector2,
+}
+
+#[derive(Debug, Copy, Clone)]
+enum RayCastResult {
+    Full,
+    Half(Vector2),
+    OffEdge,
 }
 
 impl RayCast {
+    fn n_full(point: Point2) -> Self {
+        RayCast{
+            result: RayCastResult::Full,
+            point,
+            clip: Vector2::new(0., 0.)
+        }
+    }
+    fn n_half(point: Point2, clip: Vector2, to_wall: Vector2) -> Self {
+        RayCast{
+            result: RayCastResult::Half(to_wall),
+            point,
+            clip,
+        }
+    }
+    fn n_off_edge(point: Point2, clip: Vector2) -> Self {
+        RayCast{
+            result: RayCastResult::OffEdge,
+            point,
+            clip,
+        }
+    }
+
     pub fn full(self) -> bool {
-        match self {
-            RayCast::Full(_) => true,
+        match self.result {
+            RayCastResult::Full => true,
             _ => false,
         }
     }
     pub fn half(self) -> bool {
-        match self {
-            RayCast::Half(_) => true,
+        match self.result {
+            RayCastResult::Half(_) => true,
             _ => false,
         }
     }
-    pub fn into_point(self) -> Point2 {
-        match self {
-            RayCast::Full(p) => p,
-            RayCast::Half(p) => p,
-            RayCast::OffEdge(p) => p,
+    pub fn half_vec(self) -> Option<Vector2> {
+        match self.result {
+            RayCastResult::Half(v) => Some(v),
+            _ => None,
         }
+    }
+    pub fn into_point(self) -> Point2 {
+        let Self{point, ..} = self;
+        point
+    }
+    pub fn clip(self) -> Vector2 {
+        let Self{clip, ..} = self;
+        clip
     }
 }

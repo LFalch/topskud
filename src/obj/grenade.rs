@@ -22,55 +22,79 @@ pub struct Utilities {
 pub struct Grenade {
     pub obj: Object,
     pub vel: Vector2,
+    pub fuse: f32,
 }
 
-const DEC: f32 = 0.5;
+const DEC: f32 = 1.4;
 
 impl Grenade {
     #[inline]
-    pub fn apply_damage(&self, health: &mut Health) {
-        health.weapon_damage(55., 85.);
+    pub fn apply_damage(&self, health: &mut Health, high: bool) {
+        health.weapon_damage(if high { 105.} else {55.}, 85.);
     }
     #[inline]
     pub fn draw(&self, ctx: &mut Context, a: &Assets) -> GameResult<()> {
         // TODO add sprite
-        self.obj.draw(ctx, a.get_img(Sprite::ManholeCover))
+        self.obj.draw(ctx, a.get_img(Sprite::Pineapple))
     }
     pub fn update(&mut self, grid: &Grid, player: &mut Player, enemies: &mut [Enemy]) -> Option<Explosion> {
         let start = self.obj.pos;
-        let acc = DEC * -self.vel;
-        let d_pos = 0.5 * DELTA * acc + self.vel * DELTA;
-        let d_acc = acc * DELTA;
-        if self.vel.norm() > d_acc.norm() {
-            self.vel += d_acc;
+        let d_vel = -DEC * self.vel * DELTA;
+        let d_pos = 0.5 * DELTA * d_vel + self.vel * DELTA;
+        self.vel += d_vel;
+        if self.fuse > DELTA {
+            self.fuse -= DELTA;
         } else {
-            return Some(Explosion);
+            self.fuse = 0.;
+
+            let player_hit;
+            let mut enemy_hits = Vec::new();
+
+            let d_player = player.obj.pos-start;
+            if d_player.norm() < 144. && grid.ray_cast(start, d_player, true).full() {
+                self.apply_damage(&mut player.health, d_player.norm() <= 64.);
+                player_hit = true;
+            } else {
+                player_hit = false;
+            }
+
+            for (i, enem) in enemies.iter_mut().enumerate().rev() {
+                let d_enemy = enem.pl.obj.pos - start;
+                if d_enemy.norm() < 144. && grid.ray_cast(start, d_enemy, true).full() {
+                    self.apply_damage(&mut enem.pl.health, d_enemy.norm() <= 64.);
+                    enemy_hits.push(i);
+                }
+            }
+
+            return Some(Explosion{player_hit, enemy_hits});
         }
 
         let closest_p = Grid::closest_point_of_line_to_circle(start, d_pos, player.obj.pos);
         let r_player = player.obj.pos - closest_p;
         if r_player.norm() <= 16. {
-            self.vel -= self.vel.dot(&r_player)/r_player.norm_squared() * r_player;
+            self.vel -= 2.*self.vel.dot(&r_player)/r_player.norm_squared() * r_player;
+            let clip = (start + d_pos) - closest_p;
 
-            self.obj.pos = closest_p + self.vel * (DELTA * (1. - ((closest_p - start).norm()/d_pos.norm())));
+            self.obj.pos = closest_p + clip -  2. * clip.dot(&r_player)/r_player.norm_squared()*r_player;
             return None;
         }
         for enem in enemies.iter_mut() {
             let closest_e = Grid::closest_point_of_line_to_circle(start, d_pos, enem.pl.obj.pos);
             let r_enemy = enem.pl.obj.pos - closest_e;
             if r_enemy.norm() <= 16. {
-                self.vel -= self.vel.dot(&r_enemy)/r_enemy.norm_squared() * r_enemy;
+                self.vel -= 2.*self.vel.dot(&r_enemy)/r_enemy.norm_squared() * r_enemy;
+                let clip = (start + d_pos) - closest_p;
 
-                self.obj.pos = closest_e + self.vel * (DELTA * (1. - ((closest_p - start).norm()/d_pos.norm())));
+                self.obj.pos = closest_e + clip - 2. * clip.dot(&r_enemy)/r_enemy.norm_squared()*r_enemy;
                 return None;
             }
         }
         let cast = grid.ray_cast(start, d_pos, true);
         self.obj.pos = cast.into_point();
-        if cast.half() {
-            self.vel = -self.vel;
-            // TODO: Move it the amount it should've moved
-            // TODO: Don't just turn it around
+        if let Some(to_wall) = cast.half_vec() {
+            let clip = cast.clip();
+            self.obj.pos += clip -  2. * clip.dot(&to_wall)/to_wall.norm_squared() * to_wall;
+            self.vel -= 2. * self.vel.dot(&to_wall)/to_wall.norm_squared() * to_wall;
         }
         None
     }
@@ -81,8 +105,8 @@ impl Utilities {
         if self.grenades > 0 {
             self.grenades -= 1;
 
-            mplayer.play(ctx, Sound::Impact)?;
-            Ok(Some(GrenadeMaker(50.)))
+            mplayer.play(ctx, Sound::Throw)?;
+            Ok(Some(GrenadeMaker(620.)))
         } else {
             mplayer.play(ctx, Sound::Cock)?;
             Ok(None)
@@ -96,11 +120,15 @@ impl GrenadeMaker {
         let vel = angle_to_vec(obj.rot) * self.0;
         obj.rot = 0.;
         Grenade {
+            fuse: 1.5,
             vel,
             obj,
         }
     }
 }
 
-// TODO: Add who was hit by the explosion
-pub struct Explosion;
+#[derive(Debug, Clone)]
+pub struct Explosion{
+    pub player_hit: bool,
+    pub enemy_hits: Vec<usize>,
+}
