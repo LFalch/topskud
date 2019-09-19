@@ -49,7 +49,7 @@ impl PickupType {
             offset: Point2::new(0.5, 0.5),
             .. Default::default()
         };
-        graphics::draw_ex(ctx, assets.get_img(self.spr), drawparams)
+        graphics::draw(ctx, assets.get_img(self.spr), drawparams)
     }
 }
 

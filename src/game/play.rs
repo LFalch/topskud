@@ -93,7 +93,7 @@ impl Play {
                 arm_text: s.assets.text(ctx, Point2::new(4., 33.), "100")?,
                 reload_text: s.assets.text(ctx, Point2::new(4., 62.), "0.0s")?,
                 wep_text: s.assets.text(ctx, Point2::new(2., 87.), "BFG 0/0")?,
-                status_text: s.assets.text(ctx, Point2::new(s.width as f32 / 2., s.height as f32 / 2.+32.), "")?,
+                status_text: s.assets.text(ctx, Point2::new(s.width as f32 / 2., s.height as f32 / 2. + 32.), "")?,
                 hud: Hud::new(ctx)?,
                 misses: 0,
                 victory_time: 0.,

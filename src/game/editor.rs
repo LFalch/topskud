@@ -8,7 +8,7 @@ use crate::{
 };
 use ggez::{
     Context, GameResult,
-    graphics::{self, Color, Rect, DrawMode},
+    graphics::{self, Color, Rect, DrawMode, Mesh},
     error::GameError,
     event::{MouseButton, KeyCode}
 };
@@ -108,19 +108,18 @@ impl InsertionBar {
     fn draw(&self, ctx: &mut Context, s: &State, cur: Option<Insertion>) -> GameResult<()> {
         let mut drawparams = graphics::DrawParam {
             dest: self.ent_text.pos + Vector2::new(98., 16.),
-            offset: Point2::new(0.5, 0.5),
-            color: Some(graphics::WHITE),
+            offset: Point2::new(0.5, 0.5).into(),
             .. Default::default()
         };
 
         for (spr, ins) in self.palette {
             if let Some(cur) = cur {
                 if ins == &cur {
-                    graphics::set_color(ctx, YELLOW)?;
-                    graphics::circle(ctx, DrawMode::Fill, drawparams.dest, 17., 0.5)?;
+                    let mesh = Mesh::new_circle(ctx, DrawMode::fill(), drawparams.dest, 17., 0.5, YELLOW)?;
+                    graphics::draw(ctx, &mesh, Default::default())?;
                 }
             }
-            graphics::draw_ex(ctx, s.assets.get_img(*spr), drawparams)?;
+            graphics::draw(ctx, s.assets.get_img(*spr), drawparams)?;
             drawparams.dest.x += 34.; 
         }
         Ok(())
@@ -179,7 +178,7 @@ impl Editor {
         if let Content::File(ref f) = s.content {
             save = f.clone();
         } else {
-            return Err(GameError::UnknownError("Cannot load editor without file".to_owned()));
+            return Err(GameError::ResourceLoadError("Cannot load editor without file".to_owned()));
         }
 
         let level = level
@@ -270,7 +269,7 @@ impl GameState for Editor {
                 color: Some(graphics::WHITE),
                 .. Default::default()
             };
-            graphics::draw_ex(ctx, s.assets.get_img(Sprite::Goal), drawparams)?;
+            graphics::draw(ctx, s.assets.get_img(Sprite::Goal), drawparams)?;
         }
 
         for (i, &intel) in self.level.intels.iter().enumerate() {
@@ -286,7 +285,7 @@ impl GameState for Editor {
                 color: Some(graphics::WHITE),
                 .. Default::default()
             };
-            graphics::draw_ex(ctx, s.assets.get_img(Sprite::Intel), drawparams)?;
+            graphics::draw(ctx, s.assets.get_img(Sprite::Intel), drawparams)?;
         }
 
         graphics::set_color(ctx, graphics::WHITE)?;
@@ -338,7 +337,7 @@ impl GameState for Editor {
                 color: Some(graphics::WHITE),
                 .. Default::default()
             };
-            graphics::draw_ex(ctx, s.assets.get_img(weapon.weapon.entity_sprite), drawparams)?;
+            graphics::draw(ctx, s.assets.get_img(weapon.weapon.entity_sprite), drawparams)?;
         }
 
         // Draw moving objects shadows
@@ -358,7 +357,7 @@ impl GameState for Editor {
                     offset: Point2::new(0.5, 0.5),
                     .. Default::default()
                 };
-                graphics::draw_ex(ctx, s.assets.get_img(Sprite::Intel), drawparams)?;
+                graphics::draw(ctx, s.assets.get_img(Sprite::Intel), drawparams)?;
             }
             for &i in &selection.decorations {
                 let mut dec = self.level.decorations[i].clone();
@@ -372,7 +371,7 @@ impl GameState for Editor {
                     offset: Point2::new(0.5, 0.5),
                     .. Default::default()
                 };
-                graphics::draw_ex(ctx, s.assets.get_img(PICKUPS[pickup.1 as usize].spr), drawparams)?;
+                graphics::draw(ctx, s.assets.get_img(PICKUPS[pickup.1 as usize].spr), drawparams)?;
             }
             for &i in &selection.weapons {
                 let drawparams = graphics::DrawParam {
@@ -380,7 +379,7 @@ impl GameState for Editor {
                     offset: Point2::new(0.5, 0.5),
                     .. Default::default()
                 };
-                graphics::draw_ex(ctx, s.assets.get_img(self.level.weapons[i].weapon.entity_sprite), drawparams)?;
+                graphics::draw(ctx, s.assets.get_img(self.level.weapons[i].weapon.entity_sprite), drawparams)?;
             }
             if selection.exit {
                 if let Some(exit) = self.level.exit {
@@ -389,7 +388,7 @@ impl GameState for Editor {
                         offset: Point2::new(0.5, 0.5),
                         .. Default::default()
                     };
-                    graphics::draw_ex(ctx, s.assets.get_img(Sprite::Goal), drawparams)?;
+                    graphics::draw(ctx, s.assets.get_img(Sprite::Goal), drawparams)?;
                 }
             }
         }
@@ -409,7 +408,7 @@ impl GameState for Editor {
                     color: Some(TRANS),
                     .. Default::default()
                 };
-                graphics::draw_ex(ctx, s.assets.get_img(PICKUPS[index as usize].spr), drawparams)?;
+                graphics::draw(ctx, s.assets.get_img(PICKUPS[index as usize].spr), drawparams)?;
             }
             Tool::Inserter(Insertion::Weapon(index)) => {
                 let drawparams = graphics::DrawParam {
@@ -419,7 +418,7 @@ impl GameState for Editor {
                     color: Some(TRANS),
                     .. Default::default()
                 };
-                graphics::draw_ex(ctx, s.assets.get_img(WEAPONS[index as usize].entity_sprite), drawparams)?;
+                graphics::draw(ctx, s.assets.get_img(WEAPONS[index as usize].entity_sprite), drawparams)?;
             }
             Tool::Inserter(Insertion::Enemy{rot}) => {
                 let drawparams = graphics::DrawParam {
@@ -429,7 +428,7 @@ impl GameState for Editor {
                     color: Some(TRANS),
                     .. Default::default()
                 };
-                graphics::draw_ex(ctx, s.assets.get_img(Sprite::Enemy), drawparams)?;
+                graphics::draw(ctx, s.assets.get_img(Sprite::Enemy), drawparams)?;
             }
             Tool::Inserter(Insertion::Decoration{i, rot}) => {
                 let drawparams = graphics::DrawParam {
@@ -439,7 +438,7 @@ impl GameState for Editor {
                     color: Some(TRANS),
                     .. Default::default()
                 };
-                graphics::draw_ex(ctx, s.assets.get_img(DECORATIONS[i].spr), drawparams)?;
+                graphics::draw(ctx, s.assets.get_img(DECORATIONS[i].spr), drawparams)?;
             }
             Tool::Inserter(Insertion::Exit) => {
                 let drawparams = graphics::DrawParam {
@@ -448,7 +447,7 @@ impl GameState for Editor {
                     color: Some(TRANS),
                     .. Default::default()
                 };
-                graphics::draw_ex(ctx, s.assets.get_img(Sprite::Goal), drawparams)?;
+                graphics::draw(ctx, s.assets.get_img(Sprite::Goal), drawparams)?;
             }
             Tool::Inserter(Insertion::Intel) => {
                 let drawparams = graphics::DrawParam {
@@ -457,7 +456,7 @@ impl GameState for Editor {
                     color: Some(TRANS),
                     .. Default::default()
                 };
-                graphics::draw_ex(ctx, s.assets.get_img(Sprite::Intel), drawparams)?;
+                graphics::draw(ctx, s.assets.get_img(Sprite::Intel), drawparams)?;
             }
         }
 

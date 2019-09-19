@@ -20,7 +20,8 @@ pub mod game;
 
 pub mod util {
     use ggez::graphics::Color;
-    pub use ggez::graphics::{Vector2, Point2};
+    pub type Vector2 = nalgebra::Vector2<f32>;
+    pub type Point2 = nalgebra::Point2<f32>;
 
     pub const TRANS: Color = Color{r:1.,g:1.,b:1.,a:0.5};
     pub const GREEN: Color = Color{r:0.1,g:0.7,b:0.1,a:1.};

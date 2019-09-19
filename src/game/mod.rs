@@ -363,7 +363,7 @@ impl EventHandler for Master {
     }
     /// Handles mouse movement events
     fn mouse_motion_event(&mut self, _: &mut Context, x: f32, y: f32, _: f32, _: f32) {
-        self.state.mouse = Point2::new(x, y);
+        self.state.mouse = Point2::new(x: x, y: y);
     }
     fn quit_event(&mut self, _ctx: &mut Context) -> bool {
         false

@@ -155,7 +155,7 @@ mod opt_point {
     }
     #[inline]
     pub fn deserialize<'de, D: Deserializer<'de>>(d: D) -> Result<Option<Point2>, D::Error> {
-        <Option<(f32, f32)>>::deserialize(d).map(|p| p.map(|(x, y)| Point2::new(x, y)))
+        <Option<(f32, f32)>>::deserialize(d).map(|p| p.map(|(x, y)| Point2::new(x: x, y: y)))
     }
 }
 
@@ -206,26 +206,26 @@ impl Level {
                 }
                 "START" => ret.start_point = Some(
                     bincode::deserialize_from(&mut reader)
-                        .map(|(x, y)| Point2::new(x, y))
+                        .map(|(x, y)| Point2::new(x: x, y: y))
                         .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?
                 ),
                 "ENEMIES" => ret.enemies = bincode::deserialize_from(&mut reader)
                     .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?,
                 "POINT GOAL" => ret.exit = Some(bincode::deserialize_from(&mut reader)
-                    .map(|(x, y)| Point2::new(x, y))
+                    .map(|(x, y)| Point2::new(x: x, y: y))
                     .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?),
                 "INTELS" => ret.intels = bincode::deserialize_from(&mut reader)
-                    .map(|l: Vec<(f32, f32)>| l.into_iter().map(|(x, y)| Point2::new(x, y)).collect())
+                    .map(|l: Vec<(f32, f32)>| l.into_iter().map(|(x, y)| Point2{x, y}).collect())
                     .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?,
                 "DECORATIONS" => ret.decorations = bincode::deserialize_from(&mut reader)
                     .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?,
                 "PICKUPS" => ret.pickups = bincode::deserialize_from(&mut reader)
-                    .map(|l: Vec<((f32, f32), u8)>| l.into_iter().map(|((x, y), i)| (Point2::new(x, y), i)).collect())
+                    .map(|l: Vec<((f32, f32), u8)>| l.into_iter().map(|((x, y), i)| (Point2{x, y}, i)).collect())
                     .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?,
                 "WEAPONS" => ret.weapons = bincode::deserialize_from(&mut reader)
-                    .map(|l: Vec<((f32, f32), u8)>| l.into_iter().map(|((x, y), i)| WEAPONS[i as usize].make_drop(Point2::new(x, y))).collect())
+                    .map(|l: Vec<((f32, f32), u8)>| l.into_iter().map(|((x, y), i)| WEAPONS[i as usize].make_drop(Point2{x, y})).collect())
                     .map_err(|e| GameError::UnknownError(format!("{:?}", e)))?,
-                "END" => break,
+                "END" => break, 
                 _ => return Err("Bad section".to_string())?
             }
         }

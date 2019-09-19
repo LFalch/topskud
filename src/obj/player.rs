@@ -53,7 +53,7 @@ impl Player {
     /// Draw the object
     // pub fn draw(&self, ctx: &mut Context, img: &Image) -> GameResult<()> {
         // let drawparams = self.drawparams();
-        // graphics::draw_ex(ctx, img, drawparams)
+        // graphics::draw(ctx, img, drawparams)
     // }
 
     #[inline]
@@ -67,7 +67,7 @@ impl Player {
                 .. self.obj.drawparams()
             };
 
-            graphics::draw_ex(ctx, a.get_img(wep.weapon.hands_sprite), dp)?;
+            graphics::draw(ctx, a.get_img(wep.weapon.hands_sprite), dp)?;
         }
         self.obj.draw(ctx, a.get_img(sprite))
     }

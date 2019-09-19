@@ -50,7 +50,7 @@ impl Object {
     /// Draw the object
     pub fn draw(&self, ctx: &mut Context, img: &Image) -> GameResult<()> {
         let drawparams = self.drawparams();
-        graphics::draw_ex(ctx, img, drawparams)
+        graphics::draw(ctx, img, drawparams)
     }
     pub fn is_on_solid(&self, grid: &Grid) -> bool {
         let (x, y) = Grid::snap(self.pos);

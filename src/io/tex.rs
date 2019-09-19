@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use ggez::{Context, GameResult};
-use ggez::graphics::{Image, Font, Text, TextFragment, Point2, Drawable, DrawParam};
+use ggez::graphics::{Image, Font, Text, TextFragment, Drawable, DrawParam};
 
 macro_rules! sprites {
     ($(
@@ -55,8 +55,7 @@ macro_rules! sprites {
 
                 Ok(Assets {
                     texes,
-                    font: Font::new(ctx, "/common/DroidSansMono.ttf", 14)?,
-                    big_font: Font::new(ctx, "/common/DroidSansMono.ttf", 21)?,
+                    font: Font::new(ctx, "/common/DroidSansMono.ttf")?,
                 })
             }
             /// Gets the `Image` to draw from the sprite
@@ -168,7 +167,7 @@ impl PosText {
             offset: Point2::new(0.5, 0.5),
             .. Default::default()
         };
-        self.text.draw_ex(ctx, drawparams)
+        self.text.draw(ctx, drawparams)
     }
     /// Update the text
     pub fn update_text(&mut self, a: &Assets, ctx: &mut Context, text: &str) -> GameResult<()> {

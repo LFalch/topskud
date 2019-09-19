@@ -38,7 +38,7 @@ impl<T> Button<T> {
             color: Some(Color{r: 0.5, g: 0.5, b: 0.75, a: 1.}),
             .. DrawParam::default()
         };
-        self.mesh.draw_ex(ctx, param)?;
+        self.mesh.draw(ctx, param)?;
         self.text.draw_center(ctx)
     }
     pub fn in_bounds(&self, p: Point2) -> bool {
