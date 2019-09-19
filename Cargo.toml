@@ -5,12 +5,11 @@ authors = ["LFalch <lucas@wasd.dk>"]
 edition = "2018"
 
 [dependencies]
-ggez = "0.4"
+ggez = "0.5.1"
 bincode = "1"
 serde_derive = "1"
 serde = "1"
 self-compare = "0.2"
-sdl2 = "0.31"
 rand = "0.6"
 
 [profile.dev]

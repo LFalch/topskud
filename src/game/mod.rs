@@ -9,10 +9,11 @@ use crate::{
     obj::{health::Health, weapon::WeaponInstance},
 };
 use ggez::{
+    nalgebra::Matrix4,
     Context, GameResult,
-    graphics::{self, Matrix4, DrawMode, Rect, Image, Drawable},
+    graphics::{self, DrawMode, Rect, Mesh, Text},
     timer,
-    event::{EventHandler, MouseButton, MouseState, Keycode, Mod}
+    event::{EventHandler, MouseButton, KeyCode, KeyMods}
 };
 use self::world::Level;
 
@@ -51,10 +52,10 @@ pub trait GameState {
         Ok(())
     }
     fn draw_hud(&mut self, _: &State, _: &mut Context) -> GameResult<()>;
-    fn key_down(&mut self, _: &mut State, _: &mut Context, _: Keycode) {
+    fn key_down(&mut self, _: &mut State, _: &mut Context, _: KeyCode) {
 
     }
-    fn key_up(&mut self, _: &mut State, _: &mut Context, _: Keycode) {
+    fn key_up(&mut self, _: &mut State, _: &mut Context, _: KeyCode) {
 
     }
     fn mouse_down(&mut self, _: &mut State, _: &mut Context, _: MouseButton) {
@@ -76,7 +77,7 @@ const PROMPT_Y: f32 = 196.;
 
 #[derive(Debug)]
 pub struct Console {
-    history: Vec<Image>,
+    history: Text,
     prompt: PosText,
     prompt_str: String,
 }
@@ -84,17 +85,13 @@ pub struct Console {
 impl Console {
     fn new(ctx: &mut Context, assets: &Assets) -> GameResult<Self> {
         Ok(Console {
-            history: vec![assets.raw_text(ctx, "Welcome t' console")?.into_inner()],
+            history: Text::new("Welcome t' console".into()),
             prompt: assets.text(ctx, Point2::new(0., PROMPT_Y), "> ")?,
             prompt_str: String::with_capacity(32),
         })
     }
-    fn history_line(&mut self, ctx: &mut Context, a: &Assets, line: &str) -> GameResult<()> {
-        self.history.push(a.raw_text(ctx, line)?.into_inner());
-        Ok(())
-    }
     fn execute(&mut self, ctx: &mut Context, state: &mut State, gs: &mut dyn GameState) -> GameResult<()> {
-        self.history_line(ctx, &state.assets, &format!("> {}", self.prompt_str))?;
+        self.history.add(format!("> {}", self.prompt_str));
 
         let cap = self.prompt_str.capacity();
         let prompt = mem::replace(&mut self.prompt_str, String::with_capacity(cap));
@@ -104,47 +101,40 @@ impl Console {
             "" => (),
             "pi" => if let Some(world) = gs.get_mut_world() {
                 world.intels.clear();
-                self.history_line(ctx, &state.assets, "Intels got")?;
+                self.history.add("Intels got\n");
             } else {
-                self.history_line(ctx, &state.assets, "No world")?;
+                self.history.add("No world\n");
             },
-            "clear" => self.history.clear(),
+            "clear" => self.history = Text::new("".into()),
             "fa" => if let Some(world) = gs.get_mut_world() {
                 world.player.health.hp = 100.;
                 world.player.health.armour = 100.;
             } else {
-                self.history_line(ctx, &state.assets, "No world")?;
+                self.history.add("No world\n");
             },
             "god" => if let Some(world) = gs.get_mut_world() {
                 if world.player.health.hp.is_finite() {
                     world.player.health.hp = std::f32::INFINITY;
-                    self.history_line(ctx, &state.assets, "Degreelessness")?;
+                    self.history.add("Degreelessness\n");
                 } else {
                     world.player.health.hp = 100.;
-                    self.history_line(ctx, &state.assets, "God off")?;
+                    self.history.add("God off\n");
                 }
             } else {
-                self.history_line(ctx, &state.assets, "No world")?;
+                self.history.add("No world\n");
             },
             "gg" => if let Some(world) = gs.get_mut_world() {
                 world.player.utilities.grenades += 3;
-                self.history_line(ctx, &state.assets, "Gg'd")?;
+                self.history.add("Gg'd\n");
             } else {
-                self.history_line(ctx, &state.assets, "No world")?;
+                self.history.add("No world\n");
             },
-            "hello" => self.history_line(ctx, &state.assets, "Hello!")?,
-            cmd => self.history_line(ctx, &state.assets, &format!("  Unknown command `{}'!", cmd))?,
+            "hello" => self.history.add("Hello!\n"),
+            cmd => self.history.add(format!("  Unknown command `{}'!\n", cmd)),
         }
 
-        let mut history_h = 0.;
-
-        let i = self.history.iter().position(|i| {
-            history_h += i.height() as f32;
-            PROMPT_Y < history_h
-        });
-        
-        if let Some(i) = i {
-            self.history.drain(0..self.history.len()-i);
+        while self.history.height(ctx) > PROMPT_Y as u32 {
+            *self.history.fragments_mut().first_mut().unwrap() = "".into();
         }
 
         Ok(())
@@ -171,8 +161,8 @@ pub struct State {
     modifiers: Modifiers,
     assets: Assets,
     mplayer: MediaPlayer,
-    width: u32,
-    height: u32,
+    width: f32,
+    height: f32,
     mouse: Point2,
     offset: Vector2,
     switch_state: Option<StateSwitch>,
@@ -187,15 +177,12 @@ impl Master {
     #[allow(clippy::new_ret_no_self)]
     /// Make a new state object
     pub fn new(ctx: &mut Context, arg: &str) -> GameResult<Self> {
-        // Background colour is black
-        graphics::set_background_color(ctx, (33, 33, 255, 255).into());
         // Initialise assets
         let assets = Assets::new(ctx)?;
         let mplayer = MediaPlayer::new(ctx)?;
 
         // Get the window's dimensions
-        let width = ctx.conf.window_mode.width;
-        let height = ctx.conf.window_mode.height;
+        let Rect {w: width, h: height, ..} = graphics::screen_coordinates(ctx);
 
         let content;
 
@@ -231,7 +218,7 @@ impl Master {
 impl State {
     /// Sets the offset so that the given point will be centered on the screen
     fn focus_on(&mut self, p: Point2) {
-        self.offset = -p.coords + 0.5 * Vector2::new(self.width as f32, self.height as f32);
+        self.offset = -p.coords + 0.5 * Vector2::new(self.width, self.height);
     }
     fn switch(&mut self, ss: StateSwitch) {
         self.switch_state = Some(ss);
@@ -276,7 +263,7 @@ impl EventHandler for Master {
     // Draws everything
     fn draw(&mut self, ctx: &mut Context) -> GameResult<()> {
         // Clear the screen first
-        graphics::clear(ctx);
+        graphics::clear(ctx, (33, 33, 255, 255).into());
 
         // Offset the current drawing with a translation from the `offset`
         graphics::push_transform(ctx, Some(Matrix4::new_translation(&self.state.offset.fixed_resize(0.))));
@@ -291,15 +278,11 @@ impl EventHandler for Master {
         self.gs.draw_hud(&self.state, ctx)?;
 
         if self.console_open {
-            graphics::set_color(ctx, graphics::BLACK)?;
-            graphics::rectangle(ctx, DrawMode::Fill, Rect::new(0., 0., self.state.width as f32, self.state.height as f32 / 3.))?;
+            let console_bg = Mesh::new_rectangle(ctx, DrawMode::fill(), Rect::new(0., 0., self.state.width as f32, self.state.height as f32 / 3.), graphics::BLACK)?;
+            graphics::draw(ctx, &console_bg, Default::default())?;
 
-            graphics::set_color(ctx, graphics::WHITE)?;
-            let mut pos = Point2::new(0., 0.);
-            for line in &self.console.history {
-                line.draw(ctx, pos, 0.)?;
-                pos.y += line.height() as f32;
-            }
+
+            graphics::draw(ctx, &self.console.history, Default::default())?;
             self.console.prompt.draw_text(ctx)?;
         }
 
@@ -311,13 +294,13 @@ impl EventHandler for Master {
         Ok(())
     }
     /// Handle key down events
-    fn key_down_event(&mut self, ctx: &mut Context, keycode: Keycode, _: Mod, repeat: bool) {
+    fn key_down_event(&mut self, ctx: &mut Context, keycode: KeyCode, _: KeyMods, repeat: bool) {
         // If this is a repeat event, we don't care
         if repeat {
             return
         }
 
-        use self::Keycode::*;
+        use self::KeyCode::*;
         // Update input axes and quit game on Escape
         match keycode {
             W | Up => self.state.input.ver -= 1,
@@ -328,19 +311,14 @@ impl EventHandler for Master {
             LCtrl => self.state.modifiers.ctrl = true,
             LAlt => self.state.modifiers.alt = true,
             Escape if self.console_open => self.console_open = false,
-            Escape => ctx.quit().unwrap(),
+            Escape => ctx.continuing = false,
             _ => (),
         }
         self.gs.key_down(&mut self.state, ctx, keycode)
     }
     /// Handle key release events
-    fn key_up_event(&mut self, ctx: &mut Context, keycode: Keycode, _: Mod, repeat: bool) {
-        // Still don't care about repeats
-        if repeat {
-            return
-        }
-
-        use self::Keycode::*;
+    fn key_up_event(&mut self, ctx: &mut Context, keycode: KeyCode, _: KeyMods) {
+        use self::KeyCode::*;
         match keycode {
             W | Up => self.state.input.ver += 1,
             S | Down => self.state.input.ver -= 1,
@@ -356,13 +334,13 @@ impl EventHandler for Master {
         }
         self.gs.key_up(&mut self.state, ctx, keycode)
     }
-    fn text_input_event(&mut self, _ctx: &mut Context, text: String) {
+    fn text_input_event(&mut self, _ctx: &mut Context, c: char) {
         if self.console_open {
-            self.console.prompt_str.push_str(&text);
+            self.console.prompt_str.push(c);
         }
     }
     /// Handle mouse down event
-    fn mouse_button_down_event(&mut self, ctx: &mut Context, btn: MouseButton, _x: i32, _y: i32) {
+    fn mouse_button_down_event(&mut self, ctx: &mut Context, btn: MouseButton, _x: f32, _y: f32) {
         use self::MouseButton::*;
         match btn {
             Left => self.state.mouse_down.left = true,
@@ -373,7 +351,7 @@ impl EventHandler for Master {
         self.gs.mouse_down(&mut self.state, ctx, btn)
     }
     /// Handle mouse release events
-    fn mouse_button_up_event(&mut self, ctx: &mut Context, btn: MouseButton, _x: i32, _y: i32) {
+    fn mouse_button_up_event(&mut self, ctx: &mut Context, btn: MouseButton, _x: f32, _y: f32) {
         use self::MouseButton::*;
         match btn {
             Left => self.state.mouse_down.left = false,
@@ -384,8 +362,8 @@ impl EventHandler for Master {
         self.gs.mouse_up(&mut self.state, ctx, btn)
     }
     /// Handles mouse movement events
-    fn mouse_motion_event(&mut self, _: &mut Context, _: MouseState, x: i32, y: i32, _: i32, _: i32) {
-        self.state.mouse = Point2::new(x as f32, y as f32);
+    fn mouse_motion_event(&mut self, _: &mut Context, x: f32, y: f32, _: f32, _: f32) {
+        self.state.mouse = Point2::new(x, y);
     }
     fn quit_event(&mut self, _ctx: &mut Context) -> bool {
         false

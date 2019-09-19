@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use ggez::{Context, GameResult};
-use ggez::graphics::{Image, Font, Text, Point2, Drawable, DrawParam};
+use ggez::graphics::{Image, Font, Text, TextFragment, Point2, Drawable, DrawParam};
 
 macro_rules! sprites {
     ($(
@@ -130,10 +130,6 @@ sprites! {
 }
 
 impl Assets {
-    #[inline]
-    pub fn raw_text(&self, context: &mut Context, text: &str) -> GameResult<Text> {
-        Text::new(context, text, &self.font)
-    }
     /// Make a positional text object
     pub fn text(&self, context: &mut Context, pos: Point2, text: &str) -> GameResult<PosText> {
         let text = self.raw_text(context, text)?;

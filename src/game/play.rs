@@ -15,9 +15,10 @@ use ggez::{
     Context, GameResult,
     graphics::{
         self, Drawable, DrawMode, WHITE, Rect,
+        MeshBuilder, Mesh,
         spritebatch::SpriteBatch,
     },
-    event::{Keycode, MouseButton}
+    event::{KeyCode, MouseButton}
 };
 
 use rand::{thread_rng, prelude::SliceRandom};
@@ -65,6 +66,7 @@ pub struct Play {
     reload_text: PosText,
     wep_text: PosText,
     status_text: PosText,
+    hud: Hud,
     world: World,
     holes: SpriteBatch,
     bloods: Vec<BloodSplatter>,
@@ -92,6 +94,7 @@ impl Play {
                 reload_text: s.assets.text(ctx, Point2::new(4., 62.), "0.0s")?,
                 wep_text: s.assets.text(ctx, Point2::new(2., 87.), "BFG 0/0")?,
                 status_text: s.assets.text(ctx, Point2::new(s.width as f32 / 2., s.height as f32 / 2.+32.), "")?,
+                hud: Hud::new(ctx)?,
                 misses: 0,
                 victory_time: 0.,
                 bloods: Vec::new(),
@@ -355,8 +358,10 @@ impl GameState for Play {
         }
         Ok(())
     }
-    fn logic(&mut self, s: &mut State, _ctx: &mut Context) -> GameResult<()> {
+    fn logic(&mut self, s: &mut State, ctx: &mut Context) -> GameResult<()> {
         let dist = s.mouse - s.offset - self.world.player.obj.pos;
+
+        self.hud.update_bars(ctx, &self.world.player)?;
 
         self.world.player.obj.rot = angle_from_vec(dist);
 
@@ -367,19 +372,17 @@ impl GameState for Play {
     }
 
     fn draw(&mut self, s: &State, ctx: &mut Context) -> GameResult<()> {
-        graphics::set_color(ctx, WHITE)?;
         self.world.grid.draw(ctx, &s.assets)?;
 
-        self.holes.draw_ex(ctx, Default::default())?;
+        self.holes.draw(ctx, Default::default())?;
 
         for &intel in &self.world.intels {
             let drawparams = graphics::DrawParam {
                 dest: intel,
                 offset: Point2::new(0.5, 0.5),
-                color: Some(graphics::WHITE),
                 .. Default::default()
             };
-            graphics::draw_ex(ctx, s.assets.get_img(Sprite::Intel), drawparams)?;
+            graphics::draw(ctx, s.assets.get_img(Sprite::Intel), drawparams)?;
         }
         for decoration in &self.world.decorations {
             decoration.draw(ctx, &s.assets)?;
@@ -393,19 +396,17 @@ impl GameState for Play {
             let drawparams = graphics::DrawParam {
                 dest: pickup.pos,
                 offset: Point2::new(0.5, 0.5),
-                color: Some(graphics::WHITE),
                 .. Default::default()
             };
-            graphics::draw_ex(ctx, s.assets.get_img(pickup.pickup_type.spr), drawparams)?;
+            graphics::draw(ctx, s.assets.get_img(pickup.pickup_type.spr), drawparams)?;
         }
         for wep in &self.world.weapons {
             let drawparams = graphics::DrawParam {
                 dest: wep.pos,
                 offset: Point2::new(0.5, 0.5),
-                color: Some(graphics::WHITE),
                 .. Default::default()
             };
-            graphics::draw_ex(ctx, s.assets.get_img(wep.weapon.entity_sprite), drawparams)?;
+            graphics::draw(ctx, s.assets.get_img(wep.weapon.entity_sprite), drawparams)?;
         }
 
         self.world.player.draw_player(ctx, &s.assets)?;
@@ -423,30 +424,21 @@ impl GameState for Play {
         Ok(())
     }
     fn draw_hud(&mut self, s: &State, ctx: &mut Context) -> GameResult<()> {
-        graphics::set_color(ctx, graphics::BLACK)?;
-        graphics::rectangle(ctx, DrawMode::Fill, Rect{x: 1., y: 1., w: 102., h: 26.})?;
-        graphics::rectangle(ctx, DrawMode::Fill, Rect{x: 1., y: 29., w: 102., h: 26.})?;
-        graphics::rectangle(ctx, DrawMode::Fill, Rect{x: 1., y: 57., w: 102., h: 26.})?;
-        graphics::set_color(ctx, GREEN)?;
-        graphics::rectangle(ctx, DrawMode::Fill, Rect{x: 2., y: 2., w: self.world.player.health.hp.limit(0., 100.), h: 24.})?;
-        graphics::set_color(ctx, BLUE)?;
-        graphics::rectangle(ctx, DrawMode::Fill, Rect{x: 2., y: 30., w: self.world.player.health.armour.limit(0., 100.), h: 24.})?;
-        graphics::set_color(ctx, RED)?;
-        graphics::rectangle(ctx, DrawMode::Fill, Rect{x: 2., y: 58., w: self.world.player.wep.map(|m| m.loading_time).unwrap_or(0.).limit(0., 1.)*100., h: 24.})?;
-        graphics::set_color(ctx, WHITE)?;
+        self.hud.draw(ctx);
+
         self.hp_text.draw_text(ctx)?;
         self.arm_text.draw_text(ctx)?;
         self.reload_text.draw_text(ctx)?;
         self.wep_text.draw_text(ctx)?;
         self.status_text.draw_center(ctx)?;
 
-        graphics::set_color(ctx, RED)?;
         let drawparams = graphics::DrawParam {
             dest: s.mouse,
             offset: Point2::new(0.5, 0.5),
+            color: RED,
             .. Default::default()
         };
-        graphics::draw_ex(ctx, s.assets.get_img(Sprite::Crosshair), drawparams)
+        graphics::draw(ctx, s.assets.get_img(Sprite::Crosshair), drawparams)
     }
     fn mouse_up(&mut self, s: &mut State, ctx: &mut Context, btn: MouseButton) {
         match btn {
@@ -473,8 +465,8 @@ impl GameState for Play {
             _ => (),
         }
     }
-    fn key_up(&mut self, s: &mut State, ctx: &mut Context, keycode: Keycode) {
-        use self::Keycode::*;
+    fn key_up(&mut self, s: &mut State, ctx: &mut Context, keycode: KeyCode) {
+        use self::KeyCode::*;
         match keycode {
             R => {
                 if let Some(wep) = &mut self.world.player.wep {
@@ -496,7 +488,7 @@ impl GameState for Play {
                     self.cur_pickup = None;
                 }
             },
-            _ => return,
+            _ => (),
         }
     }
 
@@ -505,5 +497,47 @@ impl GameState for Play {
     }
     fn get_mut_world(&mut self) -> Option<&mut World> {
         Some(&mut self.world)
+    }
+}
+
+#[derive(Debug)]
+pub struct Hud {
+    hud_bar: Mesh,
+    hp_bar: Mesh,
+    armour_bar: Mesh,
+    loading_bar: Mesh,
+}
+
+impl Hud {
+    pub fn new(ctx: &mut Context) -> GameResult<Self> {
+        let hud_bar = MeshBuilder::new()
+            .rectangle(DrawMode::fill(), Rect{x: 1., y: 1., w: 102., h: 26.}, graphics::BLACK)
+            .rectangle(DrawMode::fill(), Rect{x: 1., y: 29., w: 102., h: 26.}, graphics::BLACK)
+            .rectangle(DrawMode::fill(), Rect{x: 1., y: 57., w: 102., h: 26.}, graphics::BLACK)
+            .build(ctx)?;
+
+        let hp_bar = Mesh::new_rectangle(ctx, DrawMode::fill(), Rect{x: 2., y: 2., w: 0., h: 24.}, GREEN)?;
+        let armour_bar = Mesh::new_rectangle(ctx, DrawMode::fill(), Rect{x: 2., y: 30., w: 0., h: 24.}, BLUE)?;
+        let loading_bar = Mesh::new_rectangle(ctx, DrawMode::fill(), Rect{x: 2., y: 58., w: 0., h: 24.}, RED)?;
+
+        Ok(Hud{
+            hud_bar,
+            hp_bar,
+            armour_bar,
+            loading_bar,
+        })
+    }
+    pub fn update_bars(&mut self, ctx: &mut Context, p: &Player) -> GameResult<()> {
+        self.hp_bar = Mesh::new_rectangle(ctx, DrawMode::fill(), Rect{x: 2., y: 2., w: p.health.hp.limit(0., 100.), h: 24.}, GREEN)?;
+        self.armour_bar = Mesh::new_rectangle(ctx, DrawMode::fill(), Rect{x: 2., y: 30., w: p.health.armour.limit(0., 100.), h: 24.}, BLUE)?;
+        self.loading_bar = Mesh::new_rectangle(ctx, DrawMode::fill(), Rect{x: 2., y: 58., w: p.wep.map(|m| m.loading_time).unwrap_or(0.).limit(0., 1.)*100., h: 24.}, RED)?;
+
+        Ok(())
+    }
+    pub fn draw(&self, ctx: &mut Context) -> GameResult<()> {
+        self.hud_bar.draw(ctx, Default::default())?;
+        self.hp_bar.draw(ctx, Default::default())?;
+        self.armour_bar.draw(ctx, Default::default())?;
+        self.loading_bar.draw(ctx, Default::default())
     }
 }

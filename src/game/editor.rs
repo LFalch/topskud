@@ -10,7 +10,7 @@ use ggez::{
     Context, GameResult,
     graphics::{self, Color, Rect, DrawMode},
     error::GameError,
-    event::{MouseButton, Keycode}
+    event::{MouseButton, KeyCode}
 };
 
 use super::{
