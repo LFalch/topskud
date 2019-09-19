@@ -1,7 +1,9 @@
 use std::collections::HashMap;
 
+use crate::util::Point2;
+
 use ggez::{Context, GameResult};
-use ggez::graphics::{Image, Font, Text, TextFragment, Drawable, DrawParam};
+use ggez::graphics::{Image, Font, Text, Drawable, DrawParam};
 
 macro_rules! sprites {
     ($(
@@ -40,7 +42,6 @@ macro_rules! sprites {
             texes: HashMap<Sprite, Image>,
             /// The font used for all the text
             pub font: Font,
-            pub big_font: Font,
         }
 
         impl Assets {
@@ -130,20 +131,20 @@ sprites! {
 
 impl Assets {
     /// Make a positional text object
-    pub fn text(&self, context: &mut Context, pos: Point2, text: &str) -> GameResult<PosText> {
-        let text = self.raw_text(context, text)?;
-        Ok(PosText {
+    pub fn text(&self, pos: Point2, text: &str) -> PosText {
+        let text = Text::new(text.into().font(self.font));
+        PosText {
             pos,
             text
-        })
+        }
     }
     /// Make a positional text object
-    pub fn text_big(&self, context: &mut Context, pos: Point2, text: &str) -> GameResult<PosText> {
-        let text = Text::new(context, text, &self.big_font)?;
-        Ok(PosText {
+    pub fn text_big(&self, pos: Point2, text: &str) -> PosText {
+        let text = Text::new((text, self.font, 21.));
+        PosText {
             pos,
             text
-        })
+        }
     }
 }
 
@@ -159,7 +160,10 @@ pub struct PosText {
 impl PosText {
     /// Draw the text
     pub fn draw_text(&self, ctx: &mut Context) -> GameResult<()> {
-        self.text.draw(ctx, self.pos, 0.)
+        self.text.draw(ctx, DrawParam {
+            dest: self.pos,
+            .. Default::default()
+        })
     }
     pub fn draw_center(&self, ctx: &mut Context) -> GameResult<()> {
         let drawparams = DrawParam {
@@ -172,7 +176,7 @@ impl PosText {
     /// Update the text
     pub fn update_text(&mut self, a: &Assets, ctx: &mut Context, text: &str) -> GameResult<()> {
         if text != self.text.contents() {
-            self.text = Text::new(ctx, text, &a.font)?;
+            self.text.fragments_mut().first_mut().unwrap().text = text.to_owned();
         }
         Ok(())
     }
