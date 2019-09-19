@@ -34,7 +34,6 @@ impl Grenade {
     }
     #[inline]
     pub fn draw(&self, ctx: &mut Context, a: &Assets) -> GameResult<()> {
-        // TODO add sprite
         self.obj.draw(ctx, a.get_img(Sprite::Pineapple))
     }
     pub fn update(&mut self, grid: &Grid, player: &mut Player, enemies: &mut [Enemy]) -> Option<Explosion> {
