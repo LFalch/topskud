@@ -86,7 +86,7 @@ impl Console {
     fn new(ctx: &mut Context, assets: &Assets) -> GameResult<Self> {
         Ok(Console {
             history: Text::new("Welcome t' console".into()),
-            prompt: assets.text(ctx, Point2::new(0., PROMPT_Y), "> ")?,
+            prompt: assets.text(Point2::new(0., PROMPT_Y), "> "),
             prompt_str: String::with_capacity(32),
         })
     }
@@ -129,8 +129,12 @@ impl Console {
             } else {
                 self.history.add("No world\n");
             },
-            "hello" => self.history.add("Hello!\n"),
-            cmd => self.history.add(format!("  Unknown command `{}'!\n", cmd)),
+            "hello" => {
+                self.history.add("Hello!\n");
+            }
+            cmd => {
+                self.history.add(format!("  Unknown command `{}'!\n", cmd));
+            }
         }
 
         while self.history.height(ctx) > PROMPT_Y as u32 {
@@ -245,7 +249,7 @@ impl EventHandler for Master {
                     PlayWith{lvl, health, wep} => play::Play::new(ctx, &mut self.state, *lvl, Some((health, wep))),
                     Play(lvl) => play::Play::new(ctx, &mut self.state, lvl, None),
                     Menu => menu::Menu::new(ctx, &mut self.state),
-                    Editor(l) => editor::Editor::new(ctx, &self.state, l),
+                    Editor(l) => editor::Editor::new(&self.state, l),
                     Win(stats) => win::Win::new(ctx, &mut self.state, *stats),
                     Lose(stats) => lose::Lose::new(ctx, &mut self.state, *stats),
                 }?;
@@ -363,7 +367,7 @@ impl EventHandler for Master {
     }
     /// Handles mouse movement events
     fn mouse_motion_event(&mut self, _: &mut Context, x: f32, y: f32, _: f32, _: f32) {
-        self.state.mouse = Point2::new(x: x, y: y);
+        self.state.mouse = Point2::new(x, y);
     }
     fn quit_event(&mut self, _ctx: &mut Context) -> bool {
         false

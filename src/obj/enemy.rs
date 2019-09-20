@@ -1,7 +1,8 @@
+use crate::util::{BLUE, Vector2, Point2};
+
 use ggez::{
     Context, GameResult,
-    nalgebra as na,
-    graphics::{self, Point2, Vector2}
+    graphics::{self, Mesh, DrawMode, DrawParam},
 };
 
 use crate::{
@@ -62,8 +63,10 @@ impl Enemy {
         let Object{pos, rot} = self.pl.obj;
         let dir1 = angle_to_vec(rot - VISIBILITY);
         let dir2 = angle_to_vec(rot + VISIBILITY);
-        graphics::line(ctx, &[pos, pos + (length * dir1)], 1.5)?;
-        graphics::line(ctx, &[pos, pos + (length * dir2)], 1.5)
+
+        let mesh = Mesh::new_polyline(ctx, DrawMode::stroke(1.5), &[pos + (length * dir1), pos, pos + (length * dir2)], BLUE)?;
+
+        graphics::draw(ctx, &mesh, DrawParam::default())
     }
     #[inline]
     pub fn draw(&self, ctx: &mut Context, a: &Assets) -> GameResult<()> {
@@ -72,7 +75,7 @@ impl Enemy {
     fn look_towards(&mut self, dist: Vector2) -> bool{
         let dir = angle_to_vec(self.pl.obj.rot);
 
-        let rotation = na::angle(&dir, &dist);
+        let rotation = nalgebra::angle(&dir, &dist);
 
         const ROTATION: f32 = 6. * DELTA;
 
@@ -126,6 +129,6 @@ impl Enemy {
         let dist = p-self.pl.obj.pos;
         let dir = angle_to_vec(self.pl.obj.rot);
 
-        na::angle(&dir, &dist) <= VISIBILITY && grid.ray_cast(self.pl.obj.pos, dist, true).full()
+        nalgebra::angle(&dir, &dist) <= VISIBILITY && grid.ray_cast(self.pl.obj.pos, dist, true).full()
     }
 }

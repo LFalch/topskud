@@ -9,7 +9,7 @@ use crate::{
 use ggez::{
     Context, GameResult,
     graphics::{self, Rect},
-    event::{MouseButton, Keycode}
+    event::{MouseButton, KeyCode}
 };
 
 use super::{State, Content, GameState, StateSwitch, world::{Statistics, Level}};
@@ -31,10 +31,10 @@ impl Lose {
     #[allow(clippy::new_ret_no_self, clippy::needless_pass_by_value)]
     pub fn new(ctx: &mut Context, s: &mut State, stats: Statistics) -> GameResult<Box<dyn GameState>> {
         let w = s.width as f32;
-        let you_died = s.assets.text(ctx, Point2::new(s.width as f32/ 2., 10.), "You died!")?;
-        let hits_text = s.assets.text(ctx, Point2::new(4., 20.), &format!("Hits: {}", stats.hits))?;
-        let misses_text = s.assets.text(ctx, Point2::new(4., 36.), &format!("Misses: {}", stats.misses))?;
-        let enemies_text = s.assets.text(ctx, Point2::new(4., 52.), &format!("Enemies left: {}", stats.enemies_left))?;
+        let you_died = s.assets.text(Point2::new(s.width as f32/ 2., 10.), "You died!");
+        let hits_text = s.assets.text(Point2::new(4., 20.), &format!("Hits: {}", stats.hits));
+        let misses_text = s.assets.text(Point2::new(4., 36.), &format!("Misses: {}", stats.misses));
+        let enemies_text = s.assets.text(Point2::new(4., 52.), &format!("Enemies left: {}", stats.enemies_left));
         let restart_btn = Button::new(ctx, &s.assets, Rect{x: 3. * w / 7., y: 64., w: w / 7., h: 64.}, "Restart", ())?;
         let edit_btn = if let Content::File(_) = s.content {
             Some(
@@ -66,21 +66,20 @@ impl Lose {
 
 impl GameState for Lose {
     fn draw_hud(&mut self, _s: &State, ctx: &mut Context) -> GameResult<()> {
-        graphics::set_color(ctx, graphics::WHITE)?;
         self.restart_btn.draw(ctx)?;
         if let Some(btn) = &self.edit_btn {
             btn.draw(ctx)?;
         }
 
-        graphics::set_color(ctx, RED)?;
+        // graphics::set_color(ctx, RED)?;
         self.you_died.draw_center(ctx)?;
-        graphics::set_color(ctx, graphics::BLACK)?;
+        // graphics::set_color(ctx, graphics::BLACK)?;
         self.hits_text.draw_text(ctx)?;
         self.misses_text.draw_text(ctx)?;
         self.enemies_text.draw_text(ctx)
     }
-    fn key_up(&mut self, s: &mut State, _ctx: &mut Context, keycode: Keycode) {
-        use self::Keycode::*;
+    fn key_up(&mut self, s: &mut State, _ctx: &mut Context, keycode: KeyCode) {
+        use self::KeyCode::*;
         match keycode {
             R | Return => self.restart(s),
             _ => (),

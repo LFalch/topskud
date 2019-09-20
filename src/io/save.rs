@@ -10,7 +10,7 @@ pub fn vec_ser<S: Serializer>(p: &Vector2, ser: S) -> Result<S::Ok, S::Error> {
 /// Deserialize a `Vector2`
 #[allow(dead_code)]
 pub fn vec_des<'de, D: Deserializer<'de>>(des: D) -> Result<Vector2, D::Error> {
-    <(f32, f32)>::deserialize(des).map(|(x, y)| Vector2::new(x: x, y: y))
+    <(f32, f32)>::deserialize(des).map(|(x, y)| Vector2::new(x, y))
 }
 
 #[inline]

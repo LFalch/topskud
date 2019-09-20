@@ -10,6 +10,7 @@ use std::env::args;
 use ggez::{
     ContextBuilder,
     conf,
+    filesystem,
     event::run,
 };
 
@@ -55,10 +56,10 @@ fn main() {
     };
 
     // Set window mode
-    let window_mode = conf::WindowMode::default().dimensions(1152, 648);
+    let window_mode = conf::WindowMode::default().dimensions(1152., 648.);
 
     // Create a context (the part that runs the game loop)
-    let mut ctx = ContextBuilder::new("tds", "LFalch")
+    let (mut ctx, mut events) = ContextBuilder::new("tds", "LFalch")
         .window_setup(conf::WindowSetup::default().title("TDS"))
         .window_mode(window_mode)
         .build().unwrap();
@@ -68,7 +69,7 @@ fn main() {
     if let Ok(manifest_dir) = ::std::env::var("CARGO_MANIFEST_DIR") {
         let mut path = ::std::path::PathBuf::from(manifest_dir);
         path.push("resources");
-        ctx.filesystem.mount(&path, true);
+        filesystem::mount(&mut ctx, &path, true);
     }
 
     // Tries to create a game state and runs it if succesful
@@ -78,7 +79,7 @@ fn main() {
         }
         Ok(mut game) => {
             // Run the game loop
-            match run(&mut ctx, &mut game) {
+            match run(&mut ctx, &mut events, &mut game) {
                 Ok(_) => (),
                 Err(e) => eprintln!("Error occured: {}", e)
             }

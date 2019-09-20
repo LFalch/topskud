@@ -14,7 +14,7 @@ use crate::{
 use ggez::{
     Context, GameResult,
     graphics::{
-        self, Drawable, DrawMode, WHITE, Rect,
+        self, Drawable, DrawMode, Rect,
         MeshBuilder, Mesh,
         spritebatch::SpriteBatch,
     },
@@ -89,11 +89,11 @@ impl Play {
             Play {
                 level: level.clone(),
                 initial: (player.health, player.wep),
-                hp_text: s.assets.text(ctx, Point2::new(4., 4.), "100")?,
-                arm_text: s.assets.text(ctx, Point2::new(4., 33.), "100")?,
-                reload_text: s.assets.text(ctx, Point2::new(4., 62.), "0.0s")?,
-                wep_text: s.assets.text(ctx, Point2::new(2., 87.), "BFG 0/0")?,
-                status_text: s.assets.text(ctx, Point2::new(s.width as f32 / 2., s.height as f32 / 2. + 32.), "")?,
+                hp_text: s.assets.text(Point2::new(4., 4.), "100"),
+                arm_text: s.assets.text(Point2::new(4., 33.), "100"),
+                reload_text: s.assets.text(Point2::new(4., 62.), "0.0s"),
+                wep_text: s.assets.text(Point2::new(2., 87.), "BFG 0/0"),
+                status_text: s.assets.text(Point2::new(s.width as f32 / 2., s.height as f32 / 2. + 32.), ""),
                 hud: Hud::new(ctx)?,
                 misses: 0,
                 victory_time: 0.,
@@ -378,8 +378,8 @@ impl GameState for Play {
 
         for &intel in &self.world.intels {
             let drawparams = graphics::DrawParam {
-                dest: intel,
-                offset: Point2::new(0.5, 0.5),
+                dest: intel.into(),
+                offset: Point2::new(0.5, 0.5).into(),
                 .. Default::default()
             };
             graphics::draw(ctx, s.assets.get_img(Sprite::Intel), drawparams)?;
@@ -394,16 +394,16 @@ impl GameState for Play {
 
         for pickup in &self.world.pickups {
             let drawparams = graphics::DrawParam {
-                dest: pickup.pos,
-                offset: Point2::new(0.5, 0.5),
+                dest: pickup.pos.into(),
+                offset: Point2::new(0.5, 0.5).into(),
                 .. Default::default()
             };
             graphics::draw(ctx, s.assets.get_img(pickup.pickup_type.spr), drawparams)?;
         }
         for wep in &self.world.weapons {
             let drawparams = graphics::DrawParam {
-                dest: wep.pos,
-                offset: Point2::new(0.5, 0.5),
+                dest: wep.pos.into(),
+                offset: Point2::new(0.5, 0.5).into(),
                 .. Default::default()
             };
             graphics::draw(ctx, s.assets.get_img(wep.weapon.entity_sprite), drawparams)?;
@@ -433,8 +433,8 @@ impl GameState for Play {
         self.status_text.draw_center(ctx)?;
 
         let drawparams = graphics::DrawParam {
-            dest: s.mouse,
-            offset: Point2::new(0.5, 0.5),
+            dest: s.mouse.into(),
+            offset: Point2::new(0.5, 0.5).into(),
             color: RED,
             .. Default::default()
         };

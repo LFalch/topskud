@@ -45,8 +45,8 @@ impl PickupType {
     #[inline]
     pub fn draw(&self, pos: Point2, ctx: &mut Context, assets: &Assets) -> GameResult<()> {
         let drawparams = graphics::DrawParam {
-            dest: pos,
-            offset: Point2::new(0.5, 0.5),
+            dest: pos.into(),
+            offset: Point2::new(0.5, 0.5).into(),
             .. Default::default()
         };
         graphics::draw(ctx, assets.get_img(self.spr), drawparams)

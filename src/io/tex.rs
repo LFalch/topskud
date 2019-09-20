@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::util::Point2;
 
 use ggez::{Context, GameResult};
-use ggez::graphics::{Image, Font, Text, Drawable, DrawParam};
+use ggez::graphics::{Image, Font, Text, TextFragment, Drawable, DrawParam};
 
 macro_rules! sprites {
     ($(
@@ -132,7 +132,7 @@ sprites! {
 impl Assets {
     /// Make a positional text object
     pub fn text(&self, pos: Point2, text: &str) -> PosText {
-        let text = Text::new(text.into().font(self.font));
+        let text = Text::new(TextFragment::from(text).font(self.font));
         PosText {
             pos,
             text
@@ -161,14 +161,14 @@ impl PosText {
     /// Draw the text
     pub fn draw_text(&self, ctx: &mut Context) -> GameResult<()> {
         self.text.draw(ctx, DrawParam {
-            dest: self.pos,
+            dest: self.pos.into(),
             .. Default::default()
         })
     }
     pub fn draw_center(&self, ctx: &mut Context) -> GameResult<()> {
         let drawparams = DrawParam {
-            dest: self.pos,
-            offset: Point2::new(0.5, 0.5),
+            dest: self.pos.into(),
+            offset: Point2::new(0.5, 0.5).into(),
             .. Default::default()
         };
         self.text.draw(ctx, drawparams)

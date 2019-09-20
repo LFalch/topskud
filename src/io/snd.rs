@@ -1,11 +1,10 @@
 use std::collections::HashMap;
 
 use ggez::{Context, GameResult};
-use ggez::audio::{Source, SoundData};
+use ggez::audio::{Source, SoundData, SoundSource};
 
 const EFFECTS_LIMIT: usize = 25;
 
-#[inline]
 fn new_source(ctx: &mut Context, data: &SoundData) -> GameResult<Source> {
     Source::from_data(ctx, data.clone()).map(|mut src| {
         src.set_volume(0.1);

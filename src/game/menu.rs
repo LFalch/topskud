@@ -9,7 +9,7 @@ use crate::{
 };
 use ggez::{
     Context, GameResult,
-    graphics::{self, Rect},
+    graphics::Rect,
     event::{MouseButton}
 };
 
@@ -39,7 +39,7 @@ impl Menu {
         let w = s.width as f32;
 
         let corner_text = if let Content::File(ref f) = s.content {
-            Some(s.assets.text(ctx, Point2::new(2., 2.), &format!("File: {}", f.display()))?)
+            Some(s.assets.text(Point2::new(2., 2.), &format!("File: {}", f.display())))
         } else {
             None
         };
@@ -73,7 +73,7 @@ impl Menu {
         };
 
         Ok(Box::new(Menu {
-            title_txt: s.assets.text_big(ctx, Point2::new(w / 2., 16.), "Main Menu")?,
+            title_txt: s.assets.text_big(Point2::new(w / 2., 16.), "Main Menu"),
             buttons,
             corner_text,
         }))
@@ -82,7 +82,6 @@ impl Menu {
 
 impl GameState for Menu {
     fn draw_hud(&mut self, _s: &State, ctx: &mut Context) -> GameResult<()> {
-        graphics::set_color(ctx, graphics::WHITE)?;
         self.title_txt.draw_center(ctx)?;
         if let Some(ref txt) = self.corner_text {
             txt.draw_text(ctx)?;
@@ -92,8 +91,8 @@ impl GameState for Menu {
         }
         Ok(())
     }
-    // fn key_up(&mut self, s: &mut State, ctx: &mut Context, keycode: Keycode) {
-    //     use self::Keycode::*;
+    // fn key_up(&mut self, s: &mut State, ctx: &mut Context, keycode: KeyCode) {
+    //     use self::KeyCode::*;
     //     match keycode {
     //         P => self.switch_play(ctx, s),
     //         E => self.switch_editor(ctx, s),

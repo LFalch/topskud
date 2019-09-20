@@ -1,5 +1,7 @@
+use crate::util::{Vector2, Point2};
+
 use ggez::{Context, GameResult};
-use ggez::graphics::{self, Point2, Vector2, Image};
+use ggez::graphics::{self, Image};
 // use ggez::nalgebra as na;
 
 pub mod player;
@@ -41,9 +43,9 @@ impl Object {
     #[inline]
     pub fn drawparams(&self) -> graphics::DrawParam {
         graphics::DrawParam {
-            dest: self.pos,
+            dest: self.pos.into(),
             rotation: self.rot,
-            offset: Point2::new(0.5, 0.5),
+            offset: Point2::new(0.5, 0.5).into(),
             .. Default::default()
         }
     }

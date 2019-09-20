@@ -97,17 +97,16 @@ struct InsertionBar {
 type EntityItem = (Sprite, Insertion);
 
 impl InsertionBar {
-    #[allow(clippy::new_ret_no_self)]
-    fn new(p: Point2, ctx: &mut Context, s: &State, text: &str, palette: &'static [EntityItem]) -> GameResult<Self> {
-        let ent_text = s.assets.text(ctx, p, text)?;
-        Ok(Self {
+    fn new(p: Point2, s: &State, text: &str, palette: &'static [EntityItem]) -> Self {
+        let ent_text = s.assets.text(p, text);
+        Self {
             ent_text,
             palette
-        })
+        }
     }
     fn draw(&self, ctx: &mut Context, s: &State, cur: Option<Insertion>) -> GameResult<()> {
         let mut drawparams = graphics::DrawParam {
-            dest: self.ent_text.pos + Vector2::new(98., 16.),
+            dest: (self.ent_text.pos + Vector2::new(98., 16.)).into(),
             offset: Point2::new(0.5, 0.5).into(),
             .. Default::default()
         };
@@ -139,10 +138,9 @@ impl InsertionBar {
 }
 
 impl Editor {
-    #[allow(clippy::new_ret_no_self)]
-    pub fn new(ctx: &mut Context, s: &State, level: Option<Level>) -> GameResult<Box<dyn GameState>> {
-        let mat_text = s.assets.text(ctx, Point2::new(2., 18.0), "Materials:")?;
-        let entities_bar = InsertionBar::new(Point2::new(392., 18.0), ctx, s, "Entitites:", &[
+    pub fn new(s: &State, level: Option<Level>) -> GameResult<Box<dyn GameState>> {
+        let mat_text = s.assets.text(Point2::new(2., 18.0), "Materials:");
+        let entities_bar = InsertionBar::new(Point2::new(392., 18.0), s, "Entitites:", &[
             (Sprite::Enemy, Insertion::Enemy{rot: 0.}),
             (Sprite::Goal, Insertion::Exit),
             (Sprite::Intel, Insertion::Intel),
@@ -163,8 +161,8 @@ impl Editor {
             (Sprite::OfficePlant2, Insertion::Decoration{i: 5, rot: 0.}),
             (Sprite::OfficePlant3, Insertion::Decoration{i: 6, rot: 0.}),
             (Sprite::Trashcan, Insertion::Decoration{i: 7, rot: 0.}),
-        ])?;
-        let extra_bar = InsertionBar::new(Point2::new(392., 52.0), ctx, s, "", &[
+        ]);
+        let extra_bar = InsertionBar::new(Point2::new(392., 52.0), s, "", &[
             (Sprite::ManholeCover, Insertion::Decoration{i: 8, rot: 0.}),
             (Sprite::ManholeCover2, Insertion::Decoration{i: 9, rot: 0.}),
             (Sprite::DeskLamp, Insertion::Decoration{i: 10, rot: 0.}),
@@ -172,7 +170,7 @@ impl Editor {
             (Sprite::WallLight2, Insertion::Decoration{i: 12, rot: 0.}),
             (Sprite::WallLight3, Insertion::Decoration{i: 13, rot: 0.}),
             (Sprite::RoadMark, Insertion::Decoration{i: 14, rot: 0.}),
-        ])?;
+        ]);
 
         let save;
         if let Content::File(ref f) = s.content {
@@ -266,7 +264,6 @@ impl GameState for Editor {
             let drawparams = graphics::DrawParam {
                 dest: exit,
                 offset: Point2::new(0.5, 0.5),
-                color: Some(graphics::WHITE),
                 .. Default::default()
             };
             graphics::draw(ctx, s.assets.get_img(Sprite::Goal), drawparams)?;
@@ -282,7 +279,6 @@ impl GameState for Editor {
             let drawparams = graphics::DrawParam {
                 dest: intel,
                 offset: Point2::new(0.5, 0.5),
-                color: Some(graphics::WHITE),
                 .. Default::default()
             };
             graphics::draw(ctx, s.assets.get_img(Sprite::Intel), drawparams)?;
@@ -297,7 +293,6 @@ impl GameState for Editor {
                 }
             }
             if self.draw_visibility_cones {
-                graphics::set_color(ctx, BLUE)?;
                 enemy.draw_visibility_cone(ctx, 512.)?;
             }
             graphics::set_color(ctx, graphics::WHITE)?;
@@ -334,7 +329,6 @@ impl GameState for Editor {
             let drawparams = graphics::DrawParam {
                 dest: weapon.pos,
                 offset: Point2::new(0.5, 0.5),
-                color: Some(graphics::WHITE),
                 .. Default::default()
             };
             graphics::draw(ctx, s.assets.get_img(weapon.weapon.entity_sprite), drawparams)?;
@@ -468,7 +462,7 @@ impl GameState for Editor {
             let x = START_X + i as f32 * 36.;
             if Tool::Inserter(Insertion::Material(*mat)) == self.current {
                 graphics::set_color(ctx, YELLOW)?;
-                graphics::rectangle(ctx, DrawMode::Fill, Rect{x: x - 1., y: 15., w: 34., h: 34.})?;
+                graphics::rectangle(ctx, DrawMode::Fill, Rect{x - 1., y: 15., w: 34., h: 34.})?;
                 graphics::set_color(ctx, graphics::WHITE)?;
             }
             mat.draw(ctx, &s.assets, x, 16.)?;
@@ -482,8 +476,8 @@ impl GameState for Editor {
         self.entities_bar.ent_text.draw_text(ctx)?;
         self.extra_bar.ent_text.draw_text(ctx)
     }
-    fn key_up(&mut self, s: &mut State, _ctx: &mut Context, keycode: Keycode) {
-        use self::Keycode::*;
+    fn key_up(&mut self, s: &mut State, _ctx: &mut Context, keycode: KeyCode) {
+        use self::KeyCode::*;
         match keycode {
             Z => self.level.save(&self.save).unwrap(),
             X => self.level = Level::load(&self.save).unwrap(),
@@ -711,8 +705,8 @@ impl GameState for Editor {
             _ => ()
         }
     }
-    fn key_down(&mut self, s: &mut State, _ctx: &mut Context, keycode: Keycode) {
-        use self::Keycode::*;
+    fn key_down(&mut self, s: &mut State, _ctx: &mut Context, keycode: KeyCode) {
+        use self::KeyCode::*;
         match keycode {
             Comma if !s.modifiers.shift => self.rotation_speed -= 6.,
             Period if !s.modifiers.shift => self.rotation_speed += 6.,

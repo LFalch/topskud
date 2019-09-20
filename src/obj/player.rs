@@ -63,7 +63,7 @@ impl Player {
     pub fn draw(&self, ctx: &mut Context, a: &Assets, sprite: Sprite) -> GameResult<()> {
         if let Some(wep) = self.wep {
             let dp = graphics::DrawParam {
-                dest: self.obj.pos+angle_to_vec(self.obj.rot)*16.,
+                dest: (self.obj.pos+angle_to_vec(self.obj.rot)*16.).into(),
                 .. self.obj.drawparams()
             };
 
