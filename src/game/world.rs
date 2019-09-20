@@ -487,7 +487,7 @@ impl Grid {
             let x = f32::from(i as u16 % self.width) * 32.;
             let y = f32::from(i as u16 / self.width) * 32.;
 
-            mat.draw(ctx, assets, x, y)?;
+            mat.draw(ctx, assets, x, y, Default::default())?;
         }
         Ok(())
     }

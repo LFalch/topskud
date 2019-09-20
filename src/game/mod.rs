@@ -11,7 +11,7 @@ use crate::{
 use ggez::{
     nalgebra::Matrix4,
     Context, GameResult,
-    graphics::{self, DrawMode, Rect, Mesh, Text},
+    graphics::{self, DrawMode, Rect, Mesh, Text, DrawParam},
     timer,
     event::{EventHandler, MouseButton, KeyCode, KeyMods}
 };
@@ -85,7 +85,7 @@ pub struct Console {
 impl Console {
     fn new(ctx: &mut Context, assets: &Assets) -> GameResult<Self> {
         Ok(Console {
-            history: Text::new("Welcome t' console".into()),
+            history: Text::new("Welcome t' console"),
             prompt: assets.text(Point2::new(0., PROMPT_Y), "> "),
             prompt_str: String::with_capacity(32),
         })
@@ -105,7 +105,7 @@ impl Console {
             } else {
                 self.history.add("No world\n");
             },
-            "clear" => self.history = Text::new("".into()),
+            "clear" => self.history = Text::new(""),
             "fa" => if let Some(world) = gs.get_mut_world() {
                 world.player.health.hp = 100.;
                 world.player.health.armour = 100.;
@@ -283,10 +283,10 @@ impl EventHandler for Master {
 
         if self.console_open {
             let console_bg = Mesh::new_rectangle(ctx, DrawMode::fill(), Rect::new(0., 0., self.state.width as f32, self.state.height as f32 / 3.), graphics::BLACK)?;
-            graphics::draw(ctx, &console_bg, Default::default())?;
+            graphics::draw(ctx, &console_bg, DrawParam::new())?;
 
 
-            graphics::draw(ctx, &self.console.history, Default::default())?;
+            graphics::draw(ctx, &self.console.history, DrawParam::default())?;
             self.console.prompt.draw_text(ctx)?;
         }
 

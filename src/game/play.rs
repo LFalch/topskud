@@ -15,7 +15,7 @@ use ggez::{
     Context, GameResult,
     graphics::{
         self, Drawable, DrawMode, Rect,
-        MeshBuilder, Mesh,
+        MeshBuilder, Mesh, WHITE,
         spritebatch::SpriteBatch,
     },
     event::{KeyCode, MouseButton}
@@ -56,7 +56,7 @@ impl BloodSplatter {
             Blood::B2 => Sprite::Blood2,
             Blood::B3 => Sprite::Blood3,
         };
-        self.o.draw(ctx, a.get_img(spr))
+        self.o.draw(ctx, a.get_img(spr), WHITE)
     }
 }
 /// The state of the game
@@ -385,7 +385,7 @@ impl GameState for Play {
             graphics::draw(ctx, s.assets.get_img(Sprite::Intel), drawparams)?;
         }
         for decoration in &self.world.decorations {
-            decoration.draw(ctx, &s.assets)?;
+            decoration.draw(ctx, &s.assets, WHITE)?;
         }
 
         for blood in &self.bloods {
@@ -412,7 +412,7 @@ impl GameState for Play {
         self.world.player.draw_player(ctx, &s.assets)?;
 
         for enemy in &self.world.enemies {
-            enemy.draw(ctx, &s.assets)?;
+            enemy.draw(ctx, &s.assets, WHITE)?;
         }
         for bullet in &self.world.bullets {
             bullet.draw(ctx, &s.assets)?;

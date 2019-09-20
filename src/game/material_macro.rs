@@ -53,11 +53,7 @@ macro_rules! mat {
             }
             pub fn draw(&self, ctx: &mut Context, assets: &Assets, x: f32, y: f32, dp: graphics::DrawParam) -> GameResult<()> {
                 let img = assets.get_img(self.get_spr());
-                let drawparams = graphics::DrawParam {
-                    dest: Point2::new(x, y).into() + dp.dest,
-                    .. dp
-                };
-                graphics::draw(ctx, img, drawparams)
+                graphics::draw(ctx, img, (Point2::from(dp.dest) + Vector2::new(x, y),))
             }
         }
     );

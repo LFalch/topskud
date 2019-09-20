@@ -1,4 +1,4 @@
-use ggez::{Context, GameResult};
+use ggez::{Context, GameResult, graphics::WHITE};
 
 use crate::{
     util::angle_to_vec,
@@ -25,7 +25,7 @@ impl Bullet<'_> {
     }
     #[inline]
     pub fn draw(&self, ctx: &mut Context, a: &Assets) -> GameResult<()> {
-        self.obj.draw(ctx, a.get_img(Sprite::Bullet))
+        self.obj.draw(ctx, a.get_img(Sprite::Bullet), WHITE)
     }
     pub fn update(&mut self, grid: &Grid, player: &mut Player, enemies: &mut [Enemy]) -> Hit {
         let start = self.obj.pos;

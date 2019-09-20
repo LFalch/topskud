@@ -2,7 +2,7 @@ use crate::util::{BLUE, Vector2, Point2};
 
 use ggez::{
     Context, GameResult,
-    graphics::{self, Mesh, DrawMode, DrawParam},
+    graphics::{self, Mesh, Color, DrawMode, DrawParam},
 };
 
 use crate::{
@@ -69,8 +69,8 @@ impl Enemy {
         graphics::draw(ctx, &mesh, DrawParam::default())
     }
     #[inline]
-    pub fn draw(&self, ctx: &mut Context, a: &Assets) -> GameResult<()> {
-        self.pl.draw(ctx, a, Sprite::Enemy)
+    pub fn draw(&self, ctx: &mut Context, a: &Assets, color: Color) -> GameResult<()> {
+        self.pl.draw(ctx, a, Sprite::Enemy, color)
     }
     fn look_towards(&mut self, dist: Vector2) -> bool{
         let dir = angle_to_vec(self.pl.obj.rot);
