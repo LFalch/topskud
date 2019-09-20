@@ -73,6 +73,7 @@ sprites! {
     Player, "common/player", 32., 32.,
     Enemy, "common/enemy", 32., 32.,
     Crosshair, "common/crosshair", 32., 32.,
+    Start, "common/start", 32., 32.,
     Wall, "materials/wall", 32., 32.,
     Grass, "materials/grass", 32., 32.,
     Floor, "materials/floor", 32., 32.,
