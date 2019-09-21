@@ -34,22 +34,22 @@ impl FloatExt for f32 {
 #[derive(Debug, Default)]
 /// Tracks how many buttons are being pressed in specific directions
 pub struct InputState {
-    /// Buttons in the left-right direction
-    pub hor: i8,
-    /// Buttons in the up-down direction
-    pub ver: i8,
+    pub up: u8,
+    pub down: u8,
+    pub left: u8,
+    pub right: u8,
 }
 
 impl InputState {
     #[inline]
     /// Returns `-1`, `0` or `1` depending on whether `self.hor` is negative, zero or positive
     pub fn hor(&self) -> f32 {
-        f32::from(self.hor.signum())
+        f32::from(self.right as i8 - self.left as i8).signum()
     }
     /// Returns `-1`, `0` or `1` depending on whether `self.ver` is negative, zero or positive
     #[inline]
     pub fn ver(&self) -> f32 {
-        f32::from(self.ver.signum())
+        f32::from(self.down as i8 - self.up as i8).signum()
     }
 }
 

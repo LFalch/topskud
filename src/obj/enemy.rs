@@ -75,7 +75,7 @@ impl Enemy {
     fn look_towards(&mut self, dist: Vector2) -> bool{
         let dir = angle_to_vec(self.pl.obj.rot);
 
-        let rotation = nalgebra::angle(&dir, &dist);
+        let rotation = dir.angle(&dist);
 
         const ROTATION: f32 = 6. * DELTA;
 
@@ -129,6 +129,6 @@ impl Enemy {
         let dist = p-self.pl.obj.pos;
         let dir = angle_to_vec(self.pl.obj.rot);
 
-        nalgebra::angle(&dir, &dist) <= VISIBILITY && grid.ray_cast(self.pl.obj.pos, dist, true).full()
+        dir.angle(&dist) <= VISIBILITY && grid.ray_cast(self.pl.obj.pos, dist, true).full()
     }
 }

@@ -83,15 +83,18 @@ pub struct Console {
 }
 
 impl Console {
-    fn new(ctx: &mut Context, assets: &Assets) -> GameResult<Self> {
+    fn new(_ctx: &mut Context, assets: &Assets) -> GameResult<Self> {
         Ok(Console {
-            history: Text::new("Welcome t' console"),
+            history: assets.raw_text("Welcome t' console"),
             prompt: assets.text(Point2::new(0., PROMPT_Y), "> "),
             prompt_str: String::with_capacity(32),
         })
     }
+    pub fn add_history_line(&mut self, state: &State, s: &str) {
+        self.history.add((s, state.assets.font, 14.));
+    }
     fn execute(&mut self, ctx: &mut Context, state: &mut State, gs: &mut dyn GameState) -> GameResult<()> {
-        self.history.add(format!("> {}", self.prompt_str));
+        self.add_history_line(&state, &format!("> {}", self.prompt_str));
 
         let cap = self.prompt_str.capacity();
         let prompt = mem::replace(&mut self.prompt_str, String::with_capacity(cap));
@@ -101,39 +104,39 @@ impl Console {
             "" => (),
             "pi" => if let Some(world) = gs.get_mut_world() {
                 world.intels.clear();
-                self.history.add("Intels got\n");
+                self.add_history_line(&state, "Intels got\n");
             } else {
-                self.history.add("No world\n");
+                self.add_history_line(&state, "No world\n");
             },
-            "clear" => self.history = Text::new(""),
+            "clear" => self.history = state.assets.raw_text(""),
             "fa" => if let Some(world) = gs.get_mut_world() {
                 world.player.health.hp = 100.;
                 world.player.health.armour = 100.;
             } else {
-                self.history.add("No world\n");
+                self.add_history_line(&state, "No world\n");
             },
             "god" => if let Some(world) = gs.get_mut_world() {
                 if world.player.health.hp.is_finite() {
                     world.player.health.hp = std::f32::INFINITY;
-                    self.history.add("Degreelessness\n");
+                    self.add_history_line(&state, "Degreelessness\n");
                 } else {
                     world.player.health.hp = 100.;
-                    self.history.add("God off\n");
+                    self.add_history_line(&state, "God off\n");
                 }
             } else {
-                self.history.add("No world\n");
+                self.add_history_line(&state, "No world\n");
             },
             "gg" => if let Some(world) = gs.get_mut_world() {
                 world.player.utilities.grenades += 3;
-                self.history.add("Gg'd\n");
+                self.add_history_line(&state, "Gg'd\n");
             } else {
-                self.history.add("No world\n");
+                self.add_history_line(&state, "No world\n");
             },
             "hello" => {
-                self.history.add("Hello!\n");
+                self.add_history_line(&state, "Hello!\n");
             }
             cmd => {
-                self.history.add(format!("  Unknown command `{}'!\n", cmd));
+                self.add_history_line(&state, &format!("  Unknown command `{}'!\n", cmd));
             }
         }
 
@@ -236,7 +239,7 @@ impl EventHandler for Master {
     fn update(&mut self, ctx: &mut Context) -> GameResult<()> {
         if self.console_open {
             if self.console.prompt_str != self.console.prompt.text.contents()[2..] {
-                self.console.prompt.update_text(&self.state.assets, ctx, &format!("> {}", self.console.prompt_str))?;
+                self.console.prompt.update_text(&format!("> {}", self.console.prompt_str))?;
             }
 
             while timer::check_update_time(ctx, DESIRED_FPS) {}
@@ -291,7 +294,7 @@ impl EventHandler for Master {
         }
 
         // Flip the buffers to see what we just drew
-        graphics::present(ctx);
+        graphics::present(ctx)?;
 
         // Give the computer some time to do other things
         timer::yield_now();
@@ -307,15 +310,13 @@ impl EventHandler for Master {
         use self::KeyCode::*;
         // Update input axes and quit game on Escape
         match keycode {
-            W | Up => self.state.input.ver -= 1,
-            S | Down => self.state.input.ver += 1,
-            A | Left => self.state.input.hor -= 1,
-            D | Right => self.state.input.hor += 1,
+            W | Up => self.state.input.up += 1,
+            S | Down => self.state.input.down += 1,
+            A | Left => self.state.input.left += 1,
+            D | Right => self.state.input.right += 1,
             LShift => self.state.modifiers.shift = true,
-            LCtrl => self.state.modifiers.ctrl = true,
+            LControl => self.state.modifiers.ctrl = true,
             LAlt => self.state.modifiers.alt = true,
-            Escape if self.console_open => self.console_open = false,
-            Escape => ctx.continuing = false,
             _ => (),
         }
         self.gs.key_down(&mut self.state, ctx, keycode)
@@ -324,15 +325,15 @@ impl EventHandler for Master {
     fn key_up_event(&mut self, ctx: &mut Context, keycode: KeyCode, _: KeyMods) {
         use self::KeyCode::*;
         match keycode {
-            W | Up => self.state.input.ver += 1,
-            S | Down => self.state.input.ver -= 1,
-            A | Left => self.state.input.hor += 1,
-            D | Right => self.state.input.hor -= 1,
+            W | Up => self.state.input.up -= 1,
+            S | Down => self.state.input.down -= 1,
+            A | Left => self.state.input.left -= 1,
+            D | Right => self.state.input.right -= 1,
             LShift => self.state.modifiers.shift = false,
-            LCtrl => self.state.modifiers.ctrl = false,
+            LControl => self.state.modifiers.ctrl = false,
             LAlt => self.state.modifiers.alt = false,
-            Less => self.console_open.toggle(),
-            Backspace if self.console_open => {self.console.prompt_str.pop();},
+            Escape => self.console_open.toggle(),
+            Back if self.console_open => {self.console.prompt_str.pop();},
             Return if self.console_open => self.console.execute(ctx, &mut self.state, &mut *self.gs).unwrap(),
             _ => (),
         }

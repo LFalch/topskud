@@ -1,5 +1,5 @@
 use crate::{
-    util::{RED, Point2},
+    util::Point2,
     io::{
         tex::PosText,
         btn::Button,
@@ -8,7 +8,7 @@ use crate::{
 };
 use ggez::{
     Context, GameResult,
-    graphics::{self, Rect},
+    graphics::Rect,
     event::{MouseButton, KeyCode}
 };
 

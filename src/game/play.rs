@@ -134,16 +134,16 @@ impl Play {
 impl GameState for Play {
     #[allow(clippy::cognitive_complexity)]
     fn update(&mut self, s: &mut State, ctx: &mut Context) -> GameResult<()> {
-        self.hp_text.update_text(&s.assets, ctx, &format!("{:02.0}", self.world.player.health.hp))?;
-        self.arm_text.update_text(&s.assets, ctx, &format!("{:02.0}", self.world.player.health.armour))?;
+        self.hp_text.update_text(&format!("{:02.0}", self.world.player.health.hp))?;
+        self.arm_text.update_text(&format!("{:02.0}", self.world.player.health.armour))?;
         if let Some(wep) = self.world.player.wep {
-            self.reload_text.update_text(&s.assets, ctx, &format!("{:.1}s", wep.loading_time))?;
-            self.wep_text.update_text(&s.assets, ctx, &format!("{} ({:.3} {:.1}s)", wep, wep.jerk, wep.jerk_decay))?;
+            self.reload_text.update_text(&format!("{:.1}s", wep.loading_time))?;
+            self.wep_text.update_text(&format!("{} ({:.3} {:.1}s)", wep, wep.jerk, wep.jerk_decay))?;
         }
         if let Some(i) = self.cur_pickup {
-            self.status_text.update_text(&s.assets, ctx, &format!("Press F to pick up {}", self.world.weapons[i]))?;
+            self.status_text.update_text(&format!("Press F to pick up {}", self.world.weapons[i]))?;
         } else {
-            self.status_text.update_text(&s.assets, ctx, "")?;
+            self.status_text.update_text("")?;
         }
 
         let mut deads = Vec::new();
@@ -424,7 +424,7 @@ impl GameState for Play {
         Ok(())
     }
     fn draw_hud(&mut self, s: &State, ctx: &mut Context) -> GameResult<()> {
-        self.hud.draw(ctx);
+        self.hud.draw(ctx)?;
 
         self.hp_text.draw_text(ctx)?;
         self.arm_text.draw_text(ctx)?;

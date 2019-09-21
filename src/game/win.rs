@@ -14,6 +14,7 @@ use ggez::{
 
 use super::{State, Content, GameState, StateSwitch, world::{Level, Statistics}};
 
+#[allow(clippy::large_enum_variant)]
 enum WinButtons {
     CampaignMode {
         continue_btn: Button<()>

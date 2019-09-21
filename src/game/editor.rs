@@ -1,5 +1,5 @@
 use crate::{
-    util::{TRANS, BLUE, GREEN,
+    util::{TRANS,
     Vector2, Point2},
     io::tex::{Sprite, PosText},
     io::snd::Sound,
@@ -138,6 +138,7 @@ impl InsertionBar {
 }
 
 impl Editor {
+    #[allow(clippy::new_ret_no_self)]
     pub fn new(s: &State, level: Option<Level>) -> GameResult<Box<dyn GameState>> {
         let mat_text = s.assets.text(Point2::new(2., 18.0), "Materials:");
         let entities_bar = InsertionBar::new(Point2::new(392., 18.0), s, "Entitites:", &[

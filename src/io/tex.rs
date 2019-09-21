@@ -131,9 +131,13 @@ sprites! {
 }
 
 impl Assets {
+    #[inline]
+    pub fn raw_text(&self, text: &str) -> Text {
+        Text::new(TextFragment::from(text).font(self.font))
+    }
     /// Make a positional text object
     pub fn text(&self, pos: Point2, text: &str) -> PosText {
-        let text = Text::new(TextFragment::from(text).font(self.font));
+        let text = self.raw_text(text);
         PosText {
             pos,
             text
@@ -155,7 +159,7 @@ impl Assets {
 /// Used for convenience so it's easier to update the text and rememeber their coordinates on the screen
 pub struct PosText {
     pub pos: Point2,
-    pub(crate) text: Text
+    pub text: Text
 }
 
 impl PosText {
@@ -175,7 +179,7 @@ impl PosText {
         self.text.draw(ctx, drawparams)
     }
     /// Update the text
-    pub fn update_text(&mut self, a: &Assets, ctx: &mut Context, text: &str) -> GameResult<()> {
+    pub fn update_text(&mut self, text: &str) -> GameResult<()> {
         if text != self.text.contents() {
             self.text.fragments_mut().first_mut().unwrap().text = text.to_owned();
         }
