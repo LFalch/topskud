@@ -1,5 +1,5 @@
 use crate::{
-    util::Point2,
+    util::{Point2, RED},
     io::{
         tex::PosText,
         btn::Button,
@@ -8,7 +8,7 @@ use crate::{
 };
 use ggez::{
     Context, GameResult,
-    graphics::Rect,
+    graphics::{Rect, TextFragment},
     event::{MouseButton, KeyCode}
 };
 
@@ -31,10 +31,10 @@ impl Lose {
     #[allow(clippy::new_ret_no_self, clippy::needless_pass_by_value)]
     pub fn new(ctx: &mut Context, s: &mut State, stats: Statistics) -> GameResult<Box<dyn GameState>> {
         let w = s.width as f32;
-        let you_died = s.assets.text(Point2::new(s.width as f32/ 2., 10.), "You died!");
-        let hits_text = s.assets.text(Point2::new(4., 20.), &format!("Hits: {}", stats.hits));
-        let misses_text = s.assets.text(Point2::new(4., 36.), &format!("Misses: {}", stats.misses));
-        let enemies_text = s.assets.text(Point2::new(4., 52.), &format!("Enemies left: {}", stats.enemies_left));
+        let you_died = s.assets.text(Point2::new(s.width as f32/ 2., 10.)).and_text(TextFragment::from("You died!").color(RED));
+        let hits_text = s.assets.text(Point2::new(4., 20.)).and_text(format!("Hits: {}", stats.hits));
+        let misses_text = s.assets.text(Point2::new(4., 36.)).and_text(format!("Misses: {}", stats.misses));
+        let enemies_text = s.assets.text(Point2::new(4., 52.)).and_text(format!("Enemies left: {}", stats.enemies_left));
         let restart_btn = Button::new(ctx, &s.assets, Rect{x: 3. * w / 7., y: 64., w: w / 7., h: 64.}, "Restart", ())?;
         let edit_btn = if let Content::File(_) = s.content {
             Some(
@@ -71,9 +71,7 @@ impl GameState for Lose {
             btn.draw(ctx)?;
         }
 
-        // graphics::set_color(ctx, RED)?;
         self.you_died.draw_center(ctx)?;
-        // graphics::set_color(ctx, graphics::BLACK)?;
         self.hits_text.draw_text(ctx)?;
         self.misses_text.draw_text(ctx)?;
         self.enemies_text.draw_text(ctx)

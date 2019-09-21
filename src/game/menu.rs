@@ -39,7 +39,7 @@ impl Menu {
         let w = s.width as f32;
 
         let corner_text = if let Content::File(ref f) = s.content {
-            Some(s.assets.text(Point2::new(2., 2.), &format!("File: {}", f.display())))
+            Some(s.assets.text(Point2::new(2., 2.)).and_text("File: ").and_text(format!("File: {}", f.display())))
         } else {
             None
         };
@@ -73,7 +73,7 @@ impl Menu {
         };
 
         Ok(Box::new(Menu {
-            title_txt: s.assets.text_big(Point2::new(w / 2., 16.), "Main Menu"),
+            title_txt: s.assets.text_sized(Point2::new(w / 2., 16.), 32.).and_text("Main Menu"),
             buttons,
             corner_text,
         }))

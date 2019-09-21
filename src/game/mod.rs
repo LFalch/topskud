@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 use crate::{
     util::{Vector2, Point2},
-    ext::{MouseDown, InputState, Modifiers, BoolExt},
+    ext::BoolExt,
     io::{
         snd::MediaPlayer,
         tex::{Assets, PosText},
@@ -79,69 +79,73 @@ const PROMPT_Y: f32 = 196.;
 pub struct Console {
     history: Text,
     prompt: PosText,
-    prompt_str: String,
 }
 
 impl Console {
     fn new(_ctx: &mut Context, assets: &Assets) -> GameResult<Self> {
         Ok(Console {
-            history: assets.raw_text("Welcome t' console"),
-            prompt: assets.text(Point2::new(0., PROMPT_Y), "> "),
-            prompt_str: String::with_capacity(32),
+            history: assets.raw_text_with("Welcome t' console\n", 14.),
+            prompt: assets.text(Point2::new(0., PROMPT_Y)).and_text("> ").and_text(String::with_capacity(32)),
         })
     }
-    pub fn add_history_line(&mut self, state: &State, s: &str) {
-        self.history.add((s, state.assets.font, 14.));
-    }
     fn execute(&mut self, ctx: &mut Context, state: &mut State, gs: &mut dyn GameState) -> GameResult<()> {
-        self.add_history_line(&state, &format!("> {}", self.prompt_str));
+        let prompt = &mut self.prompt.text.fragments_mut()[1].text;
 
-        let cap = self.prompt_str.capacity();
-        let prompt = mem::replace(&mut self.prompt_str, String::with_capacity(cap));
-        let args: Vec<_> = prompt.split(' ').collect();
+        self.history.add(format!("> {}\n", prompt));
+
+        let cap = prompt.capacity();
+        let prompt = mem::replace(prompt, String::with_capacity(cap));
+        let args: Vec<_> = prompt.split(<char>::is_whitespace).collect();
         
         match args[0] {
             "" => (),
             "pi" => if let Some(world) = gs.get_mut_world() {
                 world.intels.clear();
-                self.add_history_line(&state, "Intels got\n");
+                self.history.add("Intels got\n");
             } else {
-                self.add_history_line(&state, "No world\n");
+                self.history.add("No world\n");
             },
-            "clear" => self.history = state.assets.raw_text(""),
+            "clear" => self.history = state.assets.raw_text_with("", 14.),
             "fa" => if let Some(world) = gs.get_mut_world() {
                 world.player.health.hp = 100.;
                 world.player.health.armour = 100.;
             } else {
-                self.add_history_line(&state, "No world\n");
+                self.history.add("No world\n");
             },
             "god" => if let Some(world) = gs.get_mut_world() {
                 if world.player.health.hp.is_finite() {
                     world.player.health.hp = std::f32::INFINITY;
-                    self.add_history_line(&state, "Degreelessness\n");
+                    self.history.add("Degreelessness\n");
                 } else {
                     world.player.health.hp = 100.;
-                    self.add_history_line(&state, "God off\n");
+                    self.history.add("God off\n");
                 }
             } else {
-                self.add_history_line(&state, "No world\n");
+                self.history.add("No world\n");
             },
             "gg" => if let Some(world) = gs.get_mut_world() {
                 world.player.utilities.grenades += 3;
-                self.add_history_line(&state, "Gg'd\n");
+                self.history.add("Gg'd\n");
             } else {
-                self.add_history_line(&state, "No world\n");
+                self.history.add("No world\n");
             },
             "hello" => {
-                self.add_history_line(&state, "Hello!\n");
+                self.history.add("Hello!\n");
+            },
+            "quit" => {
+                ctx.continuing = false;
             }
             cmd => {
-                self.add_history_line(&state, &format!("  Unknown command `{}'!\n", cmd));
+                self.history.add(format!("  Unknown command `{}'!\n", cmd));
             }
         }
 
         while self.history.height(ctx) > PROMPT_Y as u32 {
-            *self.history.fragments_mut().first_mut().unwrap() = "".into();
+            let new_history = self.history.fragments().iter().skip(1).cloned().fold(state.assets.raw_text(14.), |mut text, f| {
+                text.add(f);
+                text
+            });
+            self.history = new_history;
         }
 
         Ok(())
@@ -163,9 +167,6 @@ pub enum Content {
 
 /// The state of the game
 pub struct State {
-    mouse_down: MouseDown,
-    input: InputState,
-    modifiers: Modifiers,
     assets: Assets,
     mplayer: MediaPlayer,
     width: f32,
@@ -202,9 +203,6 @@ impl Master {
         let mut state = State {
             content,
             switch_state: None,
-            input: Default::default(),
-            mouse_down: Default::default(),
-            modifiers: Default::default(),
             assets,
             mplayer,
             width,
@@ -238,10 +236,6 @@ impl EventHandler for Master {
     // Handle the game logic
     fn update(&mut self, ctx: &mut Context) -> GameResult<()> {
         if self.console_open {
-            if self.console.prompt_str != self.console.prompt.text.contents()[2..] {
-                self.console.prompt.update_text(&format!("> {}", self.console.prompt_str))?;
-            }
-
             while timer::check_update_time(ctx, DESIRED_FPS) {}
 
             Ok(())
@@ -301,7 +295,7 @@ impl EventHandler for Master {
         Ok(())
     }
     /// Handle key down events
-    fn key_down_event(&mut self, ctx: &mut Context, keycode: KeyCode, _: KeyMods, repeat: bool) {
+    fn key_down_event(&mut self, ctx: &mut Context, keycode: KeyCode, km: KeyMods, repeat: bool) {
         // If this is a repeat event, we don't care
         if repeat {
             return
@@ -310,13 +304,7 @@ impl EventHandler for Master {
         use self::KeyCode::*;
         // Update input axes and quit game on Escape
         match keycode {
-            W | Up => self.state.input.up += 1,
-            S | Down => self.state.input.down += 1,
-            A | Left => self.state.input.left += 1,
-            D | Right => self.state.input.right += 1,
-            LShift => self.state.modifiers.shift = true,
-            LControl => self.state.modifiers.ctrl = true,
-            LAlt => self.state.modifiers.alt = true,
+            Escape if km.contains(KeyMods::SHIFT) => ctx.continuing = false,
             _ => (),
         }
         self.gs.key_down(&mut self.state, ctx, keycode)
@@ -325,15 +313,7 @@ impl EventHandler for Master {
     fn key_up_event(&mut self, ctx: &mut Context, keycode: KeyCode, _: KeyMods) {
         use self::KeyCode::*;
         match keycode {
-            W | Up => self.state.input.up -= 1,
-            S | Down => self.state.input.down -= 1,
-            A | Left => self.state.input.left -= 1,
-            D | Right => self.state.input.right -= 1,
-            LShift => self.state.modifiers.shift = false,
-            LControl => self.state.modifiers.ctrl = false,
-            LAlt => self.state.modifiers.alt = false,
             Escape => self.console_open.toggle(),
-            Back if self.console_open => {self.console.prompt_str.pop();},
             Return if self.console_open => self.console.execute(ctx, &mut self.state, &mut *self.gs).unwrap(),
             _ => (),
         }
@@ -341,29 +321,29 @@ impl EventHandler for Master {
     }
     fn text_input_event(&mut self, _ctx: &mut Context, c: char) {
         if self.console_open {
-            self.console.prompt_str.push(c);
+            if c.is_control() {
+                match c {
+                    // Backspace
+                    '\u{8}' => {self.console.prompt.text.fragments_mut()[1].text.pop();},
+                    // Delete
+                    '\u{7f}' => (),
+                    // Escape
+                    '\u{1b}' => (),
+                    // Return (note sure whether newline is used on other platforms, so handling it in key_up)
+                    '\r' => (),
+                    c => eprintln!("Unkown control character {:?}", c),
+                }
+            } else {
+                self.console.prompt.text.fragments_mut()[1].text.push(c);
+            }
         }
     }
     /// Handle mouse down event
     fn mouse_button_down_event(&mut self, ctx: &mut Context, btn: MouseButton, _x: f32, _y: f32) {
-        use self::MouseButton::*;
-        match btn {
-            Left => self.state.mouse_down.left = true,
-            Middle => self.state.mouse_down.middle = true,
-            Right => self.state.mouse_down.right = true,
-            _ => ()
-        }
         self.gs.mouse_down(&mut self.state, ctx, btn)
     }
     /// Handle mouse release events
     fn mouse_button_up_event(&mut self, ctx: &mut Context, btn: MouseButton, _x: f32, _y: f32) {
-        use self::MouseButton::*;
-        match btn {
-            Left => self.state.mouse_down.left = false,
-            Middle => self.state.mouse_down.middle = false,
-            Right => self.state.mouse_down.right = false,
-            _ => ()
-        }
         self.gs.mouse_up(&mut self.state, ctx, btn)
     }
     /// Handles mouse movement events

@@ -43,11 +43,11 @@ impl Win {
     pub fn new(ctx: &mut Context, s: &mut State, stats: Statistics) -> GameResult<Box<dyn GameState>> {
         let w = s.width as f32;
 
-        let level_complete = s.assets.text(Point2::new(s.width as f32/ 2., 10.), "LEVEL COMPLETE");
-        let hits_text = s.assets.text(Point2::new(4., 20.), &format!("Hits: {}", stats.hits));
-        let misses_text = s.assets.text(Point2::new(4., 36.), &format!("Misses: {}", stats.misses));
-        let enemies_text = s.assets.text(Point2::new(4., 52.), &format!("Enemies left: {}", stats.enemies_left));
-        let health_text = s.assets.text(Point2::new(4., 68.), &format!("Health left: {:02.0} / {:02.0}", stats.health_left.hp, stats.health_left.armour));
+        let level_complete = s.assets.text(Point2::new(s.width as f32/ 2., 10.)).and_text("LEVEL COMPLETE");
+        let hits_text = s.assets.text(Point2::new(4., 20.)).and_text("Hits: ").and_text(format!("Hits: {}", stats.hits));
+        let misses_text = s.assets.text(Point2::new(4., 36.)).and_text(format!("Misses: {}", stats.misses));
+        let enemies_text = s.assets.text(Point2::new(4., 52.)).and_text(format!("Enemies left: {}", stats.enemies_left));
+        let health_text = s.assets.text(Point2::new(4., 68.)).and_text(format!("Health left: {:02.0} / {:02.0}", stats.health_left.hp, stats.health_left.armour));
 
         Ok(Box::new(Win {
             buttons: {

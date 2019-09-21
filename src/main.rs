@@ -21,6 +21,7 @@ pub mod game;
 
 pub mod util {
     use ggez::graphics::Color;
+    use ggez::{Context, input::keyboard::{self, KeyCode}};
     pub type Vector2 = nalgebra::Vector2<f32>;
     pub type Point2 = nalgebra::Point2<f32>;
 
@@ -40,6 +41,15 @@ pub mod util {
         let y = v.y;
 
         y.atan2(x)
+    }
+
+    pub fn ver(ctx: &Context) -> f32 {
+        <f32>::from((keyboard::is_key_pressed(ctx, KeyCode::S) || keyboard::is_key_pressed(ctx, KeyCode::Down)) as i8 -
+            (keyboard::is_key_pressed(ctx, KeyCode::W) || keyboard::is_key_pressed(ctx, KeyCode::Up)) as i8)
+    }
+    pub fn hor(ctx: &Context) -> f32 {
+        <f32>::from((keyboard::is_key_pressed(ctx, KeyCode::D) || keyboard::is_key_pressed(ctx, KeyCode::Right)) as i8 -
+            (keyboard::is_key_pressed(ctx, KeyCode::A) || keyboard::is_key_pressed(ctx, KeyCode::Left)) as i8)
     }
 }
 

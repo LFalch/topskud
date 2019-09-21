@@ -3,6 +3,7 @@ use crate::{
     util::{
         BLUE, GREEN, RED,
         angle_to_vec, angle_from_vec,
+        ver, hor,
         Vector2, Point2
     },
     io::{
@@ -18,7 +19,10 @@ use ggez::{
         MeshBuilder, Mesh, WHITE,
         spritebatch::SpriteBatch,
     },
-    event::{KeyCode, MouseButton}
+    input::{
+        keyboard::{self, KeyMods, KeyCode},
+        mouse::{self, MouseButton}
+    },
 };
 
 use rand::{thread_rng, prelude::SliceRandom};
@@ -89,11 +93,11 @@ impl Play {
             Play {
                 level: level.clone(),
                 initial: (player.health, player.wep),
-                hp_text: s.assets.text(Point2::new(4., 4.), "100"),
-                arm_text: s.assets.text(Point2::new(4., 33.), "100"),
-                reload_text: s.assets.text(Point2::new(4., 62.), "0.0s"),
-                wep_text: s.assets.text(Point2::new(2., 87.), "BFG 0/0"),
-                status_text: s.assets.text(Point2::new(s.width as f32 / 2., s.height as f32 / 2. + 32.), ""),
+                hp_text: s.assets.text(Point2::new(4., 4.)).and_text("100"),
+                arm_text: s.assets.text(Point2::new(4., 33.)).and_text("100"),
+                reload_text: s.assets.text(Point2::new(4., 62.)).and_text("0.0").and_text("s"),
+                wep_text: WeaponInstance::weapon_text(Point2::new(2., 87.), &s.assets),
+                status_text: s.assets.text(Point2::new(s.width as f32 / 2., s.height as f32 / 2. + 32.)).and_text(""),
                 hud: Hud::new(ctx)?,
                 misses: 0,
                 victory_time: 0.,
@@ -134,16 +138,16 @@ impl Play {
 impl GameState for Play {
     #[allow(clippy::cognitive_complexity)]
     fn update(&mut self, s: &mut State, ctx: &mut Context) -> GameResult<()> {
-        self.hp_text.update_text(&format!("{:02.0}", self.world.player.health.hp))?;
-        self.arm_text.update_text(&format!("{:02.0}", self.world.player.health.armour))?;
+        self.hp_text.update(0, format!("{:02.0}", self.world.player.health.hp))?;
+        self.arm_text.update(0, format!("{:02.0}", self.world.player.health.armour))?;
         if let Some(wep) = self.world.player.wep {
-            self.reload_text.update_text(&format!("{:.1}s", wep.loading_time))?;
-            self.wep_text.update_text(&format!("{} ({:.3} {:.1}s)", wep, wep.jerk, wep.jerk_decay))?;
+            self.reload_text.update(0, format!("{:.1}", wep.loading_time))?;
+            wep.update_text(&mut self.wep_text)?;
         }
         if let Some(i) = self.cur_pickup {
-            self.status_text.update_text(&format!("Press F to pick up {}", self.world.weapons[i]))?;
+            self.status_text.text.fragments_mut()[0]= format!("Press F to pick up {}", self.world.weapons[i]).into();
         } else {
-            self.status_text.update_text("")?;
+            self.status_text.update(0, "")?;
         }
 
         let mut deads = Vec::new();
@@ -294,7 +298,7 @@ impl GameState for Play {
         }
 
         // Define player velocity here already because enemies need it
-        let player_vel = Vector2::new(s.input.hor(), s.input.ver());
+        let player_vel = Vector2::new(hor(&ctx), ver(&ctx));
 
         for enemy in self.world.enemies.iter_mut() {
             if enemy.can_see(self.world.player.obj.pos, &self.world.grid) {
@@ -316,14 +320,14 @@ impl GameState for Play {
             enemy.update(ctx, &mut s.mplayer)?;
         }
 
-        let speed = if s.modifiers.shift {
+        let speed = if keyboard::is_mod_active(ctx, KeyMods::SHIFT) {
             200.
         } else {
             100.
         };
         if let Some(wep) = &mut self.world.player.wep {
             wep.update(ctx, &mut s.mplayer)?;
-            if wep.cur_clip > 0 && s.mouse_down.left && wep.weapon.fire_mode.is_auto() {
+            if wep.cur_clip > 0 && mouse::button_pressed(ctx, MouseButton::Left) && wep.weapon.fire_mode.is_auto() {
                 if let Some(bm) = wep.shoot(ctx, &mut s.mplayer)? {
                     let pos = self.world.player.obj.pos + 20. * angle_to_vec(self.world.player.obj.rot);
                     let mut bul = Object::new(pos);

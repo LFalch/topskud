@@ -1,6 +1,9 @@
 use crate::{
-    util::{TRANS,
-    Vector2, Point2},
+    util::{
+        ver,
+        hor,
+        TRANS,
+        Vector2, Point2},
     io::tex::{Sprite, PosText},
     io::snd::Sound,
     ext::BoolExt,
@@ -10,7 +13,10 @@ use ggez::{
     Context, GameResult,
     graphics::{self, Color, WHITE, Rect, DrawMode, DrawParam, Mesh},
     error::GameError,
-    event::{MouseButton, KeyCode}
+    input::{
+        keyboard::{self, KeyMods, KeyCode},
+        mouse::{self, MouseButton}
+    },
 };
 
 use super::{
@@ -98,7 +104,7 @@ type EntityItem = (Sprite, Insertion);
 
 impl InsertionBar {
     fn new(p: Point2, s: &State, text: &str, palette: &'static [EntityItem]) -> Self {
-        let ent_text = s.assets.text(p, text);
+        let ent_text = s.assets.text(p).and_text(text);
         Self {
             ent_text,
             palette
@@ -140,7 +146,7 @@ impl InsertionBar {
 impl Editor {
     #[allow(clippy::new_ret_no_self)]
     pub fn new(s: &State, level: Option<Level>) -> GameResult<Box<dyn GameState>> {
-        let mat_text = s.assets.text(Point2::new(2., 18.0), "Materials:");
+        let mat_text = s.assets.text(Point2::new(2., 18.0)).and_text("Materials:");
         let entities_bar = InsertionBar::new(Point2::new(392., 18.0), s, "Entitites:", &[
             (Sprite::Enemy, Insertion::Enemy{rot: 0.}),
             (Sprite::Goal, Insertion::Exit),
@@ -214,9 +220,9 @@ const START_X: f32 = 103.;
 const YELLOW: Color = Color{r: 1., g: 1., b: 0., a: 1.};
 
 impl GameState for Editor {
-    fn update(&mut self, s: &mut State, _ctx: &mut Context) -> GameResult<()> {
-        let speed = if s.modifiers.shift { 315. } else { 175. };
-        let v = speed * Vector2::new(s.input.hor(), s.input.ver());
+    fn update(&mut self, _s: &mut State, ctx: &mut Context) -> GameResult<()> {
+        let speed = if keyboard::is_mod_active(ctx, KeyMods::SHIFT) { 315. } else { 175. };
+        let v = speed * Vector2::new(hor(ctx), ver(ctx));
         self.pos += v * DELTA;
 
         match self.current {
@@ -226,8 +232,8 @@ impl GameState for Editor {
         }
         Ok(())
     }
-    fn logic(&mut self, s: &mut State, _ctx: &mut Context) -> GameResult<()> {
-        if s.mouse_down.left && s.mouse.y > 64. {
+    fn logic(&mut self, s: &mut State, ctx: &mut Context) -> GameResult<()> {
+        if mouse::button_pressed(ctx, MouseButton::Left) && s.mouse.y > 64. {
             if let Tool::Inserter(Insertion::Material(mat)) = self.current {
                 let (mx, my) = Grid::snap(s.mouse - s.offset);
                 self.level.grid.insert(mx, my, mat);
@@ -476,7 +482,10 @@ impl GameState for Editor {
         self.entities_bar.ent_text.draw_text(ctx)?;
         self.extra_bar.ent_text.draw_text(ctx)
     }
-    fn key_up(&mut self, s: &mut State, _ctx: &mut Context, keycode: KeyCode) {
+    fn key_up(&mut self, s: &mut State, ctx: &mut Context, keycode: KeyCode) {
+        let shift = keyboard::is_mod_active(ctx, KeyMods::SHIFT);
+        let ctrl = keyboard::is_mod_active(ctx, KeyMods::CTRL);
+
         use self::KeyCode::*;
         match keycode {
             Z => self.level.save(&self.save).unwrap(),
@@ -524,7 +533,7 @@ impl GameState for Editor {
             }
             Comma => {
                 self.rotation_speed = 0.;
-                if s.modifiers.shift {
+                if shift {
                     match self.current {
                         Tool::Inserter(Insertion::Enemy{ref mut rot}) => *rot -= std::f32::consts::FRAC_PI_4,
                         Tool::Inserter(Insertion::Decoration{ref mut rot, ..}) => *rot -= std::f32::consts::FRAC_PI_4,
@@ -534,7 +543,7 @@ impl GameState for Editor {
             }
             Period => {
                 self.rotation_speed = 0.;
-                if s.modifiers.shift {
+                if shift {
                     match self.current {
                         Tool::Inserter(Insertion::Enemy{ref mut rot}) => *rot += std::f32::consts::FRAC_PI_4,
                         Tool::Inserter(Insertion::Decoration{ref mut rot, ..}) => *rot += std::f32::consts::FRAC_PI_4,
@@ -542,10 +551,10 @@ impl GameState for Editor {
                     }
                 }
             }
-            Up if s.modifiers.ctrl => self.level.grid.shorten(),
-            Down if s.modifiers.ctrl => self.level.grid.heighten(),
-            Left if s.modifiers.ctrl => self.level.grid.thin(),
-            Right if s.modifiers.ctrl => self.level.grid.widen(),
+            Up if ctrl => self.level.grid.shorten(),
+            Down if ctrl => self.level.grid.heighten(),
+            Left if ctrl => self.level.grid.thin(),
+            Right if ctrl => self.level.grid.widen(),
             _ => (),
         }
     }
@@ -639,7 +648,7 @@ impl GameState for Editor {
                             }
                             selection.moving = None;
                         } else {
-                            if !s.modifiers.ctrl {
+                            if !keyboard::is_mod_active(ctx, KeyMods::CTRL) {
                                 *selection = Selection::default();
                             }
                             for (i, enemy) in self.level.enemies.iter().enumerate() {
@@ -705,11 +714,13 @@ impl GameState for Editor {
             _ => ()
         }
     }
-    fn key_down(&mut self, s: &mut State, _ctx: &mut Context, keycode: KeyCode) {
+    fn key_down(&mut self, s: &mut State, ctx: &mut Context, keycode: KeyCode) {
+        let shift = keyboard::is_mod_active(ctx, KeyMods::SHIFT);
+
         use self::KeyCode::*;
         match keycode {
-            Comma if !s.modifiers.shift => self.rotation_speed -= 6.,
-            Period if !s.modifiers.shift => self.rotation_speed += 6.,
+            Comma if !shift => self.rotation_speed -= 6.,
+            Period if !shift => self.rotation_speed += 6.,
             Q => self.level.start_point = Some(self.mousepos(&s)),
             _ => (),
         }
