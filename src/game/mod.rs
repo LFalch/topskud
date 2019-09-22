@@ -84,7 +84,7 @@ pub struct Console {
 impl Console {
     fn new(_ctx: &mut Context, assets: &Assets) -> GameResult<Self> {
         Ok(Console {
-            history: assets.raw_text_with("Welcome t' console\n", 14.),
+            history: assets.raw_text_with("Welcome t' console\n", 18.),
             prompt: assets.text(Point2::new(0., PROMPT_Y)).and_text("> ").and_text(String::with_capacity(32)),
         })
     }
@@ -105,7 +105,7 @@ impl Console {
             } else {
                 self.history.add("No world\n");
             },
-            "clear" => self.history = state.assets.raw_text_with("", 14.),
+            "clear" => self.history = state.assets.raw_text_with("", 18.),
             "fa" => if let Some(world) = gs.get_mut_world() {
                 world.player.health.hp = 100.;
                 world.player.health.armour = 100.;
@@ -141,7 +141,7 @@ impl Console {
         }
 
         while self.history.height(ctx) > PROMPT_Y as u32 {
-            let new_history = self.history.fragments().iter().skip(1).cloned().fold(state.assets.raw_text(14.), |mut text, f| {
+            let new_history = self.history.fragments().iter().skip(1).cloned().fold(state.assets.raw_text(18.), |mut text, f| {
                 text.add(f);
                 text
             });

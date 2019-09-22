@@ -469,7 +469,7 @@ impl GameState for Editor {
         for (i, mat) in PALETTE.iter().enumerate() {
             let x = START_X + i as f32 * 36.;
             if Tool::Inserter(Insertion::Material(*mat)) == self.current {
-                let mesh = Mesh::new_rectangle(ctx, DrawMode::fill(), Rect{x: - 1., y: 15., w: 34., h: 34.}, YELLOW)?;
+                let mesh = Mesh::new_rectangle(ctx, DrawMode::fill(), Rect{x: x - 1., y: 15., w: 34., h: 34.}, YELLOW)?;
                 graphics::draw(ctx, &mesh, DrawParam::default())?;
             }
             mat.draw(ctx, &s.assets, x, 16., DrawParam::default())?;
