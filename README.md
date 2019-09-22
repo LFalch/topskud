@@ -25,7 +25,7 @@ apt install libasound2-dev libudev-dev pkg-config
 
 ### Redhat
 
-Same libraries as Debian, slightly different names.  On CentOS 7, at
+Same libraries as Debian, slightly different names. On CentOS 7, at
 least you can install them with:
 
 ```sh

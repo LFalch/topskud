@@ -15,6 +15,7 @@ use ggez::{
     timer,
     event::{EventHandler, MouseButton, KeyCode, KeyMods}
 };
+use clipboard::{ClipboardContext, ClipboardProvider};
 use self::world::Level;
 
 /// Stuff related to things in the world
@@ -312,14 +313,12 @@ impl EventHandler for Master {
     /// Handle key release events
     fn key_up_event(&mut self, ctx: &mut Context, keycode: KeyCode, _: KeyMods) {
         use self::KeyCode::*;
-        match keycode {
-            Escape => self.console_open.toggle(),
-            Return if self.console_open => self.console.execute(ctx, &mut self.state, &mut *self.gs).unwrap(),
-            _ => (),
+        if let Tab = keycode {
+            self.console_open.toggle();
         }
         self.gs.key_up(&mut self.state, ctx, keycode)
     }
-    fn text_input_event(&mut self, _ctx: &mut Context, c: char) {
+    fn text_input_event(&mut self, ctx: &mut Context, c: char) {
         if self.console_open {
             if c.is_control() {
                 match c {
@@ -329,9 +328,17 @@ impl EventHandler for Master {
                     '\u{7f}' => (),
                     // Escape
                     '\u{1b}' => (),
+                    '\t' => (),
+                    // Paste
+                    '\u{16}' => {
+                        let mut cc = ClipboardContext::new().unwrap();
+                        let to_paste: String = cc.get_contents().unwrap();
+
+                        self.console.prompt.text.fragments_mut()[1].text.push_str(&to_paste);
+                    },
                     // Return (note sure whether newline is used on other platforms, so handling it in key_up)
-                    '\r' => (),
-                    c => eprintln!("Unkown control character {:?}", c),
+                    '\r' => self.console.execute(ctx, &mut self.state, &mut *self.gs).unwrap(),
+                    c => {self.console.history.add(format!("Unknown control character {:?}\n", c));}
                 }
             } else {
                 self.console.prompt.text.fragments_mut()[1].text.push(c);
