@@ -1,4 +1,4 @@
-use ggez::{Context, GameResult, graphics};
+use ggez::{Context, GameResult, graphics::{self, WHITE, Color}};
 
 use crate::{
     util::{Point2, angle_to_vec},
@@ -50,26 +50,21 @@ impl Player {
         }
     }
 
-    /// Draw the object
-    // pub fn draw(&self, ctx: &mut Context, img: &Image) -> GameResult<()> {
-        // let drawparams = self.drawparams();
-        // graphics::draw_ex(ctx, img, drawparams)
-    // }
-
     #[inline]
     pub fn draw_player(&self, ctx: &mut Context, a: &Assets) -> GameResult<()> {
-        self.draw(ctx, a, Sprite::Player)
+        self.draw(ctx, a, Sprite::Player, WHITE)
     }
-    pub fn draw(&self, ctx: &mut Context, a: &Assets, sprite: Sprite) -> GameResult<()> {
+    pub fn draw(&self, ctx: &mut Context, a: &Assets, sprite: Sprite, color: Color) -> GameResult<()> {
         if let Some(wep) = self.wep {
             let dp = graphics::DrawParam {
-                dest: self.obj.pos+angle_to_vec(self.obj.rot)*16.,
+                dest: (self.obj.pos+angle_to_vec(self.obj.rot)*16.).into(),
+                color,
                 .. self.obj.drawparams()
             };
 
-            graphics::draw_ex(ctx, a.get_img(wep.weapon.hands_sprite), dp)?;
+            graphics::draw(ctx, a.get_img(wep.weapon.hands_sprite), dp)?;
         }
-        self.obj.draw(ctx, a.get_img(sprite))
+        self.obj.draw(ctx, a.get_img(sprite), color)
     }
     pub fn update(&mut self, ctx: &mut Context, mplayer: &mut MediaPlayer) -> GameResult<()> {
         if let Some(wep) = &mut self.wep {

@@ -6,7 +6,7 @@ use crate::{
     game::DELTA,
     io::{
         snd::{Sound, MediaPlayer},
-        tex::Sprite,
+        tex::{Sprite, PosText, Assets},
     },
 };
 use ggez::{Context, GameResult};
@@ -118,6 +118,18 @@ impl Display for WeaponInstance<'_> {
 }
 
 impl<'a> WeaponInstance<'a> {
+    pub fn weapon_text(p: Point2, a: &Assets) -> PosText {
+        a.text(p).and_text("BFG").and_text(" ").and_text("0").and_text("/").and_text("0").and_text(" (").and_text("0").and_text(" ").and_text("0").and_text("s)")
+    }
+    pub fn update_text(&self, text: &mut PosText) -> GameResult<()> {
+        text
+            .update(0, self.weapon.name)?
+            .update(2, format!("{}", self.cur_clip))?
+            .update(4, format!("{}", self.ammo))?
+            .update(6, format!("{:.3}", self.jerk))?
+            .update(8, format!("{:.1}", self.jerk_decay))?;
+        Ok(())
+    } 
     pub fn into_drop(self, pos: Point2) -> WeaponDrop<'a> {
         let WeaponInstance{cur_clip, ammo, weapon, ..} = self;
         WeaponDrop {

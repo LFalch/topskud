@@ -1,7 +1,7 @@
 use crate::{
     io::tex::{Assets, Sprite},
 };
-use ggez::{Context, GameResult};
+use ggez::{Context, GameResult, graphics::Color};
 
 use super::Object;
 
@@ -47,8 +47,8 @@ impl DecorationObj {
         }
     }
     #[inline]
-    pub fn draw(&self, ctx: &mut Context, a: &Assets) -> GameResult<()> {
-        self.obj.draw(ctx, a.get_img(DECORATIONS[self.decl].spr))
+    pub fn draw(&self, ctx: &mut Context, a: &Assets, color: Color) -> GameResult<()> {
+        self.obj.draw(ctx, a.get_img(DECORATIONS[self.decl].spr), color)
     }
     #[inline]
     pub fn is_solid(&self) -> bool {

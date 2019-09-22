@@ -1,7 +1,9 @@
 use std::collections::HashMap;
 
-use ggez::{Context, GameResult};
-use ggez::graphics::{Image, Font, Text, Point2, Drawable, DrawParam};
+use crate::util::{Point2, Vector2};
+
+use ggez::{Context, GameResult, GameError};
+use ggez::graphics::{Image, Font, Text, TextFragment, Drawable, DrawParam, Scale};
 
 macro_rules! sprites {
     ($(
@@ -40,7 +42,6 @@ macro_rules! sprites {
             texes: HashMap<Sprite, Image>,
             /// The font used for all the text
             pub font: Font,
-            pub big_font: Font,
         }
 
         impl Assets {
@@ -55,8 +56,7 @@ macro_rules! sprites {
 
                 Ok(Assets {
                     texes,
-                    font: Font::new(ctx, "/common/DroidSansMono.ttf", 14)?,
-                    big_font: Font::new(ctx, "/common/DroidSansMono.ttf", 21)?,
+                    font: Font::new(ctx, "/common/DroidSansMono.ttf")?,
                 })
             }
             /// Gets the `Image` to draw from the sprite
@@ -73,6 +73,7 @@ sprites! {
     Player, "common/player", 32., 32.,
     Enemy, "common/enemy", 32., 32.,
     Crosshair, "common/crosshair", 32., 32.,
+    Start, "common/start", 32., 32.,
     Wall, "materials/wall", 32., 32.,
     Grass, "materials/grass", 32., 32.,
     Floor, "materials/floor", 32., 32.,
@@ -131,24 +132,31 @@ sprites! {
 
 impl Assets {
     #[inline]
-    pub fn raw_text(&self, context: &mut Context, text: &str) -> GameResult<Text> {
-        Text::new(context, text, &self.font)
+    pub fn raw_text(&self, size: f32) -> Text {
+        let mut text = Text::default();
+        text.set_font(self.font, Scale::uniform(size));
+
+        text
+    }
+    pub fn raw_text_with(&self, s: &str, size: f32) -> Text {
+        let mut text = Text::new(s);
+        text.set_font(self.font, Scale::uniform(size));
+
+        text
+    }
+
+    /// Make a positional text object
+    #[inline]
+    pub fn text(&self, pos: Point2) -> PosText {
+        self.text_sized(pos, 18.)
     }
     /// Make a positional text object
-    pub fn text(&self, context: &mut Context, pos: Point2, text: &str) -> GameResult<PosText> {
-        let text = self.raw_text(context, text)?;
-        Ok(PosText {
+    #[inline]
+    pub fn text_sized(&self, pos: Point2, size: f32) -> PosText {
+        PosText {
             pos,
-            text
-        })
-    }
-    /// Make a positional text object
-    pub fn text_big(&self, context: &mut Context, pos: Point2, text: &str) -> GameResult<PosText> {
-        let text = Text::new(context, text, &self.big_font)?;
-        Ok(PosText {
-            pos,
-            text
-        })
+            text: self.raw_text(size)
+        }
     }
 }
 
@@ -158,27 +166,28 @@ impl Assets {
 /// Used for convenience so it's easier to update the text and rememeber their coordinates on the screen
 pub struct PosText {
     pub pos: Point2,
-    pub(crate) text: Text
+    pub text: Text
 }
 
 impl PosText {
+    pub fn and_text<T: Into<TextFragment>>(mut self, t: T) -> Self {
+        self.text.add(t);
+        self
+    }
     /// Draw the text
     pub fn draw_text(&self, ctx: &mut Context) -> GameResult<()> {
-        self.text.draw(ctx, self.pos, 0.)
+        self.text.draw(ctx, DrawParam {
+            dest: self.pos.into(),
+            .. Default::default()
+        })
     }
     pub fn draw_center(&self, ctx: &mut Context) -> GameResult<()> {
-        let drawparams = DrawParam {
-            dest: self.pos,
-            offset: Point2::new(0.5, 0.5),
-            .. Default::default()
-        };
-        self.text.draw_ex(ctx, drawparams)
+        let (w, h) = self.text.dimensions(ctx);
+        let drawparams = DrawParam::new().dest(self.pos - Vector2::new(w as f32 / 2., h as f32 / 2.));
+        self.text.draw(ctx, drawparams)
     }
-    /// Update the text
-    pub fn update_text(&mut self, a: &Assets, ctx: &mut Context, text: &str) -> GameResult<()> {
-        if text != self.text.contents() {
-            self.text = Text::new(ctx, text, &a.font)?;
-        }
-        Ok(())
+    pub fn update<T: Into<TextFragment>>(&mut self, fragment_index: usize, new_text: T) -> GameResult<&mut Self> {
+        self.text.fragments_mut().get_mut(fragment_index).map(|t| *t = new_text.into()).ok_or_else(|| GameError::RenderError("Fragment did not exist".to_owned()))?;
+        Ok(self)
     }
 }

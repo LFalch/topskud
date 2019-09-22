@@ -1,11 +1,10 @@
 use std::collections::HashMap;
 
 use ggez::{Context, GameResult};
-use ggez::audio::{Source, SoundData};
+use ggez::audio::{Source, SoundData, SoundSource};
 
 const EFFECTS_LIMIT: usize = 25;
 
-#[inline]
 fn new_source(ctx: &mut Context, data: &SoundData) -> GameResult<Source> {
     Source::from_data(ctx, data.clone()).map(|mut src| {
         src.set_volume(0.1);
@@ -93,7 +92,7 @@ macro_rules! sounds {
             pub fn play(&mut self, ctx: &mut Context, s: Sound) -> GameResult<()> {
                 match s.sound_type() {
                     SoundType::Wave | SoundType::Flac => {
-                        let src = new_source(ctx, &self.data[&s])?;
+                        let mut src = new_source(ctx, &self.data[&s])?;
                         src.play()?;
 
                         self.clear_effetcs();
@@ -104,7 +103,7 @@ macro_rules! sounds {
                         Ok(())
                     },
                     SoundType::Ogg | SoundType::OggLoop => {
-                        self.music_sources[&s].play()
+                        self.music_sources.get_mut(&s).unwrap().play()
                     },
                 }
             }
@@ -128,9 +127,9 @@ macro_rules! sounds {
             pub fn stop(&mut self, ctx: &mut Context, s: Sound) -> GameResult<()> {
                 match s.sound_type() {
                     SoundType::Wave | SoundType::Flac => panic!("{:?} can't be stopped", s),
-                    SoundType::Ogg => self.music_sources[&s].stop(),
+                    SoundType::Ogg => self.music_sources.get_mut(&s).unwrap().stop(),
                     SoundType::OggLoop => {
-                        self.music_sources[&s].stop();
+                        self.music_sources.get_mut(&s).unwrap().stop();
                         self.music_sources.insert(s, self.new_cache(ctx, s, true)?);
                     }
                 }

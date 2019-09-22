@@ -8,12 +8,13 @@ use crate::{
 };
 use ggez::{
     Context, GameResult,
-    graphics::{self, Rect},
-    event::{MouseButton, Keycode}
+    graphics::Rect,
+    event::{MouseButton, KeyCode}
 };
 
 use super::{State, Content, GameState, StateSwitch, world::{Level, Statistics}};
 
+#[allow(clippy::large_enum_variant)]
 enum WinButtons {
     CampaignMode {
         continue_btn: Button<()>
@@ -42,11 +43,11 @@ impl Win {
     pub fn new(ctx: &mut Context, s: &mut State, stats: Statistics) -> GameResult<Box<dyn GameState>> {
         let w = s.width as f32;
 
-        let level_complete = s.assets.text(ctx, Point2::new(s.width as f32/ 2., 10.), "LEVEL COMPLETE")?;
-        let hits_text = s.assets.text(ctx, Point2::new(4., 20.), &format!("Hits: {}", stats.hits))?;
-        let misses_text = s.assets.text(ctx, Point2::new(4., 36.), &format!("Misses: {}", stats.misses))?;
-        let enemies_text = s.assets.text(ctx, Point2::new(4., 52.), &format!("Enemies left: {}", stats.enemies_left))?;
-        let health_text = s.assets.text(ctx, Point2::new(4., 68.), &format!("Health left: {:02.0} / {:02.0}", stats.health_left.hp, stats.health_left.armour))?;
+        let level_complete = s.assets.text(Point2::new(s.width as f32/ 2., 10.)).and_text("LEVEL COMPLETE");
+        let hits_text = s.assets.text(Point2::new(4., 20.)).and_text("Hits: ").and_text(format!("Hits: {}", stats.hits));
+        let misses_text = s.assets.text(Point2::new(4., 36.)).and_text(format!("Misses: {}", stats.misses));
+        let enemies_text = s.assets.text(Point2::new(4., 52.)).and_text(format!("Enemies left: {}", stats.enemies_left));
+        let health_text = s.assets.text(Point2::new(4., 68.)).and_text(format!("Health left: {:02.0} / {:02.0}", stats.health_left.hp, stats.health_left.armour));
 
         Ok(Box::new(Win {
             buttons: {
@@ -95,7 +96,6 @@ impl Win {
 
 impl GameState for Win {
     fn draw_hud(&mut self, _s: &State, ctx: &mut Context) -> GameResult<()> {
-        graphics::set_color(ctx, graphics::WHITE)?;
         match &self.buttons {
             WinButtons::FileMode{restart_btn, edit_btn} => {
                 restart_btn.draw(ctx)?;
@@ -107,14 +107,13 @@ impl GameState for Win {
         }
 
         self.level_complete.draw_center(ctx)?;
-        graphics::set_color(ctx, graphics::BLACK)?;
         self.hits_text.draw_text(ctx)?;
         self.misses_text.draw_text(ctx)?;
         self.enemies_text.draw_text(ctx)?;
         self.health_text.draw_text(ctx)
     }
-    fn key_up(&mut self, s: &mut State, _ctx: &mut Context, keycode: Keycode) {
-        use self::Keycode::*;
+    fn key_up(&mut self, s: &mut State, _ctx: &mut Context, keycode: KeyCode) {
+        use self::KeyCode::*;
         if let Return = keycode { self.continue_play(s) }
     }
     fn mouse_up(&mut self, s: &mut State, _ctx: &mut Context, btn: MouseButton) {

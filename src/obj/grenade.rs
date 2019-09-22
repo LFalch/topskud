@@ -1,4 +1,4 @@
-use ggez::{Context, GameResult};
+use ggez::{Context, GameResult, graphics::WHITE};
 
 use crate::{
     util::{angle_to_vec, Vector2},
@@ -34,8 +34,7 @@ impl Grenade {
     }
     #[inline]
     pub fn draw(&self, ctx: &mut Context, a: &Assets) -> GameResult<()> {
-        // TODO add sprite
-        self.obj.draw(ctx, a.get_img(Sprite::Pineapple))
+        self.obj.draw(ctx, a.get_img(Sprite::Pineapple), WHITE)
     }
     pub fn update(&mut self, grid: &Grid, player: &mut Player, enemies: &mut [Enemy]) -> Option<Explosion> {
         let start = self.obj.pos;
