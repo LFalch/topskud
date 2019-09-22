@@ -6,4 +6,4 @@ Top-down shooter game.
 
 ### Linux
 
-On Ubuntu install libasound2-dev and libsdl2-dev before running cargo build.
+On Ubuntu install libasound2-dev before running cargo build.
