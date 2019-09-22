@@ -1,7 +1,8 @@
 # Topskud
 
-/ˈtɒpˌskʊd/
+Pronunciation /ˈtɒpˌskʊd/
 Danish: [ˈtʰʌb̥ˌsg̊uð]
+
 A top-down shooter game.
 
 ## Build requirements
