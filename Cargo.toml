@@ -1,6 +1,6 @@
 [package]
-name = "tds"
-version = "0.1.6"
+name = "topskud"
+version = "0.1.7"
 authors = ["LFalch <lucas@wasd.dk>"]
 edition = "2018"
 

@@ -1,6 +1,8 @@
-# TDS
+# Topskud
 
-Top-down shooter game.
+/ˈtɒpˌskʊd/
+Danish: [ˈtʰʌb̥ˌsg̊uð]
+A top-down shooter game.
 
 ## Build requirements
 

@@ -69,8 +69,8 @@ fn main() {
     let window_mode = conf::WindowMode::default().dimensions(1152., 648.);
 
     // Create a context (the part that runs the game loop)
-    let (mut ctx, mut events) = ContextBuilder::new("tds", "LFalch")
-        .window_setup(conf::WindowSetup::default().title("TDS"))
+    let (mut ctx, mut events) = ContextBuilder::new("topskud", "LFalch")
+        .window_setup(conf::WindowSetup::default().title("Topskud"))
         .window_mode(window_mode)
         .build().unwrap();
 
