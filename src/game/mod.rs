@@ -188,7 +188,9 @@ impl Master {
     pub fn new(ctx: &mut Context, arg: &str) -> GameResult<Self> {
         // Initialise assets
         let assets = Assets::new(ctx)?;
-        let mplayer = MediaPlayer::new(ctx)?;
+        let mut mplayer = MediaPlayer::new();
+        mplayer.register_music(ctx, "music", true)?;
+        mplayer.register_music(ctx, "victory", false)?;
 
         // Get the window's dimensions
         let Rect {w: width, h: height, ..} = graphics::screen_coordinates(ctx);

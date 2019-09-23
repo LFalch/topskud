@@ -1,0 +1,113 @@
+[glock]
+name = "Glack"
+clip_size = 16
+clips = 7
+damage = 34.0
+penetration = 0.24
+fire_rate = 0.25
+reload_time = 1.6
+fire_mode = "SemiAutomatic"
+shot_snd = "shot2"
+# Optional, this is the default value.
+cock_snd = "cock"
+click_snd = "click_pistol"
+# Optional, this is the default value.
+reload_snd = "reload"
+# Optional, this is the default value.
+impact_snd = "impact"
+entity_sprite = "weapons/glock"
+hands_sprite = "weapons/glock_hands"
+spray_pattern = [6.0, -8.0, 4.0, -6.0, 2.5, 6.0, 4.0]
+spray_decay = 0.43
+spray_repeat = 2
+
+[five_seven]
+name = "5-SeveN"
+clip_size = 20
+clips = 5
+damage = 41.0
+penetration = 0.46
+fire_rate = 0.20
+reload_time = 1.3
+fire_mode = "SemiAutomatic"
+shot_snd = "shot1"
+click_snd = "click_pistol"
+entity_sprite = "weapons/five_seven"
+hands_sprite = "weapons/five_seven_hands"
+spray_pattern = [4.0, 6.0, -8.0, 4.0, -6.0, 4.0, -8.0, 6.0, 4.0]
+spray_decay = 0.34
+spray_repeat = 5
+
+[magnum]
+name = "500-MG"
+clip_size = 5
+clips = 4
+damage = 111.0
+penetration = 0.05
+fire_rate = 0.72
+reload_time = 3.2
+fire_mode = "SemiAutomatic"
+shot_snd = "shot1"
+cock_snd = "cock2"
+click_snd = "click_pistol"
+entity_sprite = "weapons/magnum"
+hands_sprite = "weapons/magnum_hands"
+spray_pattern = [6.0, 2.0, -2.0]
+spray_decay = 0.85
+spray_repeat = 2
+
+[m4a1]
+name = "M4A1"
+clip_size = 30
+clips = 3
+damage = 52.0
+penetration = 0.51
+fire_rate = 0.075
+reload_time = 2.8
+fire_mode = "Automatic"
+shot_snd = "shot1"
+cock_snd = "cock_ak47"
+click_snd = "click_uzi"
+reload_snd = "reload_m4"
+entity_sprite = "weapons/m4"
+hands_sprite = "weapons/m4_hands"
+spray_pattern = [3.3, 4.2, -3.0, 3.0, -3.0, 2.0, -4.0, 3.0, 2.0]
+spray_decay = 0.2
+spray_repeat = 5
+
+[ak47]
+name = "AK-47"
+clip_size = 30
+clips = 3
+damage = 65.0
+penetration = 0.22
+fire_rate = 0.09
+reload_time = 2.6
+fire_mode = "Automatic"
+shot_snd = "shot1"
+cock_snd = "cock_ak47"
+click_snd = "click_uzi"
+entity_sprite = "weapons/ak47"
+hands_sprite = "weapons/ak47_hands"
+spray_pattern = [-3.3, -4.2, 3.0, -3.0, 3.0, -2.0, 4.0, -3.0, -2.0, 3.0]
+spray_decay = 0.13
+spray_repeat = 5
+
+[arwp]
+name = "ARWP"
+clip_size = 10
+clips = 4
+damage = 130.0
+penetration = 0.8
+fire_rate = 0.92
+reload_time = 3.5
+fire_mode = "BoltAction"
+shot_snd = "shot1"
+cock_snd = "cock2"
+click_snd = "click_pistol"
+reload_snd = "reload_m4"
+entity_sprite = "weapons/arwp"
+hands_sprite = "weapons/arwp_hands"
+spray_pattern = [5.6, 1.0, -1.0]
+spray_decay = 1.0
+spray_repeat = 2

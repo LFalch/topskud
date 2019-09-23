@@ -4,7 +4,6 @@ use crate::{
     io::{
         tex::PosText,
         btn::Button,
-        snd::Sound,
     },
 };
 use ggez::{
@@ -43,7 +42,7 @@ impl Menu {
         } else {
             None
         };
-        s.mplayer.play(ctx, Sound::Music)?;
+        s.mplayer.play(ctx, "music")?;
 
         let buttons = match &mut s.content {
             Content::Campaign(_cam) => {
@@ -104,7 +103,7 @@ impl GameState for Menu {
         if let Left = btn {
             for button in &self.buttons {
                 if button.in_bounds(s.mouse) {
-                    s.mplayer.stop(ctx, Sound::Music).unwrap();
+                    s.mplayer.stop(ctx, "music").unwrap();
                     match &button.callback {
                         Callback::Campaign(cam) => {
                             let mut cam = Campaign::load(cam).unwrap();

@@ -5,7 +5,6 @@ use crate::{
         TRANS,
         Vector2, Point2},
     io::tex::PosText,
-    io::snd::Sound,
     ext::BoolExt,
     obj::{Object, enemy::Enemy, decoration::{DecorationObj, DECORATIONS}, pickup::PICKUPS, weapon::WEAPONS}
 };
@@ -38,7 +37,7 @@ enum Insertion {
     Intel,
     Enemy{rot: f32},
     Pickup(u8),
-    Weapon(u8),
+    Weapon(&'static str),
     Decoration{i: usize, rot: f32},
     Exit,
 }
@@ -155,12 +154,12 @@ impl Editor {
             ("pickups/health_pack", Insertion::Pickup(0)),
             ("pickups/armour", Insertion::Pickup(1)),
             ("pickups/adrenaline", Insertion::Pickup(2)),
-            ("weapons/glock", Insertion::Weapon(0)),
-            ("weapons/five_seven", Insertion::Weapon(1)),
-            ("weapons/magnum", Insertion::Weapon(2)),
-            ("weapons/m4", Insertion::Weapon(3)),
-            ("weapons/ak47", Insertion::Weapon(4)),
-            ("weapons/arwp", Insertion::Weapon(5)),
+            ("weapons/glock", Insertion::Weapon("glock")),
+            ("weapons/five_seven", Insertion::Weapon("five_seven")),
+            ("weapons/magnum", Insertion::Weapon("magnum")),
+            ("weapons/m4", Insertion::Weapon("m4")),
+            ("weapons/ak47", Insertion::Weapon("ak47")),
+            ("weapons/arwp", Insertion::Weapon("arwp")),
             ("decorations/chair1", Insertion::Decoration{i: 0, rot: 0.}),
             ("decorations/chair2", Insertion::Decoration{i: 1, rot: 0.}),
             ("decorations/chair_boss", Insertion::Decoration{i: 2, rot: 0.}),
@@ -341,7 +340,7 @@ impl GameState for Editor {
                 offset: Point2::new(0.5, 0.5).into(),
                 .. Default::default()
             };
-            let img = s.assets.get_img(ctx, weapon.weapon.entity_sprite);
+            let img = s.assets.get_img(ctx, &weapon.weapon.entity_sprite);
             graphics::draw(ctx, &*img, drawparams)?;
         }
 
@@ -388,7 +387,7 @@ impl GameState for Editor {
                     color: TRANS,
                     .. Default::default()
                 };
-                let img = s.assets.get_img(ctx, self.level.weapons[i].weapon.entity_sprite);
+                let img = s.assets.get_img(ctx, &self.level.weapons[i].weapon.entity_sprite);
                 graphics::draw(ctx, &*img, drawparams)?;
             }
             if selection.exit {
@@ -423,7 +422,7 @@ impl GameState for Editor {
                 let img = s.assets.get_img(ctx, PICKUPS[index as usize].spr);
                 graphics::draw(ctx, &*img, drawparams)?;
             }
-            Tool::Inserter(Insertion::Weapon(index)) => {
+            Tool::Inserter(Insertion::Weapon(id)) => {
                 let drawparams = graphics::DrawParam {
                     dest,
                     rotation: 0.,
@@ -431,7 +430,7 @@ impl GameState for Editor {
                     color: TRANS,
                     .. Default::default()
                 };
-                let img = s.assets.get_img(ctx, WEAPONS[index as usize].entity_sprite);
+                let img = s.assets.get_img(ctx, &WEAPONS[id].entity_sprite);
                 graphics::draw(ctx, &*img, drawparams)?;
             }
             Tool::Inserter(Insertion::Enemy{rot}) => {
@@ -709,9 +708,9 @@ impl GameState for Editor {
                         self.current = Tool::Selector(Selection{exit: true, .. Default::default()});
                     }
                     Tool::Inserter(Insertion::Enemy{rot}) => {
-                        s.mplayer.play(ctx, Sound::Reload).unwrap();
+                        s.mplayer.play(ctx, "reload").unwrap();
                         self.level.enemies.push(Enemy::new(Object::with_rot(mousepos, rot)));
-                        self.level.weapons.push(WEAPONS[0].make_drop(mousepos));
+                        self.level.weapons.push(WEAPONS["glock"].make_drop(mousepos));
                     },
                     Tool::Inserter(Insertion::Decoration{i, rot}) => {
                         self.level.decorations.push(DecorationObj::new(Object::with_rot(mousepos, rot), i));
@@ -719,8 +718,8 @@ impl GameState for Editor {
                     Tool::Inserter(Insertion::Pickup(i)) => {
                         self.level.pickups.push((mousepos, i));
                     },
-                    Tool::Inserter(Insertion::Weapon(i)) => {
-                        self.level.weapons.push(WEAPONS[i as usize].make_drop(mousepos));
+                    Tool::Inserter(Insertion::Weapon(id)) => {
+                        self.level.weapons.push(WEAPONS[id].make_drop(mousepos));
                     },
                     Tool::Inserter(Insertion::Intel) => self.level.intels.push(mousepos),
                 }

@@ -6,10 +6,7 @@ use crate::{
         ver, hor,
         Vector2, Point2
     },
-    io::{
-        tex::{Assets, PosText},
-        snd::Sound,
-    },
+    io::tex::{Assets, PosText},
     obj::{Object, pickup::Pickup, player::Player, enemy::{Enemy, Chaser}, health::Health, weapon::WeaponInstance, grenade::Explosion},
 };
 use ggez::{
@@ -157,11 +154,11 @@ impl GameState for Play {
 
             if let Some(Explosion{player_hit, enemy_hits}) = expl {
                 deads.push(i);
-                s.mplayer.play(ctx, Sound::Boom)?;
+                s.mplayer.play(ctx, "boom")?;
 
                 if player_hit {
                     self.bloods.push(BloodSplatter::new(self.world.player.obj.clone()));
-                    s.mplayer.play(ctx, Sound::Hit)?;
+                    s.mplayer.play(ctx, "hit")?;
 
                     if self.world.player.health.is_dead() {
                         s.switch(StateSwitch::Lose(Box::new(Statistics{
@@ -172,18 +169,18 @@ impl GameState for Play {
                             level: self.level.clone(),
                             weapon: self.initial.1,
                         })));
-                        s.mplayer.play(ctx, Sound::Death)?;
+                        s.mplayer.play(ctx, "death")?;
                     } else {
-                        s.mplayer.play(ctx, Sound::Hurt)?;
+                        s.mplayer.play(ctx, "hurt")?;
                     }
                 }
                 for i in enemy_hits {
                     let enemy = &self.world.enemies[i];
-                    s.mplayer.play(ctx, Sound::Hit)?;
+                    s.mplayer.play(ctx, "hit")?;
 
                     self.bloods.push(BloodSplatter::new(enemy.pl.obj.clone()));
                     if enemy.pl.health.is_dead() {
-                        s.mplayer.play(ctx, Sound::Death)?;
+                        s.mplayer.play(ctx, "death")?;
 
                         let Enemy{pl: Player{wep, obj: Object{pos, ..}, ..}, ..}
                             = self.world.enemies.remove(i);
@@ -196,7 +193,7 @@ impl GameState for Play {
                                 dir: grenade.obj.pos - enemy.pl.obj.pos
                             };
                         }
-                        s.mplayer.play(ctx, Sound::Hurt)?;
+                        s.mplayer.play(ctx, "hurt")?;
                     }
                 }
             }
@@ -214,7 +211,7 @@ impl GameState for Play {
             match hit {
                 Hit::None => (),
                 Hit::Wall => {
-                    s.mplayer.play(ctx, bullet.weapon.impact_snd)?;
+                    s.mplayer.play(ctx, &bullet.weapon.impact_snd)?;
                     let dir = angle_to_vec(bullet.obj.rot);
                     bullet.obj.pos += Vector2::new(5.*dir.x.signum(), 5.*dir.y.signum());
                     self.holes.add(bullet.obj.drawparams());
@@ -224,7 +221,7 @@ impl GameState for Play {
                 Hit::Player => {
                     deads.push(i);
                     self.bloods.push(BloodSplatter::new(bullet.obj.clone()));
-                    s.mplayer.play(ctx, Sound::Hit)?;
+                    s.mplayer.play(ctx, "hit")?;
 
                     if self.world.player.health.is_dead() {
                         s.switch(StateSwitch::Lose(Box::new(Statistics{
@@ -235,19 +232,19 @@ impl GameState for Play {
                             level: self.level.clone(),
                             weapon: self.initial.1,
                         })));
-                        s.mplayer.play(ctx, Sound::Death)?;
+                        s.mplayer.play(ctx, "death")?;
                     } else {
-                        s.mplayer.play(ctx, Sound::Hurt)?;
+                        s.mplayer.play(ctx, "hurt")?;
                     }
                 }
                 Hit::Enemy(e) => {
                     deads.push(i);
                     let enemy = &self.world.enemies[e];
-                    s.mplayer.play(ctx, Sound::Hit)?;
+                    s.mplayer.play(ctx, "hit")?;
 
                     self.bloods.push(BloodSplatter::new(bullet.obj.clone()));
                     if enemy.pl.health.is_dead() {
-                        s.mplayer.play(ctx, Sound::Death)?;
+                        s.mplayer.play(ctx, "death")?;
 
                         let Enemy{pl: Player{wep, obj: Object{pos, ..}, ..}, ..}
                             = self.world.enemies.remove(e);
@@ -260,7 +257,7 @@ impl GameState for Play {
                                 dir: bullet.obj.pos - enemy.pl.obj.pos
                             };
                         }
-                        s.mplayer.play(ctx, Sound::Hurt)?;
+                        s.mplayer.play(ctx, "hurt")?;
                     }
                 }
             }
@@ -273,7 +270,7 @@ impl GameState for Play {
         for (i, &intel) in self.world.intels.iter().enumerate().rev() {
             if (intel-self.world.player.obj.pos).norm() <= 15. {
                 deads.push(i);
-                s.mplayer.play(ctx, Sound::Hit)?;
+                s.mplayer.play(ctx, "hit")?;
             }
         }
         for i in deads {
@@ -284,7 +281,7 @@ impl GameState for Play {
             if (pickup.pos-self.world.player.obj.pos).norm() <= 15. {
                 pickup.apply(&mut self.world.player.health);
                 deads.push(i);
-                s.mplayer.play(ctx, Sound::Hit)?;
+                s.mplayer.play(ctx, "hit")?;
             }
         }
         for i in deads {
@@ -346,7 +343,7 @@ impl GameState for Play {
         };
 
         if game_won && self.victory_time <= 0. {
-            s.mplayer.play(ctx, Sound::Victory)?;
+            s.mplayer.play(ctx, "victory")?;
             self.victory_time += DELTA;
         } else if self.victory_time > 0. {
             self.victory_time += DELTA;
@@ -413,7 +410,7 @@ impl GameState for Play {
                 offset: Point2::new(0.5, 0.5).into(),
                 .. Default::default()
             };
-            let img = s.assets.get_img(ctx, wep.weapon.entity_sprite);
+            let img = s.assets.get_img(ctx, &wep.weapon.entity_sprite);
             graphics::draw(ctx, &*img, drawparams)?;
         }
 
@@ -481,7 +478,7 @@ impl GameState for Play {
                 if let Some(wep) = &mut self.world.player.wep {
                     wep.reload(ctx, &mut s.mplayer).unwrap()
                 } else {
-                    self.world.bullets.push(crate::obj::bullet::Bullet{obj: self.world.player.obj.clone(), weapon: &crate::obj::weapon::WEAPONS[0]});
+                    self.world.bullets.push(crate::obj::bullet::Bullet{obj: self.world.player.obj.clone(), weapon: &crate::obj::weapon::WEAPONS["glock"]});
                 }
             },
             F => {

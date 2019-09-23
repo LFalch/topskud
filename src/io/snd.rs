@@ -12,146 +12,86 @@ fn new_source(ctx: &mut Context, data: &SoundData) -> GameResult<Source> {
     })
 }
 
-#[derive(Debug, Copy, Clone)]
-enum SoundType {
-    Wave,
-    #[allow(dead_code)]
-    Flac,
-    Ogg,
-    OggLoop,
+pub struct MediaPlayer {
+    data: HashMap<String, SoundData>,
+    // containers for sources
+    music_sources: HashMap<String, Source>,
+    effects: Vec<Source>,
 }
 
-impl SoundType {
+impl Default for MediaPlayer {
     #[inline]
-    fn is_loop(self) -> bool {
-        match self {
-            SoundType::OggLoop => true,
-            _ => false,
-        }
+    fn default() -> Self {
+        MediaPlayer::new()
     }
 }
-macro_rules! ending {
-    (Wave) => (".wav");
-    (Ogg) => (".ogg");
-    (OggLoop) => (".ogg");
-    (Flac) => (".flac");
-}
 
-macro_rules! music {
-    (Wave; $b:block) => (());
-    (Flac; $b:block) => (());
-    (Ogg; $b:block) => ($b);
-    (OggLoop; $b:block) => (music!(Ogg; $b));
-}
-
-macro_rules! sounds {
-    ($(
-        $name:ident,
-        $snd:expr,
-        $typ:ident,
-    )*) => (
-        #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-        pub enum Sound {
-            $($name,)*
+impl MediaPlayer {
+    #[inline]
+    pub fn new() -> Self {
+        MediaPlayer {
+            effects: Vec::with_capacity(10),
+            music_sources: HashMap::new(),
+            data: HashMap::with_capacity(24),
         }
-        impl Sound {
-            #[inline]
-            fn sound_type(self) -> SoundType {
-                match self {
-                    $(
-                        Sound::$name => SoundType::$typ,
-                    )*
-                }
-            }
+    }
+    pub fn add_effect(&mut self, ctx: &mut Context, s: &str) -> GameResult<&mut SoundData> {
+        let data = SoundData::new(ctx, format!("/sounds/{}.wav", s))?;
+        self.data.insert(s.to_owned(), data);
+        Ok(self.data.get_mut(s).unwrap())
+    }
+    pub fn register_music<S: Into<String>>(&mut self, ctx: &mut Context, s: S, repeat: bool) -> GameResult<()> {
+        let s = s.into();
+
+        let data = SoundData::new(ctx, format!("/sounds/{}.ogg", s))?;
+        self.data.insert(s.clone(), data);
+
+        let cache = self.new_cache(ctx, &s, repeat)?;
+        self.music_sources.insert(s, cache);
+        Ok(())
+    }
+    pub fn play(&mut self, ctx: &mut Context, s: &str) -> GameResult<()> {
+        let snd;
+
+        if let Some(music) = self.music_sources.get_mut(s) {
+            return music.play();
+        } else if let Some(s) = self.data.get(s) {
+            snd = s;
+        } else {
+            snd = self.add_effect(ctx, s)?;
         }
-        pub struct MediaPlayer {
-            data: HashMap<Sound, SoundData>,
-            music_sources: HashMap<Sound, Source>,
-            effects: Vec<Source>,
+        let mut src = new_source(ctx, snd)?;
+        src.play()?;
+
+        self.clear_effects();
+
+        if self.effects.len() < EFFECTS_LIMIT {
+            self.effects.push(src);
         }
-        impl MediaPlayer {
-            #[allow(clippy::new_ret_no_self, clippy::no_effect)]
-            pub fn new(ctx: &mut Context) -> GameResult<Self> {
-                // This is stupid
-                let mut data = HashMap::with_capacity({let mut x = 0; $($snd; x += 1;)* x});
-                $(
-                    data.insert($name, SoundData::new(ctx, concat!("/sounds/", $snd, ending!($typ)))?);
-                )*
-                let mut ret = MediaPlayer {
-                    effects: Vec::with_capacity(10),
-                    music_sources: HashMap::new(),
-                    data,
-                };
-                $(
-                    music!($typ; {
-                        ret.music_sources.insert($name, ret.new_cache(ctx, Sound::$name, Sound::$name.sound_type().is_loop())?);
-                    });
-                )*
-
-                Ok(ret)
-            }
-            pub fn play(&mut self, ctx: &mut Context, s: Sound) -> GameResult<()> {
-                match s.sound_type() {
-                    SoundType::Wave | SoundType::Flac => {
-                        let mut src = new_source(ctx, &self.data[&s])?;
-                        src.play()?;
-
-                        self.clear_effects();
-
-                        if self.effects.len() < EFFECTS_LIMIT {
-                            self.effects.push(src);
-                        }
-                        Ok(())
-                    },
-                    SoundType::Ogg | SoundType::OggLoop => {
-                        self.music_sources.get_mut(&s).unwrap().play()
-                    },
-                }
-            }
-            fn clear_effects(&mut self) {
-                self.effects.retain(|src| src.playing());
-            }
-            fn new_cache(&self, ctx: &mut Context, s: Sound, repeat: bool) -> GameResult<Source> {
-                Source::from_data(ctx, self.data[&s].clone())
-                    .map(|mut src| {
-                        src.set_repeat(repeat);
-                        src
-                    })
-            }
-            pub fn stop(&mut self, ctx: &mut Context, s: Sound) -> GameResult<()> {
-                match s.sound_type() {
-                    SoundType::Wave | SoundType::Flac => panic!("{:?} can't be stopped", s),
-                    SoundType::Ogg => self.music_sources.get_mut(&s).unwrap().stop(),
-                    SoundType::OggLoop => {
-                        self.music_sources.get_mut(&s).unwrap().stop();
-                        self.music_sources.insert(s, self.new_cache(ctx, s, true)?);
-                    }
-                }
-                Ok(())
-            }
+        Ok(())
+    }
+    fn clear_effects(&mut self) {
+        self.effects.retain(|src| src.playing());
+    }
+    fn new_cache(&self, ctx: &mut Context, s: &str, repeat: bool) -> GameResult<Source> {
+        Source::from_data(ctx, self.data[s].clone())
+            .map(|mut src| {
+                src.set_repeat(repeat);
+                src
+            })
+    }
+    pub fn stop(&mut self, ctx: &mut Context, s: &str) -> GameResult<()> {
+        let repeat;
+        if let Some(music_source) = self.music_sources.get_mut(s) {
+            repeat = music_source.repeat();
+            music_source.stop();
+        } else {
+            panic!("{:?} can't be stopped", s);
         }
-    );
-}
 
-use self::Sound::*;
-
-sounds! {
-    Throw, "throw", Wave,
-    Boom, "boom", Wave,
-    Shot1, "shot1", Wave,
-    Shot2, "shot2", Wave,
-    Cock, "cock", Wave,
-    Cock2, "cock2", Wave,
-    CockAk47, "cock_ak47", Wave,
-    Reload, "reload", Wave,
-    ReloadM4, "reload_m4", Wave,
-    ReloadAk47, "reload_ak47", Wave,
-    ClickPistol, "click_pistol", Wave,
-    ClickUzi, "click_uzi", Wave,
-    Impact, "impact", Wave,
-    Hit, "hit", Wave,
-    Hurt, "hurt", Wave,
-    Death, "death", Wave,
-    Victory, "victory", Ogg,
-    Music, "music", OggLoop,
+        if repeat {
+            self.music_sources.insert(s.to_owned(), self.new_cache(ctx, s, true)?);
+        }
+        Ok(())
+    }
 }

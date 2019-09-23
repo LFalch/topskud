@@ -189,6 +189,16 @@ impl Level {
         let mut reader = BufReader::new(File::open(path)?);
         let mut ret = Level::new(0, 0);
 
+        // For support of older level files
+        const WEAPONS_OLD: [&str; 6] = [
+            "glock",
+            "five_seven",
+            "magnum",
+            "m4a1",
+            "ak47",
+            "arwp",
+        ];
+
         loop {
             let mut buf = String::with_capacity(16);
             reader.read_line(&mut buf)?;
@@ -222,8 +232,11 @@ impl Level {
                 "PICKUPS" => ret.pickups = bincode::deserialize_from(&mut reader)
                     .map(|l: Vec<((f32, f32), u8)>| l.into_iter().map(|((x, y), i)| (Point2::new(x, y), i)).collect())
                     .map_err(|e| GameError::ResourceLoadError(format!("{:?}", e)))?,
+                "WEPS" => ret.weapons = bincode::deserialize_from(&mut reader)
+                    .map(|l: Vec<((f32, f32), String)>| l.into_iter().map(|((x, y), id)| WEAPONS[&id].make_drop(Point2::new(x, y))).collect())
+                    .map_err(|e| GameError::ResourceLoadError(format!("{:?}", e)))?,
                 "WEAPONS" => ret.weapons = bincode::deserialize_from(&mut reader)
-                    .map(|l: Vec<((f32, f32), u8)>| l.into_iter().map(|((x, y), i)| WEAPONS[i as usize].make_drop(Point2::new(x, y))).collect())
+                    .map(|l: Vec<((f32, f32), u8)>| l.into_iter().map(|((x, y), i)| WEAPONS[WEAPONS_OLD[i as usize]].make_drop(Point2::new(x, y))).collect())
                     .map_err(|e| GameError::ResourceLoadError(format!("{:?}", e)))?,
                 "END" => break, 
                 _ => return Err(GameError::ResourceLoadError("Bad section".to_string()))
@@ -271,16 +284,9 @@ impl Level {
                 .map_err(|e| GameError::ResourceLoadError(format!("{:?}", e)))?;
         }
         if !self.weapons.is_empty() {
-            writeln!(file, "\nWEAPONS")?;
-            let pickups: Vec<((f32, f32), u8)> = self.weapons.iter().map(|w| ((w.pos.x, w.pos.y), {
-                let mut index = 0;
-                for (i, wep) in WEAPONS.iter().enumerate() {
-                    if wep.name == w.weapon.name {
-                        index = i;
-                        break
-                    }  
-                }
-                index as u8
+            writeln!(file, "\nWEPS")?;
+            let pickups: Vec<((f32, f32), String)> = self.weapons.iter().map(|w| ((w.pos.x, w.pos.y), {
+                WEAPONS.iter().find(|(_, wep)| wep.name == w.weapon.name).map(|(id, _)| id.clone()).unwrap()
             })).collect();
             bincode::serialize_into(&mut file, &pickups)
                 .map_err(|e| GameError::ResourceLoadError(format!("{:?}", e)))?;

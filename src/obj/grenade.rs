@@ -7,7 +7,7 @@ use crate::{
         world::Grid,
     },
     io::{
-        snd::{Sound, MediaPlayer},
+        snd::MediaPlayer,
         tex::{Assets, },
     },
 };
@@ -105,10 +105,10 @@ impl Utilities {
         if self.grenades > 0 {
             self.grenades -= 1;
 
-            mplayer.play(ctx, Sound::Throw)?;
+            mplayer.play(ctx, "throw")?;
             Ok(Some(GrenadeMaker(620.)))
         } else {
-            mplayer.play(ctx, Sound::Cock)?;
+            mplayer.play(ctx, "cock")?;
             Ok(None)
         }
     }

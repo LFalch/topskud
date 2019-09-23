@@ -5,7 +5,7 @@ use crate::{
     util::Point2,
     game::DELTA,
     io::{
-        snd::{Sound, MediaPlayer},
+        snd::MediaPlayer,
         tex::{PosText, Assets},
     },
 };
@@ -13,7 +13,7 @@ use ggez::{Context, GameResult};
 
 use super::{Object, bullet::Bullet};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub enum FireMode {
     Automatic,
     SemiAutomatic,
@@ -34,11 +34,9 @@ impl FireMode {
     }
 }
 
-// TODO: Define from toml files so people can make weapon mods
-
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct Weapon {
-    pub name: &'static str,
+    pub name: Box<str>,
     pub clip_size: NonZeroU16,
     pub clips: NonZeroU16,
     pub damage: f32,
@@ -49,20 +47,20 @@ pub struct Weapon {
     /// Time to reload a new clip/magazine
     pub reload_time: f32,
     pub fire_mode: FireMode,
-    pub shot_snd: Sound,
-    pub cock_snd: Sound,
-    pub reload_snd: Sound,
-    pub click_snd: Sound,
-    pub impact_snd: Sound,
-    pub entity_sprite: &'static str,
-    pub hands_sprite: &'static str,
-    pub spray_pattern: &'static [f32],
+    pub shot_snd: Box<str>,
+    pub cock_snd: Box<str>,
+    pub reload_snd: Box<str>,
+    pub click_snd: Box<str>,
+    pub impact_snd: Box<str>,
+    pub entity_sprite: Box<str>,
+    pub hands_sprite: Box<str>,
+    pub spray_pattern: Box<[f32]>,
     pub spray_decay: f32,
     pub spray_repeat: usize,
 }
 
 mod consts;
-pub use self::consts::WEAPONS;
+pub use self::consts::*;
 
 impl Weapon {
     pub fn make_instance(&self) -> WeaponInstance<'_> {
@@ -125,7 +123,7 @@ impl<'a> WeaponInstance<'a> {
     }
     pub fn update_text(&self, text: &mut PosText) -> GameResult<()> {
         text
-            .update(0, self.weapon.name)?
+            .update(0, &*self.weapon.name)?
             .update(2, format!("{}", self.cur_clip))?
             .update(4, format!("{}", self.ammo))?
             .update(6, format!("{:.3}", self.jerk))?
@@ -167,7 +165,7 @@ impl<'a> WeaponInstance<'a> {
         } else {
             self.loading_time -= DELTA;
             if self.loading_time <= DELTA {
-                mplayer.play(ctx, self.weapon.cock_snd)?;
+                mplayer.play(ctx, &self.weapon.cock_snd)?;
             }
         }
         Ok(())
@@ -189,7 +187,7 @@ impl<'a> WeaponInstance<'a> {
             self.ammo -= ammo_to_reload;
             self.cur_clip = clip_size;
         }
-        mplayer.play(ctx, self.weapon.reload_snd)
+        mplayer.play(ctx, &self.weapon.reload_snd)
     }
     pub fn shoot(&mut self, ctx: &mut Context, mplayer: &mut MediaPlayer) -> GameResult<Option<BulletMaker<'a>>> {
         if self.cur_clip > 0 && self.loading_time == 0. {
@@ -207,11 +205,11 @@ impl<'a> WeaponInstance<'a> {
                 self.spray_index -= self.weapon.spray_repeat;
             }
 
-            mplayer.play(ctx, self.weapon.shot_snd)?;
+            mplayer.play(ctx, &self.weapon.shot_snd)?;
             Ok(Some(BulletMaker(self.weapon, jerk)))
         } else {
             if self.cur_clip == 0 {
-                mplayer.play(ctx, self.weapon.click_snd)?;
+                mplayer.play(ctx, &self.weapon.click_snd)?;
             }
             Ok(None)
         }

@@ -1,176 +1,88 @@
-use std::num::NonZeroU16;
-
-use crate::io::{
-    snd::Sound,
-};
 use super::{FireMode, Weapon};
 
-macro_rules! nzu16 {
-    (0) => {
-        unimplemented!()
-    };
-    ($n:expr) => {
-        unsafe{NonZeroU16::new_unchecked($n)}
-    }
-}
+use lazy_static::lazy_static;
 
-macro_rules! weapons {
-    (
-        $(
-            $name:ident {
-                $($key:ident: $val:expr,)*
-            };
-        )*
-    ) => {
-        $(
-            const $name: Weapon = Weapon {
-                $($key: $val,)*
-            };
-        )*
-        pub const WEAPONS: &'static [Weapon] = &[
-            $(
-                $name
-            ),*
-        ];
-    };
-}
-
+use std::fs::File;
+use std::io::Read;
+use std::num::NonZeroU16;
+use std::collections::HashMap;
 use std::f32::consts::PI;
+
+lazy_static!{
+    pub static ref WEAPONS: HashMap<String, Weapon> = {
+        let mut file = File::open("resources/weapons/specs.toml").expect("specs.toml file");
+        let mut file_contents = String::new();
+        file.read_to_string(&mut file_contents).expect("Reading to succeed");
+
+        let templates: HashMap<String, WeaponTemplate> = toml::from_str(&file_contents).expect("well-defined weapons");
+        templates.into_iter().map(|(k, v)| (k, v.build())).collect()
+    };
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct WeaponTemplate {
+    name: Box<str>,
+    clip_size: NonZeroU16,
+    clips: NonZeroU16,
+    damage: f32,
+    penetration: f32,
+    fire_rate: f32,
+    reload_time: f32,
+    fire_mode: FireMode,
+    shot_snd: Box<str>,
+    cock_snd: Option<Box<str>>,
+    reload_snd: Option<Box<str>>,
+    click_snd: Box<str>,
+    impact_snd: Option<Box<str>>,
+    entity_sprite: Box<str>,
+    spray_pattern: Vec<f32>,
+    spray_decay: f32,
+    spray_repeat: usize,
+}
+
 const DEG2RAD: f32 = PI / 180.;
 
-macro_rules! spray {
-    ($($val:expr),+) => {
-        &[$(
-            $val * DEG2RAD
-        ),+]
-    };
-}
+impl WeaponTemplate {
+    fn build(self) -> Weapon {
+        let WeaponTemplate {
+            name,
+            clip_size,
+            clips,
+            damage,
+            penetration,
+            fire_rate,
+            reload_time,
+            fire_mode,
+            shot_snd,
+            cock_snd,
+            reload_snd,
+            click_snd,
+            impact_snd,
+            entity_sprite,
+            spray_pattern,
+            spray_decay,
+            spray_repeat,
+        } = self;
 
-weapons!{
-    // 0
-    GLOCK {
-        name: "Glack",
-        clip_size: nzu16!(16),
-        clips: nzu16!(7),
-        damage: 34.,
-        penetration: 0.24,
-        fire_rate: 0.25,
-        reload_time: 1.6,
-        fire_mode: FireMode::SemiAutomatic,
-        shot_snd: Sound::Shot2,
-        cock_snd: Sound::Cock,
-        click_snd: Sound::ClickPistol,
-        reload_snd: Sound::Reload,
-        impact_snd: Sound::Impact,
-        entity_sprite: "weapons/glock",
-        hands_sprite: "weapons/glock_hands",
-        spray_pattern: spray![6., -8., 4., -6., 2.5, 6., 4.],
-        spray_decay: 0.43,
-        spray_repeat: 2,
-    };
-    // 1
-    FIVE_SEVEN {
-        name: "5-SeveN",
-        clip_size: nzu16!(20),
-        clips: nzu16!(5),
-        damage: 41.,
-        penetration: 0.46,
-        fire_rate: 0.20,
-        reload_time: 1.3,
-        fire_mode: FireMode::SemiAutomatic,
-        shot_snd: Sound::Shot1,
-        cock_snd: Sound::Cock,
-        click_snd: Sound::ClickPistol,
-        reload_snd: Sound::Reload,
-        impact_snd: Sound::Impact,
-        entity_sprite: "weapons/five_seven",
-        hands_sprite: "weapons/five_seven_hands",
-        spray_pattern: spray![4., 6., -8., 4., -6., 4., -8., 6., 4.],
-        spray_decay: 0.34,
-        spray_repeat: 5,
-    };
-    // 2
-    MAGNUM {
-        name: "500-MG",
-        clip_size: nzu16!(5),
-        clips: nzu16!(4),
-        damage: 111.,
-        penetration: 0.05,
-        fire_rate: 0.72,
-        reload_time: 3.2,
-        fire_mode: FireMode::SemiAutomatic,
-        shot_snd: Sound::Shot1,
-        cock_snd: Sound::Cock2,
-        click_snd: Sound::ClickPistol,
-        reload_snd: Sound::Reload,
-        impact_snd: Sound::Impact,
-        entity_sprite: "weapons/magnum",
-        hands_sprite: "weapons/magnum_hands",
-        spray_pattern: spray![6., 2., -2.],
-        spray_decay: 0.85,
-        spray_repeat: 2,
-    };
-    // 3
-    M4A1 {
-        name: "M4A1",
-        clip_size: nzu16!(30),
-        clips: nzu16!(3),
-        damage: 52.,
-        penetration: 0.51,
-        fire_rate: 0.075,
-        reload_time: 2.8,
-        fire_mode: FireMode::Automatic,
-        shot_snd: Sound::Shot1,
-        cock_snd: Sound::CockAk47,
-        click_snd: Sound::ClickUzi,
-        reload_snd: Sound::ReloadM4,
-        impact_snd: Sound::Impact,
-        entity_sprite: "weapons/m4",
-        hands_sprite: "weapons/m4_hands",
-        spray_pattern: spray![3.3, 4.2, -3., 3., -3., 2., -4., 3., 2.],
-        spray_decay: 0.2,
-        spray_repeat: 5,
-    };
-    // 4
-    AK47 {
-        name: "AK-47",
-        clip_size: nzu16!(30),
-        clips: nzu16!(3),
-        damage: 65.,
-        penetration: 0.22,
-        fire_rate: 0.09,
-        reload_time: 2.6,
-        fire_mode: FireMode::Automatic,
-        shot_snd: Sound::Shot1,
-        cock_snd: Sound::CockAk47,
-        click_snd: Sound::ClickUzi,
-        reload_snd: Sound::Reload,
-        impact_snd: Sound::Impact,
-        entity_sprite: "weapons/ak47",
-        hands_sprite: "weapons/ak47_hands",
-        spray_pattern: spray![-3.3, -4.2, 3., -3., 3., -2., 4., -3., -2., 3.],
-        spray_decay: 0.13,
-        spray_repeat: 5,
-    };
-    // 5
-    ARWP {
-        name: "ARWP",
-        clip_size: nzu16!(10),
-        clips: nzu16!(4),
-        damage: 130.,
-        penetration: 0.8,
-        fire_rate: 0.92,
-        reload_time: 3.5,
-        fire_mode: FireMode::BoltAction,
-        shot_snd: Sound::Shot1,
-        cock_snd: Sound::Cock2,
-        click_snd: Sound::ClickPistol,
-        reload_snd: Sound::ReloadM4,
-        impact_snd: Sound::Impact,
-        entity_sprite: "weapons/arwp",
-        hands_sprite: "weapons/arwp_hands",
-        spray_pattern: spray![5.6, 1., -1.],
-        spray_decay: 1.,
-        spray_repeat: 2,
-    };
+        Weapon {
+            name,
+            clip_size,
+            clips,
+            damage,
+            penetration,
+            fire_rate,
+            reload_time,
+            fire_mode,
+            shot_snd,
+            cock_snd: cock_snd.unwrap_or_else(|| "cock".into()),
+            reload_snd: reload_snd.unwrap_or_else(|| "reload".into()),
+            click_snd,
+            impact_snd: impact_snd.unwrap_or_else(|| "impact".into()),
+            hands_sprite: (entity_sprite.to_string() + "_hands").into(),
+            entity_sprite,
+            spray_pattern: spray_pattern.into_iter().map(|deg| deg * DEG2RAD).collect(),
+            spray_decay,
+            spray_repeat,
+        }
+    }
 }

@@ -62,7 +62,7 @@ impl Player {
                 .. self.obj.drawparams()
             };
 
-            let img = a.get_img(ctx, wep.weapon.hands_sprite);
+            let img = a.get_img(ctx, &wep.weapon.hands_sprite);
             graphics::draw(ctx, &*img, dp)?;
         }
         let img = a.get_img(ctx, sprite);
