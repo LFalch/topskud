@@ -278,8 +278,7 @@ impl GameState for Play {
         }
         let mut deads = Vec::new();
         for (i, pickup) in self.world.pickups.iter().enumerate().rev() {
-            if (pickup.pos-self.world.player.obj.pos).norm() <= 15. {
-                pickup.apply(&mut self.world.player.health);
+            if (pickup.pos-self.world.player.obj.pos).norm() <= 15. && pickup.apply(&mut self.world.player.health) {
                 deads.push(i);
                 s.mplayer.play(ctx, "hit")?;
             }

@@ -64,7 +64,7 @@ impl World {
             }
             for i in deads.into_iter() {
                 let pickup = self.pickups.remove(i);
-                pickup.apply(&mut enemy.pl.health);
+                let _action_done = pickup.apply(&mut enemy.pl.health);
             }
         }
     }
@@ -92,7 +92,7 @@ impl World {
         }
         for i in deads.into_iter() {
             let pickup = self.pickups.remove(i);
-            pickup.apply(&mut player.health);
+            let _action_done = pickup.apply(&mut player.health);
         }
     }
 }

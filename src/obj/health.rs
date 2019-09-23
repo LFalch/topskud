@@ -1,3 +1,5 @@
+use crate::ext::FloatExt;
+
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct Health {
     pub hp: f32,
@@ -6,7 +8,7 @@ pub struct Health {
 
 impl Health {
     pub fn weapon_damage(&mut self, dmg: f32, penetration: f32) {
-        let frac = self.armour / 100.;
+        let frac = (self.armour / 100.).limit(0., 1.);
         let dmg_armour = (1. - penetration) * dmg * frac;
         let dmg_hp = dmg - dmg_armour;
 

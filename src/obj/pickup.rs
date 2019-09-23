@@ -26,7 +26,8 @@ impl Pickup {
         }
     }
     #[inline]
-    pub fn apply(&self, health: &mut Health) {
+    #[must_use]
+    pub fn apply(&self, health: &mut Health) -> bool {
         (self.pickup_type.ability)(health)
     }
     #[inline]
@@ -38,7 +39,7 @@ impl Pickup {
 #[derive(Copy, Clone)]
 pub struct PickupType {
     pub spr: &'static str,
-    ability: fn(&mut Health),
+    ability: fn(&mut Health) -> bool,
 }
 
 impl PickupType {
@@ -62,7 +63,7 @@ impl Debug for PickupType {
     }
 }
 
-pub const PICKUPS: [PickupType; 3] = [
+pub const PICKUPS: [PickupType; 4] = [
     PickupType {
         spr: "pickups/health_pack",
         ability: health_pack
@@ -74,14 +75,33 @@ pub const PICKUPS: [PickupType; 3] = [
     PickupType {
         spr: "pickups/adrenaline",
         ability: adrenaline,
-    }
+    },
+    PickupType {
+        spr: "pickups/super_armour",
+        ability: super_armour
+    },
 ];
-fn health_pack(health: &mut Health) {
-    health.hp = 100.;
+fn health_pack(health: &mut Health) -> bool {
+    if health.hp >= 100. {
+        false
+    } else {
+        health.hp = 100.;
+        true
+    }
 }
-fn armour(health: &mut Health) {
-    health.armour = 100.;
+fn armour(health: &mut Health) -> bool {
+    if health.armour >= 100. {
+        false
+    } else {
+        health.armour = 100.;
+        true
+    }
 }
-fn adrenaline(health: &mut Health) {
+fn adrenaline(health: &mut Health) -> bool {
     health.hp += 100.;
+    true
+}
+fn super_armour(health: &mut Health) -> bool {
+    health.armour += 100.;
+    true
 }

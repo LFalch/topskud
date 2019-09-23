@@ -154,6 +154,7 @@ impl Editor {
             ("pickups/health_pack", Insertion::Pickup(0)),
             ("pickups/armour", Insertion::Pickup(1)),
             ("pickups/adrenaline", Insertion::Pickup(2)),
+            ("pickups/super_armour", Insertion::Pickup(3)),
             ("weapons/glock", Insertion::Weapon("glock")),
             ("weapons/five_seven", Insertion::Weapon("five_seven")),
             ("weapons/magnum", Insertion::Weapon("magnum")),
@@ -167,9 +168,9 @@ impl Editor {
             ("decorations/office_plant", Insertion::Decoration{spr: "decorations/office_plant", rot: 0.}),
             ("decorations/office_plant2", Insertion::Decoration{spr: "decorations/office_plant2", rot: 0.}),
             ("decorations/office_plant3", Insertion::Decoration{spr: "decorations/office_plant3", rot: 0.}),
-            ("decorations/trashcan", Insertion::Decoration{spr: "decorations/trashcan", rot: 0.}),
         ]);
         let extra_bar = InsertionBar::new(Point2::new(392., 52.0), s, "", &[
+            ("decorations/trashcan", Insertion::Decoration{spr: "decorations/trashcan", rot: 0.}),
             ("decorations/manhole_cover", Insertion::Decoration{spr: "decorations/manhole_cover", rot: 0.}),
             ("decorations/manhole_cover2", Insertion::Decoration{spr: "decorations/manhole_cover2", rot: 0.}),
             ("decorations/desk_lamp", Insertion::Decoration{spr: "decorations/desk_lamp", rot: 0.}),
