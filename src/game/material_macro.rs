@@ -1,7 +1,7 @@
 macro_rules! mat {
     (
         MISSING = $missing:ident
-        $($mat:ident = $id:expr, $spr:ident, $solid:expr,)+
+        $($mat:ident = $id:expr, $spr:expr, $solid:expr,)+
     ) => (
         #[derive(Debug, Copy, Clone, PartialEq, Eq)]
         #[repr(u8)]
@@ -37,10 +37,10 @@ macro_rules! mat {
         }
 
         impl Material {
-            pub fn get_spr(&self) -> Sprite {
+            pub fn get_spr(&self) -> &'static str {
                 match *self {
                     $(
-                        Material::$mat => Sprite::$spr,
+                        Material::$mat => $spr,
                     )*
                 }
             }
@@ -52,8 +52,8 @@ macro_rules! mat {
                 }
             }
             pub fn draw(&self, ctx: &mut Context, assets: &Assets, x: f32, y: f32, dp: graphics::DrawParam) -> GameResult<()> {
-                let img = assets.get_img(self.get_spr());
-                graphics::draw(ctx, img, (Point2::from(dp.dest) + Vector2::new(x, y),))
+                let img = assets.get_img(ctx, self.get_spr());
+                graphics::draw(ctx, &*img, (Point2::from(dp.dest) + Vector2::new(x, y),))
             }
         }
     );

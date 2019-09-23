@@ -1,5 +1,5 @@
 use crate::{
-    io::tex::{Assets, Sprite},
+    io::tex::{Assets, },
 };
 use ggez::{Context, GameResult, graphics::Color};
 
@@ -7,30 +7,30 @@ use super::Object;
 
 #[derive(Debug, Copy, Clone)]
 pub struct DecorationDecl {
-    pub spr: Sprite,
+    pub spr: &'static str,
     pub solid: bool,
 }
 
-const fn decl(spr: Sprite, solid: bool) -> DecorationDecl {
+const fn decl(spr: &'static str, solid: bool) -> DecorationDecl {
     DecorationDecl { spr, solid }
 }
 
 pub const DECORATIONS: &[DecorationDecl] = &[
-    decl(Sprite::Chair1, false),
-    decl(Sprite::Chair2, false),
-    decl(Sprite::ChairBoss, false),
-    decl(Sprite::LampPost, false),
-    decl(Sprite::OfficePlant, false),
-    decl(Sprite::OfficePlant2, false),
-    decl(Sprite::OfficePlant3, false),
-    decl(Sprite::Trashcan, true),
-    decl(Sprite::ManholeCover, false),
-    decl(Sprite::ManholeCover2, false),
-    decl(Sprite::DeskLamp, false),
-    decl(Sprite::WallLight, false),
-    decl(Sprite::WallLight2, false),
-    decl(Sprite::WallLight3, false),
-    decl(Sprite::RoadMark, false),
+    decl("decorations/chair1", false),
+    decl("decorations/chair2", false),
+    decl("decorations/chair_boss", false),
+    decl("decorations/lamp_post", false),
+    decl("decorations/office_plant", false),
+    decl("decorations/office_plant2", false),
+    decl("decorations/office_plant3", false),
+    decl("decorations/trashcan", true),
+    decl("decorations/manhole_cover", false),
+    decl("decorations/manhole_cover2", false),
+    decl("decorations/desk_lamp", false),
+    decl("decorations/wall_light", false),
+    decl("decorations/wall_light2", false),
+    decl("decorations/wall_light3", false),
+    decl("decorations/road_mark", false),
 ];
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -48,7 +48,8 @@ impl DecorationObj {
     }
     #[inline]
     pub fn draw(&self, ctx: &mut Context, a: &Assets, color: Color) -> GameResult<()> {
-        self.obj.draw(ctx, a.get_img(DECORATIONS[self.decl].spr), color)
+        let img = a.get_img(ctx, DECORATIONS[self.decl].spr);
+        self.obj.draw(ctx, &*img, color)
     }
     #[inline]
     pub fn is_solid(&self) -> bool {

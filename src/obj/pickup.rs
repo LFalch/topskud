@@ -1,6 +1,6 @@
 use crate::{
     util::Point2,
-    io::tex::{Assets, Sprite},
+    io::tex::{Assets, },
 };
 use ggez::{
     GameResult, Context,
@@ -37,7 +37,7 @@ impl Pickup {
 
 #[derive(Copy, Clone)]
 pub struct PickupType {
-    pub spr: Sprite,
+    pub spr: &'static str,
     ability: fn(&mut Health),
 }
 
@@ -49,7 +49,8 @@ impl PickupType {
             offset: Point2::new(0.5, 0.5).into(),
             .. Default::default()
         };
-        graphics::draw(ctx, assets.get_img(self.spr), drawparams)
+        let img = assets.get_img(ctx, self.spr);
+        graphics::draw(ctx, &*img, drawparams)
     }
 }
 
@@ -63,15 +64,15 @@ impl Debug for PickupType {
 
 pub const PICKUPS: [PickupType; 3] = [
     PickupType {
-        spr: Sprite::HealthPack,
+        spr: "pickups/health_pack",
         ability: health_pack
     },
     PickupType {
-        spr: Sprite::Armour,
+        spr: "pickups/armour",
         ability: armour
     },
     PickupType {
-        spr: Sprite::Adrenaline,
+        spr: "pickups/adrenaline",
         ability: adrenaline,
     }
 ];

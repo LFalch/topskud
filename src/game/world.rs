@@ -1,6 +1,6 @@
 use crate::{
     util::{Point2, Vector2},
-    io::tex::{Assets, Sprite},
+    io::tex::{Assets, },
     io::save::Point2Def,
     obj::{
         Object,
@@ -110,16 +110,16 @@ include!("material_macro.rs");
 
 mat!{
     MISSING = Missing
-    Grass = 0, Grass, false,
-    Wall = 1, Wall, true,
-    Floor = 2, Floor, false,
-    Dirt = 3, Dirt, false,
-    Asphalt = 4, Asphalt, false,
-    Sand = 5, Sand, false,
-    Concrete = 6, Concrete, true,
-    WoodFloor = 7, WoodFloor, false,
-    Stairs = 8, Stairs, false,
-    Missing = 255, Missing, true,
+    Grass = 0, "materials/grass", false,
+    Wall = 1, "materials/wall", true,
+    Floor = 2, "materials/floor", false,
+    Dirt = 3, "materials/dirt", false,
+    Asphalt = 4, "materials/asphalt", false,
+    Sand = 5, "materials/sand", false,
+    Concrete = 6, "materials/concrete", true,
+    WoodFloor = 7, "materials/wood_floor", false,
+    Stairs = 8, "materials/stairs", false,
+    Missing = 255, "materials/missing", true,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

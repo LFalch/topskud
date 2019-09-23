@@ -4,7 +4,7 @@ use crate::{
         hor,
         TRANS,
         Vector2, Point2},
-    io::tex::{Sprite, PosText},
+    io::tex::PosText,
     io::snd::Sound,
     ext::BoolExt,
     obj::{Object, enemy::Enemy, decoration::{DecorationObj, DECORATIONS}, pickup::PICKUPS, weapon::WEAPONS}
@@ -100,7 +100,7 @@ struct InsertionBar {
     palette: &'static [EntityItem]
 }
 
-type EntityItem = (Sprite, Insertion);
+type EntityItem = (&'static str, Insertion);
 
 impl InsertionBar {
     fn new(p: Point2, s: &State, text: &str, palette: &'static [EntityItem]) -> Self {
@@ -124,7 +124,8 @@ impl InsertionBar {
                     graphics::draw(ctx, &mesh, DrawParam::default())?;
                 }
             }
-            graphics::draw(ctx, s.assets.get_img(*spr), drawparams)?;
+            let img = s.assets.get_img(ctx, *spr);
+            graphics::draw(ctx, &*img, drawparams)?;
             drawparams.dest.x += 34.; 
         }
         Ok(())
@@ -148,35 +149,35 @@ impl Editor {
     pub fn new(s: &State, level: Option<Level>) -> GameResult<Box<dyn GameState>> {
         let mat_text = s.assets.text(Point2::new(2., 18.0)).and_text("Materials:");
         let entities_bar = InsertionBar::new(Point2::new(392., 18.0), s, "Entitites:", &[
-            (Sprite::Enemy, Insertion::Enemy{rot: 0.}),
-            (Sprite::Goal, Insertion::Exit),
-            (Sprite::Intel, Insertion::Intel),
-            (Sprite::HealthPack, Insertion::Pickup(0)),
-            (Sprite::Armour, Insertion::Pickup(1)),
-            (Sprite::Adrenaline, Insertion::Pickup(2)),
-            (Sprite::Glock, Insertion::Weapon(0)),
-            (Sprite::FiveSeven, Insertion::Weapon(1)),
-            (Sprite::Magnum, Insertion::Weapon(2)),
-            (Sprite::M4, Insertion::Weapon(3)),
-            (Sprite::Ak47, Insertion::Weapon(4)),
-            (Sprite::Arwp, Insertion::Weapon(5)),
-            (Sprite::Chair1, Insertion::Decoration{i: 0, rot: 0.}),
-            (Sprite::Chair2, Insertion::Decoration{i: 1, rot: 0.}),
-            (Sprite::ChairBoss, Insertion::Decoration{i: 2, rot: 0.}),
-            (Sprite::LampPost, Insertion::Decoration{i: 3, rot: 0.}),
-            (Sprite::OfficePlant, Insertion::Decoration{i: 4, rot: 0.}),
-            (Sprite::OfficePlant2, Insertion::Decoration{i: 5, rot: 0.}),
-            (Sprite::OfficePlant3, Insertion::Decoration{i: 6, rot: 0.}),
-            (Sprite::Trashcan, Insertion::Decoration{i: 7, rot: 0.}),
+            ("common/enemy", Insertion::Enemy{rot: 0.}),
+            ("common/goal", Insertion::Exit),
+            ("common/intel", Insertion::Intel),
+            ("pickups/health_pack", Insertion::Pickup(0)),
+            ("pickups/armour", Insertion::Pickup(1)),
+            ("pickups/adrenaline", Insertion::Pickup(2)),
+            ("weapons/glock", Insertion::Weapon(0)),
+            ("weapons/five_seven", Insertion::Weapon(1)),
+            ("weapons/magnum", Insertion::Weapon(2)),
+            ("weapons/m4", Insertion::Weapon(3)),
+            ("weapons/ak47", Insertion::Weapon(4)),
+            ("weapons/arwp", Insertion::Weapon(5)),
+            ("decorations/chair1", Insertion::Decoration{i: 0, rot: 0.}),
+            ("decorations/chair2", Insertion::Decoration{i: 1, rot: 0.}),
+            ("decorations/chair_boss", Insertion::Decoration{i: 2, rot: 0.}),
+            ("decorations/lamp_post", Insertion::Decoration{i: 3, rot: 0.}),
+            ("decorations/office_plant", Insertion::Decoration{i: 4, rot: 0.}),
+            ("decorations/office_plant2", Insertion::Decoration{i: 5, rot: 0.}),
+            ("decorations/office_plant3", Insertion::Decoration{i: 6, rot: 0.}),
+            ("decorations/trashcan", Insertion::Decoration{i: 7, rot: 0.}),
         ]);
         let extra_bar = InsertionBar::new(Point2::new(392., 52.0), s, "", &[
-            (Sprite::ManholeCover, Insertion::Decoration{i: 8, rot: 0.}),
-            (Sprite::ManholeCover2, Insertion::Decoration{i: 9, rot: 0.}),
-            (Sprite::DeskLamp, Insertion::Decoration{i: 10, rot: 0.}),
-            (Sprite::WallLight, Insertion::Decoration{i: 11, rot: 0.}),
-            (Sprite::WallLight2, Insertion::Decoration{i: 12, rot: 0.}),
-            (Sprite::WallLight3, Insertion::Decoration{i: 13, rot: 0.}),
-            (Sprite::RoadMark, Insertion::Decoration{i: 14, rot: 0.}),
+            ("decorations/manhole_cover", Insertion::Decoration{i: 8, rot: 0.}),
+            ("decorations/manhole_cover2", Insertion::Decoration{i: 9, rot: 0.}),
+            ("decorations/desk_lamp", Insertion::Decoration{i: 10, rot: 0.}),
+            ("decorations/wall_light", Insertion::Decoration{i: 11, rot: 0.}),
+            ("decorations/wall_light2", Insertion::Decoration{i: 12, rot: 0.}),
+            ("decorations/wall_light3", Insertion::Decoration{i: 13, rot: 0.}),
+            ("decorations/road_mark", Insertion::Decoration{i: 14, rot: 0.}),
         ]);
 
         let save;
@@ -259,7 +260,8 @@ impl GameState for Editor {
         }
 
         if let Some(start) = self.level.start_point {
-            graphics::draw(ctx, s.assets.get_img(Sprite::Start), graphics::DrawParam {
+            let img = s.assets.get_img(ctx, "common/start");
+            graphics::draw(ctx, &*img, graphics::DrawParam {
                 dest: start.into(),
                 offset: Point2::new(0.5, 0.5).into(),
                 .. Default::default()
@@ -275,7 +277,8 @@ impl GameState for Editor {
                 offset: Point2::new(0.5, 0.5).into(),
                 .. Default::default()
             };
-            graphics::draw(ctx, s.assets.get_img(Sprite::Goal), drawparams)?;
+            let img = s.assets.get_img(ctx, "common/goal");
+            graphics::draw(ctx, &*img, drawparams)?;
         }
 
         for (i, &intel) in self.level.intels.iter().enumerate() {
@@ -290,7 +293,8 @@ impl GameState for Editor {
                 offset: Point2::new(0.5, 0.5).into(),
                 .. Default::default()
             };
-            graphics::draw(ctx, s.assets.get_img(Sprite::Intel), drawparams)?;
+            let img = s.assets.get_img(ctx, "common/intel");
+            graphics::draw(ctx, &*img, drawparams)?;
         }
 
         for (i, enemy) in self.level.enemies.iter().enumerate() {
@@ -337,7 +341,8 @@ impl GameState for Editor {
                 offset: Point2::new(0.5, 0.5).into(),
                 .. Default::default()
             };
-            graphics::draw(ctx, s.assets.get_img(weapon.weapon.entity_sprite), drawparams)?;
+            let img = s.assets.get_img(ctx, weapon.weapon.entity_sprite);
+            graphics::draw(ctx, &*img, drawparams)?;
         }
 
         // Draw moving objects shadows
@@ -357,7 +362,8 @@ impl GameState for Editor {
                     color: TRANS,
                     .. Default::default()
                 };
-                graphics::draw(ctx, s.assets.get_img(Sprite::Intel), drawparams)?;
+                let img = s.assets.get_img(ctx, "common/intel");
+                graphics::draw(ctx, &*img, drawparams)?;
             }
             for &i in &selection.decorations {
                 let mut dec = self.level.decorations[i].clone();
@@ -372,7 +378,8 @@ impl GameState for Editor {
                     color: TRANS,
                     .. Default::default()
                 };
-                graphics::draw(ctx, s.assets.get_img(PICKUPS[pickup.1 as usize].spr), drawparams)?;
+                let img = s.assets.get_img(ctx, PICKUPS[pickup.1 as usize].spr);
+                graphics::draw(ctx, &*img, drawparams)?;
             }
             for &i in &selection.weapons {
                 let drawparams = graphics::DrawParam {
@@ -381,7 +388,8 @@ impl GameState for Editor {
                     color: TRANS,
                     .. Default::default()
                 };
-                graphics::draw(ctx, s.assets.get_img(self.level.weapons[i].weapon.entity_sprite), drawparams)?;
+                let img = s.assets.get_img(ctx, self.level.weapons[i].weapon.entity_sprite);
+                graphics::draw(ctx, &*img, drawparams)?;
             }
             if selection.exit {
                 if let Some(exit) = self.level.exit {
@@ -391,7 +399,8 @@ impl GameState for Editor {
                         color: TRANS,
                         .. Default::default()
                     };
-                    graphics::draw(ctx, s.assets.get_img(Sprite::Goal), drawparams)?;
+                    let img = s.assets.get_img(ctx, "common/goal");
+            graphics::draw(ctx, &*img, drawparams)?;
                 }
             }
         }
@@ -411,7 +420,8 @@ impl GameState for Editor {
                     color: TRANS,
                     .. Default::default()
                 };
-                graphics::draw(ctx, s.assets.get_img(PICKUPS[index as usize].spr), drawparams)?;
+                let img = s.assets.get_img(ctx, PICKUPS[index as usize].spr);
+                graphics::draw(ctx, &*img, drawparams)?;
             }
             Tool::Inserter(Insertion::Weapon(index)) => {
                 let drawparams = graphics::DrawParam {
@@ -421,7 +431,8 @@ impl GameState for Editor {
                     color: TRANS,
                     .. Default::default()
                 };
-                graphics::draw(ctx, s.assets.get_img(WEAPONS[index as usize].entity_sprite), drawparams)?;
+                let img = s.assets.get_img(ctx, WEAPONS[index as usize].entity_sprite);
+                graphics::draw(ctx, &*img, drawparams)?;
             }
             Tool::Inserter(Insertion::Enemy{rot}) => {
                 let drawparams = graphics::DrawParam {
@@ -431,7 +442,8 @@ impl GameState for Editor {
                     color: TRANS,
                     .. Default::default()
                 };
-                graphics::draw(ctx, s.assets.get_img(Sprite::Enemy), drawparams)?;
+                let img = s.assets.get_img(ctx, "common/enemy");
+                graphics::draw(ctx, &*img, drawparams)?;
             }
             Tool::Inserter(Insertion::Decoration{i, rot}) => {
                 let drawparams = graphics::DrawParam {
@@ -441,7 +453,8 @@ impl GameState for Editor {
                     color: TRANS,
                     .. Default::default()
                 };
-                graphics::draw(ctx, s.assets.get_img(DECORATIONS[i].spr), drawparams)?;
+                let img = s.assets.get_img(ctx, DECORATIONS[i].spr);
+                graphics::draw(ctx, &*img, drawparams)?;
             }
             Tool::Inserter(Insertion::Exit) => {
                 let drawparams = graphics::DrawParam {
@@ -450,7 +463,8 @@ impl GameState for Editor {
                     color: TRANS,
                     .. Default::default()
                 };
-                graphics::draw(ctx, s.assets.get_img(Sprite::Goal), drawparams)?;
+                let img = s.assets.get_img(ctx, "common/goal");
+                graphics::draw(ctx, &*img, drawparams)?;
             }
             Tool::Inserter(Insertion::Intel) => {
                 let drawparams = graphics::DrawParam {
@@ -459,7 +473,8 @@ impl GameState for Editor {
                     color: TRANS,
                     .. Default::default()
                 };
-                graphics::draw(ctx, s.assets.get_img(Sprite::Intel), drawparams)?;
+                let img = s.assets.get_img(ctx, "common/intel");
+                graphics::draw(ctx, &*img, drawparams)?;
             }
         }
 

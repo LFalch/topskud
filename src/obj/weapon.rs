@@ -6,7 +6,7 @@ use crate::{
     game::DELTA,
     io::{
         snd::{Sound, MediaPlayer},
-        tex::{Sprite, PosText, Assets},
+        tex::{PosText, Assets},
     },
 };
 use ggez::{Context, GameResult};
@@ -34,13 +34,15 @@ impl FireMode {
     }
 }
 
+// TODO: Define from toml files so people can make weapon mods
+
 #[derive(Debug, Clone, Copy)]
 pub struct Weapon {
     pub name: &'static str,
     pub clip_size: NonZeroU16,
     pub clips: NonZeroU16,
     pub damage: f32,
-    /// Fraction of armour damage redirverted to hp damage
+    /// Fraction of armour damage rediverted to hp damage
     pub penetration: f32,
     /// Time between each shot
     pub fire_rate: f32,
@@ -52,8 +54,8 @@ pub struct Weapon {
     pub reload_snd: Sound,
     pub click_snd: Sound,
     pub impact_snd: Sound,
-    pub entity_sprite: Sprite,
-    pub hands_sprite: Sprite,
+    pub entity_sprite: &'static str,
+    pub hands_sprite: &'static str,
     pub spray_pattern: &'static [f32],
     pub spray_decay: f32,
     pub spray_repeat: usize,

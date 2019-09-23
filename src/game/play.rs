@@ -7,7 +7,7 @@ use crate::{
         Vector2, Point2
     },
     io::{
-        tex::{Assets, Sprite, PosText},
+        tex::{Assets, PosText},
         snd::Sound,
     },
     obj::{Object, pickup::Pickup, player::Player, enemy::{Enemy, Chaser}, health::Health, weapon::WeaponInstance, grenade::Explosion},
@@ -56,11 +56,12 @@ impl BloodSplatter {
     }
     fn draw(&self, ctx: &mut Context, a: &Assets) -> GameResult<()> {
         let spr = match self.ty {
-            Blood::B1 => Sprite::Blood1,
-            Blood::B2 => Sprite::Blood2,
-            Blood::B3 => Sprite::Blood3,
+            Blood::B1 => "common/blood1",
+            Blood::B2 => "common/blood2",
+            Blood::B3 => "common/blood3",
         };
-        self.o.draw(ctx, a.get_img(spr), WHITE)
+        let img = a.get_img(ctx, spr);
+        self.o.draw(ctx, &*img, WHITE)
     }
 }
 /// The state of the game
@@ -129,7 +130,7 @@ impl Play {
 
                     world
                 },
-                holes: SpriteBatch::new(s.assets.get_img(Sprite::Hole).clone()),
+                holes: SpriteBatch::new(s.assets.get_img(ctx, "common/hole").clone()),
             }
         ))
     }
@@ -386,7 +387,8 @@ impl GameState for Play {
                 offset: Point2::new(0.5, 0.5).into(),
                 .. Default::default()
             };
-            graphics::draw(ctx, s.assets.get_img(Sprite::Intel), drawparams)?;
+            let img = s.assets.get_img(ctx, "common/intel");
+            graphics::draw(ctx, &*img, drawparams)?;
         }
         for decoration in &self.world.decorations {
             decoration.draw(ctx, &s.assets, WHITE)?;
@@ -402,7 +404,8 @@ impl GameState for Play {
                 offset: Point2::new(0.5, 0.5).into(),
                 .. Default::default()
             };
-            graphics::draw(ctx, s.assets.get_img(pickup.pickup_type.spr), drawparams)?;
+            let img = s.assets.get_img(ctx, pickup.pickup_type.spr);
+            graphics::draw(ctx, &*img, drawparams)?;
         }
         for wep in &self.world.weapons {
             let drawparams = graphics::DrawParam {
@@ -410,7 +413,8 @@ impl GameState for Play {
                 offset: Point2::new(0.5, 0.5).into(),
                 .. Default::default()
             };
-            graphics::draw(ctx, s.assets.get_img(wep.weapon.entity_sprite), drawparams)?;
+            let img = s.assets.get_img(ctx, wep.weapon.entity_sprite);
+            graphics::draw(ctx, &*img, drawparams)?;
         }
 
         self.world.player.draw_player(ctx, &s.assets)?;
@@ -442,7 +446,8 @@ impl GameState for Play {
             color: RED,
             .. Default::default()
         };
-        graphics::draw(ctx, s.assets.get_img(Sprite::Crosshair), drawparams)
+        let img = s.assets.get_img(ctx, "common/crosshair");
+        graphics::draw(ctx, &*img, drawparams)
     }
     fn mouse_up(&mut self, s: &mut State, ctx: &mut Context, btn: MouseButton) {
         match btn {

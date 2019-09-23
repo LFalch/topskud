@@ -9,7 +9,7 @@ use crate::{
     util::{angle_from_vec, angle_to_vec},
     io::{
         snd::MediaPlayer,
-        tex::{Assets, Sprite},
+        tex::{Assets, },
     },
     game::{DELTA, world::Grid},
 };
@@ -70,7 +70,7 @@ impl Enemy {
     }
     #[inline]
     pub fn draw(&self, ctx: &mut Context, a: &Assets, color: Color) -> GameResult<()> {
-        self.pl.draw(ctx, a, Sprite::Enemy, color)
+        self.pl.draw(ctx, a, "common/enemy", color)
     }
     fn look_towards(&mut self, dist: Vector2) -> bool{
         let dir = angle_to_vec(self.pl.obj.rot);

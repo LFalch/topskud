@@ -70,9 +70,10 @@ macro_rules! sounds {
             effects: Vec<Source>,
         }
         impl MediaPlayer {
-            #[allow(clippy::new_ret_no_self)]
+            #[allow(clippy::new_ret_no_self, clippy::no_effect)]
             pub fn new(ctx: &mut Context) -> GameResult<Self> {
-                let mut data = HashMap::new();
+                // This is stupid
+                let mut data = HashMap::with_capacity({let mut x = 0; $($snd; x += 1;)* x});
                 $(
                     data.insert($name, SoundData::new(ctx, concat!("/sounds/", $snd, ending!($typ)))?);
                 )*
@@ -95,7 +96,7 @@ macro_rules! sounds {
                         let mut src = new_source(ctx, &self.data[&s])?;
                         src.play()?;
 
-                        self.clear_effetcs();
+                        self.clear_effects();
 
                         if self.effects.len() < EFFECTS_LIMIT {
                             self.effects.push(src);
@@ -107,15 +108,8 @@ macro_rules! sounds {
                     },
                 }
             }
-            fn clear_effetcs(&mut self) {
-                let deads: Vec<_> =
-                self.effects.iter().enumerate().rev().filter_map(|(i, src)| if !src.playing() {
-                    Some(i)
-                } else {None}).collect();
-
-                for i in deads {
-                    self.effects.remove(i);
-                }
+            fn clear_effects(&mut self) {
+                self.effects.retain(|src| src.playing());
             }
             fn new_cache(&self, ctx: &mut Context, s: Sound, repeat: bool) -> GameResult<Source> {
                 Source::from_data(ctx, self.data[&s].clone())

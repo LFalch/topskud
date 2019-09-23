@@ -6,7 +6,7 @@ use crate::{
         DELTA,
         world::Grid,
     },
-    io::tex::{Assets, Sprite}
+    io::tex::{Assets, }
 };
 use super::{Object, player::Player, enemy::Enemy, health::Health, weapon::Weapon};
 
@@ -25,7 +25,8 @@ impl Bullet<'_> {
     }
     #[inline]
     pub fn draw(&self, ctx: &mut Context, a: &Assets) -> GameResult<()> {
-        self.obj.draw(ctx, a.get_img(Sprite::Bullet), WHITE)
+        let img = a.get_img(ctx, "common/bullet");
+        self.obj.draw(ctx, &*img, WHITE)
     }
     pub fn update(&mut self, grid: &Grid, player: &mut Player, enemies: &mut [Enemy]) -> Hit {
         let start = self.obj.pos;

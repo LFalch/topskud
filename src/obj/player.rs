@@ -4,7 +4,7 @@ use crate::{
     util::{Point2, angle_to_vec},
     io::{
         snd::MediaPlayer,
-        tex::{Assets, Sprite},
+        tex::{Assets, },
     },
 };
 
@@ -52,9 +52,9 @@ impl Player {
 
     #[inline]
     pub fn draw_player(&self, ctx: &mut Context, a: &Assets) -> GameResult<()> {
-        self.draw(ctx, a, Sprite::Player, WHITE)
+        self.draw(ctx, a, "common/player", WHITE)
     }
-    pub fn draw(&self, ctx: &mut Context, a: &Assets, sprite: Sprite, color: Color) -> GameResult<()> {
+    pub fn draw(&self, ctx: &mut Context, a: &Assets, sprite: &str, color: Color) -> GameResult<()> {
         if let Some(wep) = self.wep {
             let dp = graphics::DrawParam {
                 dest: (self.obj.pos+angle_to_vec(self.obj.rot)*16.).into(),
@@ -62,9 +62,11 @@ impl Player {
                 .. self.obj.drawparams()
             };
 
-            graphics::draw(ctx, a.get_img(wep.weapon.hands_sprite), dp)?;
+            let img = a.get_img(ctx, wep.weapon.hands_sprite);
+            graphics::draw(ctx, &*img, dp)?;
         }
-        self.obj.draw(ctx, a.get_img(sprite), color)
+        let img = a.get_img(ctx, sprite);
+        self.obj.draw(ctx, &*img, color)
     }
     pub fn update(&mut self, ctx: &mut Context, mplayer: &mut MediaPlayer) -> GameResult<()> {
         if let Some(wep) = &mut self.wep {

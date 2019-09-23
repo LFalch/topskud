@@ -8,7 +8,7 @@ use crate::{
     },
     io::{
         snd::{Sound, MediaPlayer},
-        tex::{Assets, Sprite},
+        tex::{Assets, },
     },
 };
 use super::{Object, player::Player, enemy::Enemy, health::Health};
@@ -34,7 +34,8 @@ impl Grenade {
     }
     #[inline]
     pub fn draw(&self, ctx: &mut Context, a: &Assets) -> GameResult<()> {
-        self.obj.draw(ctx, a.get_img(Sprite::Pineapple), WHITE)
+        let img = a.get_img(ctx, "weapons/pineapple");
+        self.obj.draw(ctx, &*img, WHITE)
     }
     pub fn update(&mut self, grid: &Grid, player: &mut Player, enemies: &mut [Enemy]) -> Option<Explosion> {
         let start = self.obj.pos;
