@@ -148,15 +148,17 @@ impl Console {
                 if let Some(i) = args.get(1) {
                     if let Ok(i) = i.parse() {
                         cmp.current = i;
-                        let lvl = cmp.levels[i].clone();
+                        if let Some(lvl) = cmp.next_level() {
+                            let (health, wep) = if let Some(world) = gs.get_world() {
+                                (world.player.health, world.player.wep)
+                            } else {
+                                (Health::default(), None)
+                            };
 
-                        let (health, wep) = if let Some(world) = gs.get_world() {
-                            (world.player.health, world.player.wep)
+                            state.switch(StateSwitch::PlayWith{health, wep, lvl: Box::new(lvl)});
                         } else {
-                            (Health::default(), None)
-                        };
-
-                        state.switch(StateSwitch::PlayWith{health, wep, lvl: Box::new(lvl)});
+                            self.history.add("Level not found\n");
+                        }
                     } else {
                         self.history.add("Not a valid index\n");
                     }

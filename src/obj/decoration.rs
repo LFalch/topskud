@@ -5,54 +5,62 @@ use ggez::{Context, GameResult, graphics::Color};
 
 use super::Object;
 
-#[derive(Debug, Copy, Clone)]
-pub struct DecorationDecl {
-    pub spr: &'static str,
-    pub solid: bool,
+#[derive(Debug, Clone, Deserialize)]
+pub struct OldDecoration {
+    pub obj: Object,
+    pub i: usize,
 }
 
-const fn decl(spr: &'static str, solid: bool) -> DecorationDecl {
-    DecorationDecl { spr, solid }
+impl OldDecoration {
+    pub fn renew(self) -> Decoration {
+        let OldDecoration{obj, i} = self;
+
+        Decoration {
+            obj,
+            spr: OLD_DECORATION_LIST[i].into()
+        }
+    }
 }
 
-pub const DECORATIONS: &[DecorationDecl] = &[
-    decl("decorations/chair1", false),
-    decl("decorations/chair2", false),
-    decl("decorations/chair_boss", false),
-    decl("decorations/lamp_post", false),
-    decl("decorations/office_plant", false),
-    decl("decorations/office_plant2", false),
-    decl("decorations/office_plant3", false),
-    decl("decorations/trashcan", true),
-    decl("decorations/manhole_cover", false),
-    decl("decorations/manhole_cover2", false),
-    decl("decorations/desk_lamp", false),
-    decl("decorations/wall_light", false),
-    decl("decorations/wall_light2", false),
-    decl("decorations/wall_light3", false),
-    decl("decorations/road_mark", false),
+const OLD_DECORATION_LIST: [&str; 15] = [
+    "decorations/chair1",
+    "decorations/chair2",
+    "decorations/chair_boss",
+    "decorations/lamp_post",
+    "decorations/office_plant",
+    "decorations/office_plant2",
+    "decorations/office_plant3",
+    "decorations/trashcan",
+    "decorations/manhole_cover",
+    "decorations/manhole_cover2",
+    "decorations/desk_lamp",
+    "decorations/wall_light",
+    "decorations/wall_light2",
+    "decorations/wall_light3",
+    "decorations/road_mark"
 ];
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DecorationObj {
+pub struct Decoration {
     pub obj: Object,
-    pub decl: usize,
+    pub spr: Box<str>,
 }
 
-impl DecorationObj {
+impl Decoration {
     #[inline]
-    pub fn new(obj: Object, decl: usize) -> Self {
-        DecorationObj {
-            obj, decl
+    pub fn new<S: Into<Box<str>>>(obj: Object, spr: S) -> Self {
+        Decoration {
+            obj,
+            spr: spr.into()
         }
     }
     #[inline]
     pub fn draw(&self, ctx: &mut Context, a: &Assets, color: Color) -> GameResult<()> {
-        let img = a.get_img(ctx, DECORATIONS[self.decl].spr);
+        let img = a.get_img(ctx, &self.spr);
         self.obj.draw(ctx, &*img, color)
     }
     #[inline]
     pub fn is_solid(&self) -> bool {
-        DECORATIONS[self.decl].solid
+        &*self.spr == "decorations/trashcan"
     }
 }

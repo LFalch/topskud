@@ -11,7 +11,7 @@ use crate::{
         grenade::Grenade,
         weapon::{WeaponInstance, WeaponDrop, WEAPONS},
         pickup::Pickup,
-        decoration::DecorationObj,
+        decoration::{Decoration, OldDecoration},
     }
 };
 use ggez::{
@@ -38,7 +38,7 @@ pub struct World {
     pub bullets: Vec<Bullet<'static>>,
     pub grenades: Vec<Grenade>,
     pub weapons: Vec<WeaponDrop<'static>>,
-    pub decorations: Vec<DecorationObj>,
+    pub decorations: Vec<Decoration>,
     pub pickups: Vec<Pickup>,
 }
 
@@ -168,7 +168,7 @@ pub struct Level {
     pub exit: Option<Point2>,
     pub intels: Vec<Point2>,
     pub pickups: Vec<(Point2, u8)>,
-    pub decorations: Vec<DecorationObj>,
+    pub decorations: Vec<Decoration>,
     pub weapons: Vec<WeaponDrop<'static>>,
 }
 
@@ -228,6 +228,9 @@ impl Level {
                     .map(|l: Vec<(f32, f32)>| l.into_iter().map(|(x, y)| Point2::new(x, y)).collect())
                     .map_err(|e| GameError::ResourceLoadError(format!("{:?}", e)))?,
                 "DECORATIONS" => ret.decorations = bincode::deserialize_from(&mut reader)
+                    .map(|old_decs: Vec<OldDecoration>| old_decs.into_iter().map(|od| od.renew()).collect())
+                    .map_err(|e| GameError::ResourceLoadError(format!("{:?}", e)))?,
+                "DECS" => ret.decorations = bincode::deserialize_from(&mut reader)
                     .map_err(|e| GameError::ResourceLoadError(format!("{:?}", e)))?,
                 "PICKUPS" => ret.pickups = bincode::deserialize_from(&mut reader)
                     .map(|l: Vec<((f32, f32), u8)>| l.into_iter().map(|((x, y), i)| (Point2::new(x, y), i)).collect())
@@ -273,7 +276,7 @@ impl Level {
                 .map_err(|e| GameError::ResourceLoadError(format!("{:?}", e)))?;
         }
         if !self.decorations.is_empty() {
-            writeln!(file, "\nDECORATIONS")?;
+            writeln!(file, "\nDECS")?;
             bincode::serialize_into(&mut file, &self.decorations)
             .map_err(|e| GameError::ResourceLoadError(format!("{:?}", e)))?;
         }

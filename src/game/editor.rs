@@ -6,7 +6,7 @@ use crate::{
         Vector2, Point2},
     io::tex::PosText,
     ext::BoolExt,
-    obj::{Object, enemy::Enemy, decoration::{DecorationObj, DECORATIONS}, pickup::PICKUPS, weapon::WEAPONS}
+    obj::{Object, enemy::Enemy, decoration::Decoration, pickup::PICKUPS, weapon::WEAPONS}
 };
 use ggez::{
     Context, GameResult,
@@ -38,7 +38,7 @@ enum Insertion {
     Enemy{rot: f32},
     Pickup(u8),
     Weapon(&'static str),
-    Decoration{i: usize, rot: f32},
+    Decoration{spr: &'static str, rot: f32},
     Exit,
 }
 impl ::std::cmp::PartialEq for Insertion {
@@ -50,7 +50,7 @@ impl ::std::cmp::PartialEq for Insertion {
             (Enemy{..}, Enemy{..}) => true,
             (Pickup(i), Pickup(j)) if i == j => true,
             (Weapon(i), Weapon(j)) if i == j => true,
-            (Decoration{i, ..}, Decoration{i: j, ..}) if i == j => true,
+            (Decoration{spr, ..}, Decoration{spr: spr2, ..}) if spr == spr2 => true,
             (Exit, Exit) => true,
             _ => false
         }
@@ -160,23 +160,23 @@ impl Editor {
             ("weapons/m4", Insertion::Weapon("m4")),
             ("weapons/ak47", Insertion::Weapon("ak47")),
             ("weapons/arwp", Insertion::Weapon("arwp")),
-            ("decorations/chair1", Insertion::Decoration{i: 0, rot: 0.}),
-            ("decorations/chair2", Insertion::Decoration{i: 1, rot: 0.}),
-            ("decorations/chair_boss", Insertion::Decoration{i: 2, rot: 0.}),
-            ("decorations/lamp_post", Insertion::Decoration{i: 3, rot: 0.}),
-            ("decorations/office_plant", Insertion::Decoration{i: 4, rot: 0.}),
-            ("decorations/office_plant2", Insertion::Decoration{i: 5, rot: 0.}),
-            ("decorations/office_plant3", Insertion::Decoration{i: 6, rot: 0.}),
-            ("decorations/trashcan", Insertion::Decoration{i: 7, rot: 0.}),
+            ("decorations/chair1", Insertion::Decoration{spr: "decorations/chair1", rot: 0.}),
+            ("decorations/chair2", Insertion::Decoration{spr: "decorations/chair2", rot: 0.}),
+            ("decorations/chair_boss", Insertion::Decoration{spr: "decorations/chair_boss", rot: 0.}),
+            ("decorations/lamp_post", Insertion::Decoration{spr: "decorations/lamp_post", rot: 0.}),
+            ("decorations/office_plant", Insertion::Decoration{spr: "decorations/office_plant", rot: 0.}),
+            ("decorations/office_plant2", Insertion::Decoration{spr: "decorations/office_plant2", rot: 0.}),
+            ("decorations/office_plant3", Insertion::Decoration{spr: "decorations/office_plant3", rot: 0.}),
+            ("decorations/trashcan", Insertion::Decoration{spr: "decorations/trashcan", rot: 0.}),
         ]);
         let extra_bar = InsertionBar::new(Point2::new(392., 52.0), s, "", &[
-            ("decorations/manhole_cover", Insertion::Decoration{i: 8, rot: 0.}),
-            ("decorations/manhole_cover2", Insertion::Decoration{i: 9, rot: 0.}),
-            ("decorations/desk_lamp", Insertion::Decoration{i: 10, rot: 0.}),
-            ("decorations/wall_light", Insertion::Decoration{i: 11, rot: 0.}),
-            ("decorations/wall_light2", Insertion::Decoration{i: 12, rot: 0.}),
-            ("decorations/wall_light3", Insertion::Decoration{i: 13, rot: 0.}),
-            ("decorations/road_mark", Insertion::Decoration{i: 14, rot: 0.}),
+            ("decorations/manhole_cover", Insertion::Decoration{spr: "decorations/manhole_cover", rot: 0.}),
+            ("decorations/manhole_cover2", Insertion::Decoration{spr: "decorations/manhole_cover2", rot: 0.}),
+            ("decorations/desk_lamp", Insertion::Decoration{spr: "decorations/desk_lamp", rot: 0.}),
+            ("decorations/wall_light", Insertion::Decoration{spr: "decorations/wall_light", rot: 0.}),
+            ("decorations/wall_light2", Insertion::Decoration{spr: "decorations/wall_light2", rot: 0.}),
+            ("decorations/wall_light3", Insertion::Decoration{spr: "decorations/wall_light3", rot: 0.}),
+            ("decorations/road_mark", Insertion::Decoration{spr: "decorations/road_mark", rot: 0.}),
         ]);
 
         let save;
@@ -444,7 +444,7 @@ impl GameState for Editor {
                 let img = s.assets.get_img(ctx, "common/enemy");
                 graphics::draw(ctx, &*img, drawparams)?;
             }
-            Tool::Inserter(Insertion::Decoration{i, rot}) => {
+            Tool::Inserter(Insertion::Decoration{spr, rot}) => {
                 let drawparams = graphics::DrawParam {
                     dest,
                     rotation: rot,
@@ -452,7 +452,7 @@ impl GameState for Editor {
                     color: TRANS,
                     .. Default::default()
                 };
-                let img = s.assets.get_img(ctx, DECORATIONS[i].spr);
+                let img = s.assets.get_img(ctx, spr);
                 graphics::draw(ctx, &*img, drawparams)?;
             }
             Tool::Inserter(Insertion::Exit) => {
@@ -712,9 +712,9 @@ impl GameState for Editor {
                         self.level.enemies.push(Enemy::new(Object::with_rot(mousepos, rot)));
                         self.level.weapons.push(WEAPONS["glock"].make_drop(mousepos));
                     },
-                    Tool::Inserter(Insertion::Decoration{i, rot}) => {
-                        self.level.decorations.push(DecorationObj::new(Object::with_rot(mousepos, rot), i));
-                    },
+                    Tool::Inserter(Insertion::Decoration{spr, rot}) => {
+                        self.level.decorations.push(Decoration::new(Object::with_rot(mousepos, rot), spr));
+                    }
                     Tool::Inserter(Insertion::Pickup(i)) => {
                         self.level.pickups.push((mousepos, i));
                     },
