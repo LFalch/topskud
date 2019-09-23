@@ -1,12 +1,11 @@
 use std::path::{Path, PathBuf};
 use crate::{
     util::{Vector2, Point2},
-    ext::BoolExt,
     io::{
         snd::MediaPlayer,
         tex::{Assets, PosText},
     },
-    obj::{health::Health, weapon::WeaponInstance},
+    obj::{health::Health, weapon::{WEAPONS, WeaponInstance}},
 };
 use ggez::{
     nalgebra::Matrix4,
@@ -124,6 +123,49 @@ impl Console {
             } else {
                 self.history.add("No world\n");
             },
+            "wep" => if let Some(world) = gs.get_mut_world() {
+                if let Some(&wep) = args.get(1) {
+                    if let Some(weapon) = WEAPONS.get(wep) {
+                        world.weapons.push(weapon.make_drop(state.mouse-state.offset));
+                    } else {
+                        self.history.add("No such weapon\n");
+                    }
+                } else {
+                    self.history.add("Please pass a weapon id\n");
+                }
+            } else {
+                self.history.add("No world\n");
+            },
+            "reload" => {
+                if let Some(arg) = args.get(1) {
+                    state.content = Content::File(arg.to_owned().into())
+                } else {
+                    state.content = Content::None
+                }
+                state.switch(StateSwitch::Menu);
+            }
+            "cmp" => if let Content::Campaign(ref mut cmp) = state.content {
+                if let Some(i) = args.get(1) {
+                    if let Ok(i) = i.parse() {
+                        cmp.current = i;
+                        let lvl = cmp.levels[i].clone();
+
+                        let (health, wep) = if let Some(world) = gs.get_world() {
+                            (world.player.health, world.player.wep)
+                        } else {
+                            (Health::default(), None)
+                        };
+
+                        state.switch(StateSwitch::PlayWith{health, wep, lvl: Box::new(lvl)});
+                    } else {
+                        self.history.add("Not a valid index\n");
+                    }
+                } else {
+                    self.history.add(format!("{} levels. Current is {}\n", cmp.levels.len(), cmp.current));
+                }
+            } else {
+                self.history.add("No campaign loaded\n");
+            }
             "gg" => if let Some(world) = gs.get_mut_world() {
                 world.player.utilities.grenades += 3;
                 self.history.add("Gg'd\n");
@@ -316,7 +358,9 @@ impl EventHandler for Master {
     fn key_up_event(&mut self, ctx: &mut Context, keycode: KeyCode, _: KeyMods) {
         use self::KeyCode::*;
         if let Tab = keycode {
-            self.console_open.toggle();
+            if !self.console_open {
+                self.console_open = true;
+            }
         }
         self.gs.key_up(&mut self.state, ctx, keycode)
     }
@@ -329,8 +373,10 @@ impl EventHandler for Master {
                     // Delete
                     '\u{7f}' => (),
                     // Escape
-                    '\u{1b}' => (),
-                    '\t' => (),
+                    '\u{1b}' => self.console_open = false,
+                    '\t' => {
+                        // Do tab completion
+                    }
                     // Paste
                     '\u{16}' => {
                         let mut cc = ClipboardContext::new().unwrap();

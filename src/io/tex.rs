@@ -13,6 +13,8 @@ pub struct Assets {
     pub font: Font,
 }
 
+const MISSING_TEXTURE: &str = "materials/missing";
+
 impl Assets {
     /// Initialises the assets with the context
     #[allow(clippy::new_ret_no_self)]
@@ -26,7 +28,13 @@ impl Assets {
     #[inline]
     pub fn get_img(&self, ctx: &mut Context, s: &str) -> Ref<Image> {
         if !self.texes.borrow().contains_key(s) {
-            self.texes.borrow_mut().insert(s.to_owned(), Image::new(ctx, &format!("/{}.png", s)).expect("No such texture"));
+            if let Ok(tex) = Image::new(ctx, &format!("/{}.png", s)) {
+                self.texes.borrow_mut().insert(s.to_owned(), tex);
+            } else if s != MISSING_TEXTURE {
+                return self.get_img(ctx, MISSING_TEXTURE)
+            } else {
+                panic!("Missing texture not found");
+            }
         }
         Ref::map(self.texes.borrow(), |ts| &ts[s])
     }
