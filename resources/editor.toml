@@ -1,0 +1,20 @@
+[palettes]
+materials = ["grass", "wall", "floor", "dirt", "asphalt", "sand", "concrete", "wood_floor", "stairs"]
+weapons = ["glock", "five_seven", "magnum", "m4", "ak47", "arwp"]
+decorations = [
+    "decorations/chair1",
+    "decorations/chair2",
+    "decorations/chair_boss",
+    "decorations/lamp_post",
+    "decorations/office_plant",
+    "decorations/office_plant2",
+    "decorations/office_plant3",
+    "decorations/trashcan",
+    "decorations/manhole_cover",
+    "decorations/manhole_cover2",
+    "decorations/desk_lamp",
+    "decorations/wall_light",
+    "decorations/wall_light2",
+    "decorations/wall_light3",
+    "decorations/road_mark"
+]

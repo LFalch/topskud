@@ -24,6 +24,8 @@ use super::{
 };
 
 use std::path::PathBuf;
+use std::io::Read;
+use std::fs::File;
 
 #[derive(Debug, PartialEq, Clone)]
 enum Tool {
@@ -68,6 +70,18 @@ struct Selection {
     moving: Option<Point2>,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+struct EditorFile {
+    palettes: EditorPalettes,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct EditorPalettes {
+    materials: Vec<String>,
+    weapons: Vec<String>,
+    decorations: Vec<String>,
+}
+
 /// The state of the game
 pub struct Editor {
     save: PathBuf,
@@ -85,13 +99,13 @@ pub struct Editor {
 
 struct InsertionBar {
     ent_text: PosText,
-    palette: &'static [EntityItem]
+    palette: Box<[EntityItem]>,
 }
 
 type EntityItem = (&'static str, Insertion);
 
 impl InsertionBar {
-    fn new(p: Point2, s: &State, text: &str, palette: &'static [EntityItem]) -> Self {
+    fn new(p: Point2, s: &State, text: &str, palette: Box<[EntityItem]>) -> Self {
         let ent_text = s.assets.text(p).and_text(text);
         Self {
             ent_text,
@@ -105,7 +119,7 @@ impl InsertionBar {
             .. Default::default()
         };
 
-        for (spr, ins) in self.palette {
+        for (spr, ins) in &*self.palette {
             if let Some(cur) = cur {
                 if ins == &cur {
                     let mesh = Mesh::new_circle(ctx, DrawMode::fill(), drawparams.dest, 17., 0.5, YELLOW)?;
@@ -121,7 +135,7 @@ impl InsertionBar {
     fn click(&self, mouse: Point2) -> Option<Insertion> {
         if mouse.y >= self.ent_text.pos.y && mouse.y < self.ent_text.pos.y+32. {
             let mut range = self.ent_text.pos.x + 82.;
-            for (_, ins) in self.palette {
+            for (_, ins) in &*self.palette {
                 if mouse.x >= range && mouse.x < range + 32. {
                     return Some(*ins);
                 }
@@ -136,7 +150,7 @@ impl Editor {
     #[allow(clippy::new_ret_no_self)]
     pub fn new(s: &State, level: Option<Level>) -> GameResult<Box<dyn GameState>> {
         let mat_text = s.assets.text(Point2::new(2., 18.0)).and_text("Materials:");
-        let entities_bar = InsertionBar::new(Point2::new(392., 18.0), s, "Entitites:", &[
+        let mut entities = vec![
             ("common/enemy", Insertion::Enemy{rot: 0.}),
             ("common/goal", Insertion::Exit),
             ("common/intel", Insertion::Intel),
@@ -144,34 +158,36 @@ impl Editor {
             ("pickups/armour", Insertion::Pickup(1)),
             ("pickups/adrenaline", Insertion::Pickup(2)),
             ("pickups/super_armour", Insertion::Pickup(3)),
-            ("weapons/glock", Insertion::Weapon("glock")),
-            ("weapons/five_seven", Insertion::Weapon("five_seven")),
-            ("weapons/magnum", Insertion::Weapon("magnum")),
-            ("weapons/m4", Insertion::Weapon("m4")),
-            ("weapons/ak47", Insertion::Weapon("ak47")),
-            ("weapons/arwp", Insertion::Weapon("arwp")),
-            ("decorations/chair1", Insertion::Decoration{spr: "decorations/chair1", rot: 0.}),
-            ("decorations/chair2", Insertion::Decoration{spr: "decorations/chair2", rot: 0.}),
-            ("decorations/chair_boss", Insertion::Decoration{spr: "decorations/chair_boss", rot: 0.}),
-            ("decorations/lamp_post", Insertion::Decoration{spr: "decorations/lamp_post", rot: 0.}),
-            ("decorations/office_plant", Insertion::Decoration{spr: "decorations/office_plant", rot: 0.}),
-            ("decorations/office_plant2", Insertion::Decoration{spr: "decorations/office_plant2", rot: 0.}),
-            ("decorations/office_plant3", Insertion::Decoration{spr: "decorations/office_plant3", rot: 0.}),
-        ]);
-        let extra_bar = InsertionBar::new(Point2::new(392., 52.0), s, "", &[
-            ("decorations/trashcan", Insertion::Decoration{spr: "decorations/trashcan", rot: 0.}),
-            ("decorations/manhole_cover", Insertion::Decoration{spr: "decorations/manhole_cover", rot: 0.}),
-            ("decorations/manhole_cover2", Insertion::Decoration{spr: "decorations/manhole_cover2", rot: 0.}),
-            ("decorations/desk_lamp", Insertion::Decoration{spr: "decorations/desk_lamp", rot: 0.}),
-            ("decorations/wall_light", Insertion::Decoration{spr: "decorations/wall_light", rot: 0.}),
-            ("decorations/wall_light2", Insertion::Decoration{spr: "decorations/wall_light2", rot: 0.}),
-            ("decorations/wall_light3", Insertion::Decoration{spr: "decorations/wall_light3", rot: 0.}),
-            ("decorations/road_mark", Insertion::Decoration{spr: "decorations/road_mark", rot: 0.}),
-        ]);
+        ];
 
-        let palette = Palette::default();
+        let EditorFile{palettes: EditorPalettes{materials, weapons, decorations}} = {
+            let mut file = File::open("resources/editor.toml").unwrap();
+            let mut s = String::new();
+            file.read_to_string(&mut s).unwrap();
+            
+            toml::from_str(&s).unwrap()
+        };
+        entities.extend(weapons
+            .into_iter()
+            .map(|wep| {
+                let s = &*Box::leak(format!("weapons/{}", wep).into_boxed_str());
+                (s, Insertion::Weapon(&*Box::leak(wep.into_boxed_str())))
+            })
+        );
+        entities.extend(decorations
+            .into_iter()
+            .map(|dec| {
+                let s = &*Box::leak(dec.into_boxed_str());
+                (s, Insertion::Decoration{rot: 0., spr: s})
+            })
+        );
 
-        // TODO: Read palette from file
+        let extra_entities = entities.drain(20..).collect();
+
+        let entities_bar = InsertionBar::new(Point2::new(392., 18.0), s, "Entitites:", entities.into_boxed_slice());
+        let extra_bar = InsertionBar::new(Point2::new(392., 52.0), s, "", extra_entities);
+
+        let palette = Palette::new(materials.into_iter().map(|s| &*Box::leak(s.into_boxed_str())).collect());
 
         let save;
         if let Content::File(ref f) = s.content {
@@ -182,7 +198,7 @@ impl Editor {
 
         let mut level = level
             .or_else(|| Level::load(&save).ok())
-            .unwrap_or_else(|| Level::new(Palette::default(), 32, 32));
+            .unwrap_or_else(|| Level::new(palette.clone(), 32, 32));
         level.palette = level.grid.migrate(&level.palette, palette);
 
         let x = f32::from(level.grid.width()) * 16.;
