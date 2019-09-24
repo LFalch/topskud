@@ -3,7 +3,9 @@ name = "Glack"
 clip_size = 16
 clips = 7
 damage = 34.0
+# Fraction of damage that will ignore armour (max 1)
 penetration = 0.24
+# Seconds between each shot
 fire_rate = 0.25
 reload_time = 1.6
 fire_mode = "SemiAutomatic"
@@ -16,9 +18,11 @@ reload_snd = "reload"
 # Optional, this is the default value.
 impact_snd = "impact"
 entity_sprite = "weapons/glock"
-hands_sprite = "weapons/glock_hands"
+# Degrees your shoots will deviate from the direction fired for each consecutive shot
 spray_pattern = [6.0, -8.0, 4.0, -6.0, 2.5, 6.0, 4.0]
+# Seconds to decay of spray deviation
 spray_decay = 0.43
+# How many of the last elements will be repeated
 spray_repeat = 2
 
 [five_seven]
@@ -33,7 +37,6 @@ fire_mode = "SemiAutomatic"
 shot_snd = "shot1"
 click_snd = "click_pistol"
 entity_sprite = "weapons/five_seven"
-hands_sprite = "weapons/five_seven_hands"
 spray_pattern = [4.0, 6.0, -8.0, 4.0, -6.0, 4.0, -8.0, 6.0, 4.0]
 spray_decay = 0.34
 spray_repeat = 5
@@ -51,7 +54,6 @@ shot_snd = "shot1"
 cock_snd = "cock2"
 click_snd = "click_pistol"
 entity_sprite = "weapons/magnum"
-hands_sprite = "weapons/magnum_hands"
 spray_pattern = [6.0, 2.0, -2.0]
 spray_decay = 0.85
 spray_repeat = 2
@@ -70,7 +72,6 @@ cock_snd = "cock_ak47"
 click_snd = "click_uzi"
 reload_snd = "reload_m4"
 entity_sprite = "weapons/m4"
-hands_sprite = "weapons/m4_hands"
 spray_pattern = [3.3, 4.2, -3.0, 3.0, -3.0, 2.0, -4.0, 3.0, 2.0]
 spray_decay = 0.2
 spray_repeat = 5
@@ -88,7 +89,6 @@ shot_snd = "shot1"
 cock_snd = "cock_ak47"
 click_snd = "click_uzi"
 entity_sprite = "weapons/ak47"
-hands_sprite = "weapons/ak47_hands"
 spray_pattern = [-3.3, -4.2, 3.0, -3.0, 3.0, -2.0, 4.0, -3.0, -2.0, 3.0]
 spray_decay = 0.13
 spray_repeat = 5
@@ -107,7 +107,6 @@ cock_snd = "cock2"
 click_snd = "click_pistol"
 reload_snd = "reload_m4"
 entity_sprite = "weapons/arwp"
-hands_sprite = "weapons/arwp_hands"
 spray_pattern = [5.6, 1.0, -1.0]
 spray_decay = 1.0
 spray_repeat = 2
