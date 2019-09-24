@@ -11,7 +11,7 @@ use crate::{
         snd::MediaPlayer,
         tex::{Assets, },
     },
-    game::{DELTA, world::Grid},
+    game::{DELTA, world::{Grid, Palette}},
 };
 
 use super::{Object, player::Player};
@@ -125,10 +125,10 @@ impl Enemy {
         }
         Ok(())
     }
-    pub fn can_see(&self, p: Point2, grid: &Grid) -> bool {
+    pub fn can_see(&self, p: Point2, palette: &Palette, grid: &Grid) -> bool {
         let dist = p-self.pl.obj.pos;
         let dir = angle_to_vec(self.pl.obj.rot);
 
-        dir.angle(&dist) <= VISIBILITY && grid.ray_cast(self.pl.obj.pos, dist, true).full()
+        dir.angle(&dist) <= VISIBILITY && grid.ray_cast(palette, self.pl.obj.pos, dist, true).full()
     }
 }

@@ -108,6 +108,7 @@ impl Play {
                         grenades: Vec::new(),
                         weapons: level.weapons,
                         player,
+                        palette: level.palette,
                         grid: level.grid,
                         exit: level.exit,
                         intels: level.intels,
@@ -150,7 +151,7 @@ impl GameState for Play {
 
         let mut deads = Vec::new();
         for (i, grenade) in self.world.grenades.iter_mut().enumerate().rev() {
-            let expl = grenade.update(&self.world.grid, &mut self.world.player, &mut *self.world.enemies);
+            let expl = grenade.update(&self.world.palette, &self.world.grid, &mut self.world.player, &mut *self.world.enemies);
 
             if let Some(Explosion{player_hit, enemy_hits}) = expl {
                 deads.push(i);
@@ -204,7 +205,7 @@ impl GameState for Play {
 
         let mut deads = Vec::new();
         for (i, bullet) in self.world.bullets.iter_mut().enumerate().rev() {
-            let hit = bullet.update(&self.world.grid, &mut self.world.player, &mut *self.world.enemies);
+            let hit = bullet.update(&self.world.palette, &self.world.grid, &mut self.world.player, &mut *self.world.enemies);
             
             use crate::obj::bullet::Hit;
 
@@ -298,7 +299,7 @@ impl GameState for Play {
         let player_vel = Vector2::new(hor(&ctx), ver(&ctx));
 
         for enemy in self.world.enemies.iter_mut() {
-            if enemy.can_see(self.world.player.obj.pos, &self.world.grid) {
+            if enemy.can_see(self.world.player.obj.pos, &self.world.palette, &self.world.grid) {
                 enemy.behaviour = Chaser::LastKnown{
                     pos: self.world.player.obj.pos,
                     vel: player_vel,
@@ -334,7 +335,7 @@ impl GameState for Play {
                 }
             }
         }
-        self.world.player.obj.move_on_grid(player_vel, speed, &self.world.grid);
+        self.world.player.obj.move_on_grid(player_vel, speed, &self.world.palette, &self.world.grid);
 
         let game_won = match self.world.exit {
             Some(p) => self.world.intels.is_empty() && (p - self.world.player.obj.pos).norm() < 32.,
@@ -373,7 +374,7 @@ impl GameState for Play {
     }
 
     fn draw(&mut self, s: &State, ctx: &mut Context) -> GameResult<()> {
-        self.world.grid.draw(ctx, &s.assets)?;
+        self.world.grid.draw(&self.world.palette, ctx, &s.assets)?;
 
         self.holes.draw(ctx, Default::default())?;
 

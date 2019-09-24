@@ -4,7 +4,7 @@ use crate::{
     util::angle_to_vec,
     game::{
         DELTA,
-        world::Grid,
+        world::{Grid, Palette},
     },
     io::tex::{Assets, }
 };
@@ -28,7 +28,7 @@ impl Bullet<'_> {
         let img = a.get_img(ctx, "common/bullet");
         self.obj.draw(ctx, &*img, WHITE)
     }
-    pub fn update(&mut self, grid: &Grid, player: &mut Player, enemies: &mut [Enemy]) -> Hit {
+    pub fn update(&mut self, palette: &Palette, grid: &Grid, player: &mut Player, enemies: &mut [Enemy]) -> Hit {
         let start = self.obj.pos;
         let d_pos = SPEED * DELTA * angle_to_vec(self.obj.rot);
 
@@ -42,7 +42,7 @@ impl Bullet<'_> {
                 return Hit::Enemy(i);
             }
         }
-        let cast = grid.ray_cast(start, d_pos, true);
+        let cast = grid.ray_cast(palette, start, d_pos, true);
         self.obj.pos = cast.into_point();
         if cast.full() {
             Hit::None

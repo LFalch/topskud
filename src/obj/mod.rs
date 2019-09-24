@@ -13,7 +13,7 @@ pub mod pickup;
 pub mod decoration;
 pub mod grenade;
 
-use crate::game::world::Grid;
+use crate::game::world::{Grid, Palette};
 use crate::game::DELTA;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -54,20 +54,20 @@ impl Object {
         let drawparams = self.drawparams().color(color);
         graphics::draw(ctx, img, drawparams)
     }
-    pub fn is_on_solid(&self, grid: &Grid) -> bool {
+    pub fn is_on_solid(&self, pal: &Palette, grid: &Grid) -> bool {
         let (x, y) = Grid::snap(self.pos);
-        grid.is_solid(x, y)
+        grid.is_solid(pal, x, y)
     }
-    pub fn move_on_grid(&mut self, mut v: Vector2, speed: f32, grid: &Grid) {
+    pub fn move_on_grid(&mut self, mut v: Vector2, speed: f32, pal: &Palette, grid: &Grid) {
         if v.x != 0. {
             let (xx, xy) = Grid::snap(self.pos + Vector2::new(16. * v.x, 0.));
-            if grid.is_solid(xx, xy) {
+            if grid.is_solid(pal, xx, xy) {
                 v.x = 0.;
             }
         }
         if v.y != 0. {
             let (yx, yy) = Grid::snap(self.pos + Vector2::new(0., 16. * v.y));
-            if grid.is_solid(yx, yy) {
+            if grid.is_solid(pal, yx, yy) {
                 v.y = 0.;
             }
         }

@@ -16,7 +16,6 @@ use crate::{
 };
 use ggez::{
     Context, GameResult,
-    graphics,
     error::GameError,
 };
 
@@ -24,13 +23,16 @@ use std::path::Path;
 use std::fs::File;
 use std::io::{Write, BufRead, BufReader};
 
-use ::bincode;
-use serde::{Serialize, Deserialize, Serializer, Deserializer};
+use bincode;
+
+mod material;
+pub use material::*;
 
 #[derive(Debug)]
 /// All the objects in the current world
 pub struct World {
     pub player: Player,
+    pub palette: Palette,
     pub grid: Grid,
     pub exit: Option<Point2>,
     pub intels: Vec<Point2>,
@@ -106,22 +108,6 @@ pub struct Statistics {
     pub weapon: Option<WeaponInstance<'static>>,
 }
 
-include!("material_macro.rs");
-
-mat!{
-    MISSING = Missing
-    Grass = 0, "materials/grass", false,
-    Wall = 1, "materials/wall", true,
-    Floor = 2, "materials/floor", false,
-    Dirt = 3, "materials/dirt", false,
-    Asphalt = 4, "materials/asphalt", false,
-    Sand = 5, "materials/sand", false,
-    Concrete = 6, "materials/concrete", true,
-    WoodFloor = 7, "materials/wood_floor", false,
-    Stairs = 8, "materials/stairs", false,
-    Missing = 255, "materials/missing", true,
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Entity {
     SimpleEnemy {
@@ -162,6 +148,7 @@ mod opt_point {
 
 #[derive(Debug, Clone)]
 pub struct Level {
+    pub palette: Palette,
     pub grid: Grid,
     pub start_point: Option<Point2>,
     pub enemies: Vec<Enemy>,
@@ -173,8 +160,9 @@ pub struct Level {
 }
 
 impl Level {
-    pub fn new(width: u16, height: u16) -> Self {
+    pub fn new(palette: Palette, width: u16, height: u16) -> Self {
         Self {
+            palette,
             grid: Grid::new(width, height),
             start_point: None,
             enemies: Vec::new(),
@@ -187,7 +175,7 @@ impl Level {
     }
     pub fn load<P: AsRef<Path>>(path: P) -> GameResult<Self> {
         let mut reader = BufReader::new(File::open(path)?);
-        let mut ret = Level::new(0, 0);
+        let mut ret = Level::new(Palette::default(), 0, 0);
 
         // For support of older level files
         const WEAPONS_OLD: [&str; 6] = [
@@ -204,13 +192,16 @@ impl Level {
             reader.read_line(&mut buf)?;
             match &*buf.trim_end() {
                 "" => continue,
+                "PALETTE" => ret.palette = bincode::deserialize_from(&mut reader)
+                    .map(|mats: Vec<Box<str>>| Palette::new(mats.into_iter().map(|s| &*Box::leak(s)).collect()))
+                    .map_err(|e| GameError::ResourceLoadError(format!("{:?}", e)))?,
                 "GRD" => ret.grid = bincode::deserialize_from(&mut reader)
-                .map_err(|e| GameError::ResourceLoadError(format!("{:?}", e)))?,
+                    .map_err(|e| GameError::ResourceLoadError(format!("{:?}", e)))?,
                 "GRID" => {
                     let (w, grid): (usize, Vec<u16>) = bincode::deserialize_from(&mut reader)
                     .map_err(|e| GameError::ResourceLoadError(format!("{:?}", e)))?;
                     ret.grid = Grid {
-                        mats: grid.into_iter().map(|n| Material::from(n as u8)).collect(),
+                        mats: grid.into_iter().map(|n| n as u8).collect(),
                         width: w as u16
                     }
                 }
@@ -303,15 +294,24 @@ impl Level {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Grid{
     width: u16,
-    mats: Vec<Material>,
+    mats: Vec<u8>,
 }
 
 impl Grid {
     pub fn new(width: u16, height: u16) -> Self {
         Grid {
             width,
-            mats: vec![Material::Grass; (width*height) as usize],
+            mats: vec![0; (width*height) as usize],
         }
+    }
+    pub fn migrate(&mut self, from: &Palette, to: Palette) -> Palette {
+        let to = to.and(from);
+
+        for mat in &mut self.mats {
+            *mat = to.find(from.get(*mat).unwrap()).unwrap();
+        }
+
+        to
     }
     #[inline]
     pub fn width(&self) -> u16 {
@@ -325,7 +325,7 @@ impl Grid {
         let height = self.height() as usize;
         self.mats.reserve_exact(height);
         for i in (1..=height).rev().map(|i| i * width) {
-            self.mats.insert(i, Material::Grass);
+            self.mats.insert(i, 0);
         }
         self.width += 1;
     }
@@ -342,7 +342,7 @@ impl Grid {
     pub fn heighten(&mut self) {
         let new_len = self.mats.len() + self.width as usize;
         self.mats.reserve_exact(self.width as usize);
-        self.mats.resize(new_len, Material::Grass);
+        self.mats.resize(new_len, 0);
     }
     pub fn shorten(&mut self) {
         let new_len = self.mats.len() - self.width as usize;
@@ -370,7 +370,7 @@ impl Grid {
 
         (db32omin(x), db32omin(y))
     }
-    pub fn get(&self, x: u16, y: u16) -> Option<Material> {
+    pub fn get(&self, x: u16, y: u16) -> Option<u8> {
         if x < self.width {
             self.mats.get(self.idx(x, y)).cloned()
         } else {
@@ -378,13 +378,13 @@ impl Grid {
         }
     }
     #[inline(always)]
-    pub fn is_solid_tuple(&self, (x, y): (u16, u16)) -> bool {
-        self.is_solid(x, y)
+    pub fn is_solid_tuple(&self, pal: &Palette, (x, y): (u16, u16)) -> bool {
+        self.is_solid(pal, x, y)
     }
-    pub fn is_solid(&self, x: u16, y: u16) -> bool {
-        self.get(x, y).map(|m| m.solid()).unwrap_or(true)
+    pub fn is_solid(&self, pal: &Palette, x: u16, y: u16) -> bool {
+        self.get(x, y).map(|m| pal.is_solid(m)).unwrap_or(true)
     }
-    pub fn insert(&mut self, x: u16, y: u16, mat: Material) {
+    pub fn insert(&mut self, x: u16, y: u16, mat: u8) {
         if x < self.width {
             let i = self.idx(x, y);
             if let Some(m) = self.mats.get_mut(i) {
@@ -392,7 +392,7 @@ impl Grid {
             }
         }
     }
-    pub fn ray_cast(&self, from: Point2, dist: Vector2, finite: bool) -> RayCast {
+    pub fn ray_cast(&self, pal: &Palette, from: Point2, dist: Vector2, finite: bool) -> RayCast {
         let dest = from + dist;
 
         let mut cur = from;
@@ -409,7 +409,7 @@ impl Grid {
             let mat = self.get(gx, gy);
 
             if let Some(mat) = mat {
-                if mat.solid() {
+                if pal.is_solid(mat) {
                     break RayCast::n_half(cur, dest-cur, to_wall);
                 }
                 if cur.x < 0. || cur.y < 0. {
@@ -491,12 +491,12 @@ impl Grid {
     pub fn dist_line_circle(line_start: Point2, line_dist: Vector2, circle_center: Point2) -> f32 {
         Self::distance_line_circle(line_start, line_dist, circle_center).norm()
     }
-    pub fn draw(&self, ctx: &mut Context, assets: &Assets) -> GameResult<()> {
-        for (i, mat) in self.mats.iter().enumerate() {
+    pub fn draw(&self, pal: &Palette, ctx: &mut Context, assets: &Assets) -> GameResult<()> {
+        for (i, &mat) in self.mats.iter().enumerate() {
             let x = f32::from(i as u16 % self.width) * 32.;
             let y = f32::from(i as u16 / self.width) * 32.;
 
-            mat.draw(ctx, assets, x, y, Default::default())?;
+            pal.draw_mat(mat, ctx, assets, x, y, Default::default())?;
         }
         Ok(())
     }

@@ -20,7 +20,7 @@ use ggez::{
 
 use super::{
     DELTA, Content, GameState, State, StateSwitch,
-    world::{Grid, Level, Material}
+    world::{Grid, Level, Palette}
 };
 
 use std::path::PathBuf;
@@ -33,7 +33,7 @@ enum Tool {
 
 #[derive(Debug, Clone, Copy)]
 enum Insertion {
-    Material(Material),
+    Material(u8),
     Intel,
     Enemy{rot: f32},
     Pickup(u8),
@@ -82,17 +82,6 @@ pub struct Editor {
     snap_on_grid: bool,
 }
 
-const PALETTE: [Material; 9] = [
-    Material::Grass,
-    Material::Dirt,
-    Material::Floor,
-    Material::Wall,
-    Material::Asphalt,
-    Material::Sand,
-    Material::Concrete,
-    Material::WoodFloor,
-    Material::Stairs,
-];
 
 struct InsertionBar {
     ent_text: PosText,
@@ -180,6 +169,10 @@ impl Editor {
             ("decorations/road_mark", Insertion::Decoration{spr: "decorations/road_mark", rot: 0.}),
         ]);
 
+        let palette = Palette::default();
+
+        // TODO: Read palette from file
+
         let save;
         if let Content::File(ref f) = s.content {
             save = f.clone();
@@ -187,9 +180,10 @@ impl Editor {
             return Err(GameError::ResourceLoadError("Cannot load editor without file".to_owned()));
         }
 
-        let level = level
+        let mut level = level
             .or_else(|| Level::load(&save).ok())
-            .unwrap_or_else(|| Level::new(32, 32));
+            .unwrap_or_else(|| Level::new(Palette::default(), 32, 32));
+        level.palette = level.grid.migrate(&level.palette, palette);
 
         let x = f32::from(level.grid.width()) * 16.;
         let y = f32::from(level.grid.height()) * 16.;
@@ -247,13 +241,13 @@ impl GameState for Editor {
 
     #[allow(clippy::cognitive_complexity)]
     fn draw(&mut self, s: &State, ctx: &mut Context) -> GameResult<()> {
-        self.level.grid.draw(ctx, &s.assets)?;
+        self.level.grid.draw(&self.level.palette, ctx, &s.assets)?;
 
         if let Tool::Inserter(Insertion::Material(mat)) = self.current {
             let (x, y) = Grid::snap(s.mouse-s.offset);
             let x = f32::from(x) * 32.;
             let y = f32::from(y) * 32.;
-            mat.draw(ctx, &s.assets, x, y, graphics::DrawParam {
+            self.level.palette.draw_mat(mat, ctx, &s.assets, x, y, graphics::DrawParam {
                 color: TRANS,
                 .. Default::default()
             })?;
@@ -481,13 +475,14 @@ impl GameState for Editor {
         let mesh = Mesh::new_rectangle(ctx, DrawMode::fill(), Rect{x:0.,y:0.,h: 64., w: s.width as f32}, Color{r: 0.5, g: 0.5, b: 0.5, a: 1.})?;
         graphics::draw(ctx, &mesh, DrawParam::default())?;
 
-        for (i, mat) in PALETTE.iter().enumerate() {
-            let x = START_X + i as f32 * 36.;
-            if Tool::Inserter(Insertion::Material(*mat)) == self.current {
+        for mat in 0..self.level.palette.len() as u8 {
+            let x = START_X + f32::from(mat) * 36.;
+
+            if Tool::Inserter(Insertion::Material(mat)) == self.current {
                 let mesh = Mesh::new_rectangle(ctx, DrawMode::fill(), Rect{x: x - 1., y: 15., w: 34., h: 34.}, YELLOW)?;
                 graphics::draw(ctx, &mesh, DrawParam::default())?;
             }
-            mat.draw(ctx, &s.assets, x, 16., DrawParam::default())?;
+            self.level.palette.draw_mat(mat, ctx, &s.assets, x, 16., DrawParam::default())?;
         }
 
         self.entities_bar.draw(ctx, s, if let Tool::Inserter(ins) = self.current{Some(ins)}else{None})?;
@@ -625,10 +620,10 @@ impl GameState for Editor {
             }
                 
             if s.mouse.y <= 64. {
-                if s.mouse.x > START_X && s.mouse.x < START_X + PALETTE.len() as f32 * 36. {
-                    let i = ((s.mouse.x - START_X) / 36.) as usize;
+                if s.mouse.x > START_X && s.mouse.x < START_X + self.level.palette.len() as f32 * 36. {
+                    let i = ((s.mouse.x - START_X) / 36.) as u8;
 
-                    self.current = Tool::Inserter(Insertion::Material(PALETTE[i]));
+                    self.current = Tool::Inserter(Insertion::Material(i));
                 }
                 if let Some(ins) = self.entities_bar.click(s.mouse) {
                     self.current = Tool::Inserter(ins);

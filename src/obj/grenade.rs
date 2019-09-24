@@ -4,7 +4,7 @@ use crate::{
     util::{angle_to_vec, Vector2},
     game::{
         DELTA,
-        world::Grid,
+        world::{Grid, Palette},
     },
     io::{
         snd::MediaPlayer,
@@ -37,7 +37,7 @@ impl Grenade {
         let img = a.get_img(ctx, "weapons/pineapple");
         self.obj.draw(ctx, &*img, WHITE)
     }
-    pub fn update(&mut self, grid: &Grid, player: &mut Player, enemies: &mut [Enemy]) -> Option<Explosion> {
+    pub fn update(&mut self, palette: &Palette, grid: &Grid, player: &mut Player, enemies: &mut [Enemy]) -> Option<Explosion> {
         let start = self.obj.pos;
         let d_vel = -DEC * self.vel * DELTA;
         let d_pos = 0.5 * DELTA * d_vel + self.vel * DELTA;
@@ -51,7 +51,7 @@ impl Grenade {
             let mut enemy_hits = Vec::new();
 
             let d_player = player.obj.pos-start;
-            if d_player.norm() < 144. && grid.ray_cast(start, d_player, true).full() {
+            if d_player.norm() < 144. && grid.ray_cast(palette, start, d_player, true).full() {
                 self.apply_damage(&mut player.health, d_player.norm() <= 64.);
                 player_hit = true;
             } else {
@@ -60,7 +60,7 @@ impl Grenade {
 
             for (i, enem) in enemies.iter_mut().enumerate().rev() {
                 let d_enemy = enem.pl.obj.pos - start;
-                if d_enemy.norm() < 144. && grid.ray_cast(start, d_enemy, true).full() {
+                if d_enemy.norm() < 144. && grid.ray_cast(palette, start, d_enemy, true).full() {
                     self.apply_damage(&mut enem.pl.health, d_enemy.norm() <= 64.);
                     enemy_hits.push(i);
                 }
@@ -89,7 +89,7 @@ impl Grenade {
                 return None;
             }
         }
-        let cast = grid.ray_cast(start, d_pos, true);
+        let cast = grid.ray_cast(palette, start, d_pos, true);
         self.obj.pos = cast.into_point();
         if let Some(to_wall) = cast.half_vec() {
             let clip = cast.clip();
