@@ -34,7 +34,7 @@ fn ensure(mat: &str) {
         };
         let mat_data = Mat { spr: format!("materials/{}", mat).into_boxed_str(), props};
 
-        MATS.write().unwrap().insert(mat.to_owned(), dbg!(mat_data));
+        MATS.write().unwrap().insert(mat.to_owned(), mat_data);
     }
 }
 
@@ -81,21 +81,28 @@ impl Default for Palette {
 }
 
 impl Palette {
-    pub fn new(mut mats: Vec<&'static str>) -> Self {
-        // Fix dedup, use some sets
-        mats.dedup();
+    pub fn new(mats: Vec<&'static str>) -> Self {
+        let mut materials = Vec::with_capacity(mats.len());
+
+        for mat in mats {
+            if !materials.contains(&mat) {
+                materials.push(mat);
+            }
+        }
 
         Palette {
-            materials: mats.into_boxed_slice()
+            materials: materials.into_boxed_slice()
         }
     }
     pub fn and(self, other: &Self) -> Self {
         let Palette{materials} = self;
         let mut mats = materials.to_vec();
-
-        mats.extend(other.materials.iter().copied());
-        // Fix dedup, use some sets
-        mats.dedup();
+        
+        for &mat in &*other.materials {
+            if !mats.contains(&mat) {
+                mats.push(mat);
+            }
+        }
 
         Palette {
             materials: mats.into_boxed_slice(),
