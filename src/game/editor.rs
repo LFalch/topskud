@@ -43,6 +43,20 @@ enum Insertion {
     Decoration{spr: &'static str, rot: f32},
     Exit,
 }
+impl Insertion {
+    fn get_spr(&self) -> &str {
+        use Insertion::*;
+        match *self {
+            Material(_) => panic!("Get it yourself. I don't have the palette"),
+            Intel => "common/intel",
+            Enemy{..} => "common/enemy",
+            Exit => "common/goal",
+            Pickup(i) => PICKUPS[i as usize].spr,
+            Weapon(wep) => &*WEAPONS[wep].entity_sprite, 
+            Decoration{spr, ..} => spr,
+        }
+    }
+}
 impl ::std::cmp::PartialEq for Insertion {
     fn eq(&self, rhs: &Self) -> bool {
         use self::Insertion::*;
@@ -99,13 +113,11 @@ pub struct Editor {
 
 struct InsertionBar {
     ent_text: PosText,
-    palette: Box<[EntityItem]>,
+    palette: Box<[Insertion]>,
 }
 
-type EntityItem = (&'static str, Insertion);
-
 impl InsertionBar {
-    fn new(p: Point2, s: &State, text: &str, palette: Box<[EntityItem]>) -> Self {
+    fn new(p: Point2, s: &State, text: &str, palette: Box<[Insertion]>) -> Self {
         let ent_text = s.assets.text(p).and_text(text);
         Self {
             ent_text,
@@ -119,14 +131,14 @@ impl InsertionBar {
             .. Default::default()
         };
 
-        for (spr, ins) in &*self.palette {
+        for ins in &*self.palette {
             if let Some(cur) = cur {
                 if ins == &cur {
                     let mesh = Mesh::new_circle(ctx, DrawMode::fill(), drawparams.dest, 17., 0.5, YELLOW)?;
                     graphics::draw(ctx, &mesh, DrawParam::default())?;
                 }
             }
-            let img = s.assets.get_img(ctx, *spr);
+            let img = s.assets.get_img(ctx, ins.get_spr());
             graphics::draw(ctx, &*img, drawparams)?;
             drawparams.dest.x += 34.; 
         }
@@ -135,7 +147,7 @@ impl InsertionBar {
     fn click(&self, mouse: Point2) -> Option<Insertion> {
         if mouse.y >= self.ent_text.pos.y && mouse.y < self.ent_text.pos.y+32. {
             let mut range = self.ent_text.pos.x + 82.;
-            for (_, ins) in &*self.palette {
+            for ins in &*self.palette {
                 if mouse.x >= range && mouse.x < range + 32. {
                     return Some(*ins);
                 }
@@ -151,13 +163,13 @@ impl Editor {
     pub fn new(s: &State, level: Option<Level>) -> GameResult<Box<dyn GameState>> {
         let mat_text = s.assets.text(Point2::new(2., 18.0)).and_text("Materials:");
         let mut entities = vec![
-            ("common/enemy", Insertion::Enemy{rot: 0.}),
-            ("common/goal", Insertion::Exit),
-            ("common/intel", Insertion::Intel),
-            ("pickups/health_pack", Insertion::Pickup(0)),
-            ("pickups/armour", Insertion::Pickup(1)),
-            ("pickups/adrenaline", Insertion::Pickup(2)),
-            ("pickups/super_armour", Insertion::Pickup(3)),
+            Insertion::Enemy{rot: 0.},
+            Insertion::Exit,
+            Insertion::Intel,
+            Insertion::Pickup(0),
+            Insertion::Pickup(1),
+            Insertion::Pickup(2),
+            Insertion::Pickup(3),
         ];
 
         let EditorFile{palettes: EditorPalettes{materials, weapons, decorations}} = {
@@ -167,20 +179,8 @@ impl Editor {
             
             toml::from_str(&s).unwrap()
         };
-        entities.extend(weapons
-            .into_iter()
-            .map(|wep| {
-                let s = &*Box::leak(format!("weapons/{}", wep).into_boxed_str());
-                (s, Insertion::Weapon(&*Box::leak(wep.into_boxed_str())))
-            })
-        );
-        entities.extend(decorations
-            .into_iter()
-            .map(|dec| {
-                let s = &*Box::leak(dec.into_boxed_str());
-                (s, Insertion::Decoration{rot: 0., spr: s})
-            })
-        );
+        entities.extend(weapons.into_iter().map(|wep| Insertion::Weapon(&*Box::leak(wep.into_boxed_str()))));
+        entities.extend(decorations.into_iter().map(|dec| Insertion::Decoration{rot: 0., spr: &*Box::leak(dec.into_boxed_str())}));
 
         let extra_entities = entities.drain(20..).collect();
 
