@@ -170,6 +170,8 @@ impl Editor {
             Insertion::Pickup(1),
             Insertion::Pickup(2),
             Insertion::Pickup(3),
+            Insertion::Pickup(4),
+            Insertion::Pickup(5),
         ];
 
         let EditorFile{palettes: EditorPalettes{materials, weapons, decorations}} = {

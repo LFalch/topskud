@@ -2,7 +2,7 @@ use std::num::NonZeroU16;
 use std::fmt::{self, Display};
 
 use crate::{
-    util::Point2,
+    util::{Point2, Rotation2},
     game::DELTA,
     io::{
         snd::MediaPlayer,
@@ -218,9 +218,12 @@ impl<'a> WeaponInstance<'a> {
 
 pub struct BulletMaker<'a>(&'a Weapon, f32);
 impl<'a> BulletMaker<'a> {
-    pub fn make(self, mut obj: Object) -> Bullet<'a> {
+    pub fn make(self, mut obj: Object, target: Point2) -> Bullet<'a> {
+        let dest = target - obj.pos;
+
         obj.rot += self.1;
         Bullet {
+            target: obj.pos + Rotation2::new(self.1) * dest,
             obj,
             weapon: self.0
         }

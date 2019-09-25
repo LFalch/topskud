@@ -29,7 +29,7 @@ impl Default for Health {
     fn default() -> Self {
         Self {
             hp: 100.,
-            armour: 0.,
+            armour: 9.,
         }
     }
 }

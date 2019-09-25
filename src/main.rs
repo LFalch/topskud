@@ -24,6 +24,7 @@ pub mod util {
     use ggez::{Context, input::keyboard::{self, KeyCode}};
     pub type Vector2 = nalgebra::Vector2<f32>;
     pub type Point2 = nalgebra::Point2<f32>;
+    pub type Rotation2 = nalgebra::Rotation2<f32>;
 
     pub const TRANS: Color = Color{r:1.,g:1.,b:1.,a:0.5};
     pub const GREEN: Color = Color{r:0.1,g:0.7,b:0.1,a:1.};

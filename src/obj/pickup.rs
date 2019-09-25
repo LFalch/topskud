@@ -63,7 +63,7 @@ impl Debug for PickupType {
     }
 }
 
-pub const PICKUPS: [PickupType; 4] = [
+pub const PICKUPS: [PickupType; 6] = [
     PickupType {
         spr: "pickups/health_pack",
         ability: health_pack
@@ -80,12 +80,20 @@ pub const PICKUPS: [PickupType; 4] = [
         spr: "pickups/super_armour",
         ability: super_armour
     },
+    PickupType {
+        spr: "pickups/plaster",
+        ability: plaster
+    },
+    PickupType {
+        spr: "pickups/small_armour",
+        ability: small_armour
+    },
 ];
 fn health_pack(health: &mut Health) -> bool {
     if health.hp >= 100. {
         false
     } else {
-        health.hp = 100.;
+        health.hp = (health.hp + 75.).min(100.);
         true
     }
 }
@@ -93,15 +101,39 @@ fn armour(health: &mut Health) -> bool {
     if health.armour >= 100. {
         false
     } else {
-        health.armour = 100.;
+        health.armour = (health.armour + 75.).min(100.);
         true
     }
 }
 fn adrenaline(health: &mut Health) -> bool {
-    health.hp += 100.;
-    true
+    if health.hp >= 200. {
+        false
+    } else {
+        health.hp += 125.;
+        true
+    }
 }
 fn super_armour(health: &mut Health) -> bool {
-    health.armour += 100.;
-    true
+    if health.armour >= 200. {
+        false
+    } else {
+        health.armour += 125.;
+        true
+    }
+}
+fn plaster(health: &mut Health) -> bool {
+    if health.hp >= 100. {
+        false
+    } else {
+        health.hp = (health.hp + 10.).min(100.);
+        true
+    }
+}
+fn small_armour(health: &mut Health) -> bool {
+    if health.armour >= 100. {
+        false
+    } else {
+        health.armour = (health.armour + 10.).min(100.);
+        true
+    }
 }
