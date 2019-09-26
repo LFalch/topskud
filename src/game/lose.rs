@@ -5,11 +5,11 @@ use crate::{
         btn::Button,
     },
     obj::{health::Health, weapon::WeaponInstance},
+    game::event::{Event::{self, *}, MouseButton as Mb, KeyCode as Key},
 };
 use ggez::{
     Context, GameResult,
     graphics::{Rect, TextFragment},
-    event::{MouseButton, KeyCode}
 };
 
 use super::{State, Content, GameState, StateSwitch, world::{Statistics, Level}};
@@ -76,24 +76,21 @@ impl GameState for Lose {
         self.misses_text.draw_text(ctx)?;
         self.enemies_text.draw_text(ctx)
     }
-    fn key_up(&mut self, s: &mut State, _ctx: &mut Context, keycode: KeyCode) {
-        use self::KeyCode::*;
-        match keycode {
-            R | Return => self.restart(s),
+    fn event_up(&mut self, s: &mut State, _ctx: &mut Context, event: Event) {
+        match event {
+            Key(Key::Return) | Key(Key::R) => self.restart(s),
+            Mouse(Mb::Left) => {
+                if self.restart_btn.in_bounds(s.mouse) {
+                    self.restart(s);
+                }
+                if let Some(btn) = &self.edit_btn {
+                    if btn.in_bounds(s.mouse) {
+                        self.edit(s);
+                    }
+                }
+            } 
             _ => (),
         }
-    }
-    fn mouse_up(&mut self, s: &mut State, _ctx: &mut Context, btn: MouseButton) {
-        use self::MouseButton::*;
-        if let Left = btn {
-            if self.restart_btn.in_bounds(s.mouse) {
-                self.restart(s);
-            }
-            if let Some(btn) = &self.edit_btn {
-                if btn.in_bounds(s.mouse) {
-                    self.edit(s);
-                }
-            }
-        }
+
     }
 }

@@ -5,11 +5,11 @@ use crate::{
         tex::PosText,
         btn::Button,
     },
+    game::event::{Event::{self, Mouse}, MouseButton},
 };
 use ggez::{
     Context, GameResult,
     graphics::Rect,
-    event::{MouseButton}
 };
 
 use super::{Campaign, Content, State, GameState, StateSwitch, world::Level};
@@ -98,9 +98,8 @@ impl GameState for Menu {
     //         _ => (),
     //     }
     // }
-    fn mouse_up(&mut self, s: &mut State, ctx: &mut Context, btn: MouseButton) {
-        use self::MouseButton::*;
-        if let Left = btn {
+    fn event_up(&mut self, s: &mut State, ctx: &mut Context, event: Event) {
+        if let Mouse(MouseButton::Left) = event {
             for button in &self.buttons {
                 if button.in_bounds(s.mouse) {
                     s.mplayer.stop(ctx, "music").unwrap();

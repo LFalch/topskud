@@ -12,7 +12,8 @@ use ggez::{
     Context, GameResult,
     graphics::{self, DrawMode, Rect, Mesh, Text, DrawParam},
     timer,
-    event::{EventHandler, MouseButton, KeyCode, KeyMods}
+    input::mouse::{self, MouseCursor},
+    event::EventHandler
 };
 use clipboard::{ClipboardContext, ClipboardProvider};
 use self::world::Level;
@@ -41,6 +42,16 @@ pub enum StateSwitch {
     Win(Box<Statistics>),
 }
 
+pub mod event {
+    pub use ggez::event::{MouseButton, KeyCode, KeyMods};
+    pub enum Event {
+        Key(KeyCode),
+        Mouse(MouseButton),
+    }
+}
+
+use event::*;
+
 pub trait GameState {
     fn update(&mut self, _: &mut State, _: &mut Context) -> GameResult<()> {
         Ok(())
@@ -52,18 +63,8 @@ pub trait GameState {
         Ok(())
     }
     fn draw_hud(&mut self, _: &State, _: &mut Context) -> GameResult<()>;
-    fn key_down(&mut self, _: &mut State, _: &mut Context, _: KeyCode) {
-
-    }
-    fn key_up(&mut self, _: &mut State, _: &mut Context, _: KeyCode) {
-
-    }
-    fn mouse_down(&mut self, _: &mut State, _: &mut Context, _: MouseButton) {
-
-    }
-    fn mouse_up(&mut self, _: &mut State, _: &mut Context, _: MouseButton) {
-
-    }
+    fn event_down(&mut self, _: &mut State, _: &mut Context, _: Event) { }
+    fn event_up(&mut self, _: &mut State, _: &mut Context, _: Event) { }
 
     fn get_world(&self) -> Option<&world::World> {
         None
@@ -84,7 +85,7 @@ pub struct Console {
 impl Console {
     fn new(_ctx: &mut Context, assets: &Assets) -> GameResult<Self> {
         Ok(Console {
-            history: assets.raw_text_with("Welcome t' console\n", 18.),
+            history: assets.raw_text_with("Acheivements disabled.\n", 18.),
             prompt: assets.text(Point2::new(0., PROMPT_Y)).and_text("> ").and_text(String::with_capacity(32)),
         })
     }
@@ -197,10 +198,43 @@ impl Console {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+pub enum ConsoleStatus {
+    Open {
+        cursor: MouseCursor,
+        cursor_hidden: bool,
+    },
+    Closed
+}
+
+impl ConsoleStatus {
+    pub fn is_open(self) -> bool {
+        if let ConsoleStatus::Open{..} = self {
+            true
+        } else {
+            false
+        }
+    }
+    pub fn open(&mut self, ctx: &Context) {
+        if let ConsoleStatus::Closed = self {
+            *self = ConsoleStatus::Open{
+                cursor: mouse::cursor_type(ctx),
+                cursor_hidden: mouse::cursor_hidden(ctx),
+            };
+        }
+    }
+    pub fn close(&mut self, ctx: &mut Context) {
+        if let ConsoleStatus::Open{cursor, cursor_hidden} = std::mem::replace(self, ConsoleStatus::Closed) {
+            mouse::set_cursor_type(ctx, cursor);
+            mouse::set_cursor_hidden(ctx, cursor_hidden);
+        }
+    }
+}
+
 pub struct Master {
     gs: Box<dyn GameState>,
     state: State,
-    console_open: bool,
+    console_status: ConsoleStatus,
     console: Console,
 }
 
@@ -260,7 +294,7 @@ impl Master {
 
         Ok(Master {
             console: Console::new(ctx, &state.assets)?,
-            console_open: false,
+            console_status: ConsoleStatus::Closed,
             gs: Menu::new(ctx, &mut state)?,
             state,
         })
@@ -282,22 +316,25 @@ use std::mem;
 impl EventHandler for Master {
     // Handle the game logic
     fn update(&mut self, ctx: &mut Context) -> GameResult<()> {
-        if self.console_open {
+        if let Some(gsb) = mem::replace(&mut self.state.switch_state, None) {
+            mouse::set_cursor_hidden(ctx, false);
+            mouse::set_cursor_type(ctx, MouseCursor::Default);
+
+            use self::StateSwitch::*;
+            self.gs = match gsb {
+                PlayWith{lvl, health, wep} => play::Play::new(ctx, &mut self.state, *lvl, Some((health, wep))),
+                Play(lvl) => play::Play::new(ctx, &mut self.state, lvl, None),
+                Menu => menu::Menu::new(ctx, &mut self.state),
+                Editor(l) => editor::Editor::new(&self.state, l),
+                Win(stats) => win::Win::new(ctx, &mut self.state, *stats),
+                Lose(stats) => lose::Lose::new(ctx, &mut self.state, *stats),
+            }?;
+        }
+        if self.console_status.is_open() {
             while timer::check_update_time(ctx, DESIRED_FPS) {}
 
             Ok(())
         } else {
-            if let Some(gsb) = mem::replace(&mut self.state.switch_state, None) {
-                use self::StateSwitch::*;
-                self.gs = match gsb {
-                    PlayWith{lvl, health, wep} => play::Play::new(ctx, &mut self.state, *lvl, Some((health, wep))),
-                    Play(lvl) => play::Play::new(ctx, &mut self.state, lvl, None),
-                    Menu => menu::Menu::new(ctx, &mut self.state),
-                    Editor(l) => editor::Editor::new(&self.state, l),
-                    Win(stats) => win::Win::new(ctx, &mut self.state, *stats),
-                    Lose(stats) => lose::Lose::new(ctx, &mut self.state, *stats),
-                }?;
-            }
 
             // Run this for every 1/60 of a second has passed since last update
             // Can in theory become slow
@@ -325,7 +362,7 @@ impl EventHandler for Master {
 
         self.gs.draw_hud(&self.state, ctx)?;
 
-        if self.console_open {
+        if self.console_status.is_open() {
             let console_bg = Mesh::new_rectangle(ctx, DrawMode::fill(), Rect::new(0., 0., self.state.width as f32, self.state.height as f32 / 3.), graphics::BLACK)?;
             graphics::draw(ctx, &console_bg, DrawParam::new())?;
 
@@ -349,25 +386,35 @@ impl EventHandler for Master {
         }
 
         use self::KeyCode::*;
-        // Update input axes and quit game on Escape
         match keycode {
             Escape if km.contains(KeyMods::SHIFT) => ctx.continuing = false,
+            keycode if !self.console_status.is_open() => self.gs.event_down(&mut self.state, ctx, Event::Key(keycode)),
             _ => (),
         }
-        self.gs.key_down(&mut self.state, ctx, keycode)
     }
     /// Handle key release events
     fn key_up_event(&mut self, ctx: &mut Context, keycode: KeyCode, _: KeyMods) {
-        use self::KeyCode::*;
-        if let Tab = keycode {
-            if !self.console_open {
-                self.console_open = true;
+        if !self.console_status.is_open() {
+            match keycode {
+                KeyCode::Tab => self.console_status.open(ctx),
+                keycode => self.gs.event_up(&mut self.state, ctx, Event::Key(keycode))
             }
         }
-        self.gs.key_up(&mut self.state, ctx, keycode)
+    }
+    /// Handle mouse down event
+    fn mouse_button_down_event(&mut self, ctx: &mut Context, btn: MouseButton, _x: f32, _y: f32) {
+        if !self.console_status.is_open() {
+            self.gs.event_down(&mut self.state, ctx, Event::Mouse(btn))
+        }
+    }
+    /// Handle mouse release events
+    fn mouse_button_up_event(&mut self, ctx: &mut Context, btn: MouseButton, _x: f32, _y: f32) {
+        if !self.console_status.is_open() {
+            self.gs.event_up(&mut self.state, ctx, Event::Mouse(btn))
+        }
     }
     fn text_input_event(&mut self, ctx: &mut Context, c: char) {
-        if self.console_open {
+        if self.console_status.is_open() {
             if c.is_control() {
                 match c {
                     // Backspace
@@ -375,7 +422,7 @@ impl EventHandler for Master {
                     // Delete
                     '\u{7f}' => (),
                     // Escape
-                    '\u{1b}' => self.console_open = false,
+                    '\u{1b}' => self.console_status.close(ctx),
                     '\t' => {
                         // Do tab completion
                     }
@@ -395,17 +442,18 @@ impl EventHandler for Master {
             }
         }
     }
-    /// Handle mouse down event
-    fn mouse_button_down_event(&mut self, ctx: &mut Context, btn: MouseButton, _x: f32, _y: f32) {
-        self.gs.mouse_down(&mut self.state, ctx, btn)
-    }
-    /// Handle mouse release events
-    fn mouse_button_up_event(&mut self, ctx: &mut Context, btn: MouseButton, _x: f32, _y: f32) {
-        self.gs.mouse_up(&mut self.state, ctx, btn)
-    }
     /// Handles mouse movement events
-    fn mouse_motion_event(&mut self, _: &mut Context, x: f32, y: f32, _: f32, _: f32) {
+    fn mouse_motion_event(&mut self, ctx: &mut Context, x: f32, y: f32, _: f32, _: f32) {
         self.state.mouse = Point2::new(x, y);
+        if let ConsoleStatus::Open{cursor, cursor_hidden} = self.console_status {
+            if y > PROMPT_Y {
+                mouse::set_cursor_type(ctx, cursor);
+                mouse::set_cursor_hidden(ctx, cursor_hidden);
+            } else {
+                mouse::set_cursor_type(ctx, MouseCursor::Default);
+                mouse::set_cursor_hidden(ctx, false);
+            }
+        }
     }
     fn quit_event(&mut self, _ctx: &mut Context) -> bool {
         false

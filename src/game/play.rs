@@ -8,6 +8,7 @@ use crate::{
     },
     io::tex::{Assets, PosText},
     obj::{Object, bullet::Bullet, pickup::Pickup, player::Player, enemy::{Enemy, Chaser}, health::Health, weapon::{self, WeaponInstance}, grenade::Explosion},
+    game::event::{Event::{self, Key, Mouse}, MouseButton, KeyCode, KeyMods},
 };
 use ggez::{
     Context, GameResult,
@@ -17,8 +18,8 @@ use ggez::{
         spritebatch::SpriteBatch,
     },
     input::{
-        keyboard::{self, KeyMods, KeyCode},
-        mouse::{self, MouseButton}
+        keyboard,
+        mouse,
     },
 };
 
@@ -82,6 +83,8 @@ pub struct Play {
 impl Play {
     #[allow(clippy::new_ret_no_self)]
     pub fn new(ctx: &mut Context, s: &mut State, level: Level, pl: Option<(Health, Option<WeaponInstance<'static>>)>) -> GameResult<Box<dyn GameState>> {
+        mouse::set_cursor_hidden(ctx, true);
+
         let mut player = Player::from_point(level.start_point.unwrap_or_else(|| Point2::new(500., 500.)));
         if let Some((h, w)) = pl {
             player = player.with_health(h).with_weapon(w);
@@ -447,42 +450,17 @@ impl GameState for Play {
         let img = s.assets.get_img(ctx, "common/crosshair");
         graphics::draw(ctx, &*img, drawparams)
     }
-    fn mouse_up(&mut self, s: &mut State, ctx: &mut Context, btn: MouseButton) {
-        match btn {
-            MouseButton::Left => {
-                if let Some(wep) = &mut self.world.player.wep {
-                    if let Some(bm) = wep.shoot(ctx, &mut s.mplayer).unwrap() {
-                        let pos = self.world.player.obj.pos + 20. * angle_to_vec(self.world.player.obj.rot);
-                        let mut bul = Object::new(pos);
-                        bul.rot = self.world.player.obj.rot;
-
-                        self.world.bullets.push(bm.make(bul, s.mouse-s.offset));
-                    }
-                }
-            }
-            MouseButton::Right => {
-                if let Some(gm) = self.world.player.utilities.throw_grenade(ctx, &mut s.mplayer).unwrap() {
-                    let pos = self.world.player.obj.pos + 20. * angle_to_vec(self.world.player.obj.rot);
-                    let mut gren = Object::new(pos);
-                    gren.rot = self.world.player.obj.rot;
-
-                    self.world.grenades.push(gm.make(gren));
-                }
-            }
-            _ => (),
-        }
-    }
-    fn key_up(&mut self, s: &mut State, ctx: &mut Context, keycode: KeyCode) {
+    fn event_up(&mut self, s: &mut State, ctx: &mut Context, event: Event) {
         use self::KeyCode::*;
-        match keycode {
-            R => {
+        match event {
+            Key(R) => {
                 if let Some(wep) = &mut self.world.player.wep {
                     wep.reload(ctx, &mut s.mplayer).unwrap()
                 } else {
                     self.world.bullets.push(Bullet{obj: self.world.player.obj.clone(), weapon: &weapon::WEAPONS["glock"], target: self.world.player.obj.pos});
                 }
             },
-            F => {
+            Key(F) => {
                 if let Some(i) = self.cur_pickup {
                     self.world.player.wep = Some(WeaponInstance::from_drop(
                         if let Some(wep) = self.world.player.wep {
@@ -495,6 +473,26 @@ impl GameState for Play {
                     self.cur_pickup = None;
                 }
             },
+            Mouse(MouseButton::Left) | Key(Space) => {
+                if let Some(wep) = &mut self.world.player.wep {
+                    if let Some(bm) = wep.shoot(ctx, &mut s.mplayer).unwrap() {
+                        let pos = self.world.player.obj.pos + 20. * angle_to_vec(self.world.player.obj.rot);
+                        let mut bul = Object::new(pos);
+                        bul.rot = self.world.player.obj.rot;
+
+                        self.world.bullets.push(bm.make(bul, s.mouse-s.offset));
+                    }
+                }
+            }
+            Mouse(MouseButton::Right) => {
+                if let Some(gm) = self.world.player.utilities.throw_grenade(ctx, &mut s.mplayer).unwrap() {
+                    let pos = self.world.player.obj.pos + 20. * angle_to_vec(self.world.player.obj.rot);
+                    let mut gren = Object::new(pos);
+                    gren.rot = self.world.player.obj.rot;
+
+                    self.world.grenades.push(gm.make(gren));
+                }
+            }
             _ => (),
         }
     }

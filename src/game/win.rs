@@ -5,11 +5,11 @@ use crate::{
         btn::Button,
     },
     obj::{health::Health, weapon::WeaponInstance},
+    game::event::{Event::{self, Key, Mouse}, MouseButton, KeyCode},
 };
 use ggez::{
     Context, GameResult,
     graphics::Rect,
-    event::{MouseButton, KeyCode}
 };
 
 use super::{State, Content, GameState, StateSwitch, world::{Level, Statistics}};
@@ -112,14 +112,11 @@ impl GameState for Win {
         self.enemies_text.draw_text(ctx)?;
         self.health_text.draw_text(ctx)
     }
-    fn key_up(&mut self, s: &mut State, _ctx: &mut Context, keycode: KeyCode) {
+    fn event_up(&mut self, s: &mut State, _ctx: &mut Context, event: Event) {
         use self::KeyCode::*;
-        if let Return = keycode { self.continue_play(s) }
-    }
-    fn mouse_up(&mut self, s: &mut State, _ctx: &mut Context, btn: MouseButton) {
-        use self::MouseButton::*;
-        if let Left = btn {
-            match &self.buttons {
+        match event {
+            Key(Return) => self.continue_play(s),
+            Mouse(MouseButton::Left) => match &self.buttons {
                 WinButtons::FileMode{restart_btn, edit_btn} => {
                     if restart_btn.in_bounds(s.mouse) {
                         self.restart(s)
@@ -134,6 +131,7 @@ impl GameState for Win {
                     }
                 }
             }
+            _ => (),
         }
     }
 }

@@ -6,6 +6,7 @@ use crate::{
         Vector2, Point2},
     io::tex::PosText,
     ext::BoolExt,
+    game::event::{Event::{self, Key, Mouse}, MouseButton as Mb, KeyCode, KeyMods},
     obj::{Object, enemy::Enemy, decoration::Decoration, pickup::PICKUPS, weapon::WEAPONS}
 };
 use ggez::{
@@ -13,8 +14,8 @@ use ggez::{
     graphics::{self, Color, WHITE, Rect, DrawMode, DrawParam, Mesh},
     error::GameError,
     input::{
-        keyboard::{self, KeyMods, KeyCode},
-        mouse::{self, MouseButton}
+        keyboard,
+        mouse,
     },
 };
 
@@ -246,7 +247,7 @@ impl GameState for Editor {
         Ok(())
     }
     fn logic(&mut self, s: &mut State, ctx: &mut Context) -> GameResult<()> {
-        if mouse::button_pressed(ctx, MouseButton::Left) && s.mouse.y > 64. {
+        if mouse::button_pressed(ctx, Mb::Left) && s.mouse.y > 64. {
             if let Tool::Inserter(Insertion::Material(mat)) = self.current {
                 let (mx, my) = Grid::snap(s.mouse - s.offset);
                 self.level.grid.insert(mx, my, mat);
@@ -510,21 +511,22 @@ impl GameState for Editor {
         self.entities_bar.ent_text.draw_text(ctx)?;
         self.extra_bar.ent_text.draw_text(ctx)
     }
-    fn key_up(&mut self, s: &mut State, ctx: &mut Context, keycode: KeyCode) {
+    #[allow(clippy::cognitive_complexity)]
+    fn event_up(&mut self, s: &mut State, ctx: &mut Context, event: Event) {
         let shift = keyboard::is_mod_active(ctx, KeyMods::SHIFT);
         let ctrl = keyboard::is_mod_active(ctx, KeyMods::CTRL);
 
         use self::KeyCode::*;
-        match keycode {
-            Z => self.level.save(&self.save).unwrap(),
-            X => self.level = Level::load(&self.save).unwrap(),
-            C => self.draw_visibility_cones.toggle(),
-            G => self.snap_on_grid.toggle(),
-            P => {
+        match event {
+            Key(Z) => self.level.save(&self.save).unwrap(),
+            Key(X) => self.level = Level::load(&self.save).unwrap(),
+            Key(C) => self.draw_visibility_cones.toggle(),
+            Key(G) => self.snap_on_grid.toggle(),
+            Key(P) => {
                 s.switch(StateSwitch::Play(self.level.clone()));
             }
-            T => self.current = Tool::Selector(Selection::default()),
-            Delete | Back => if let Tool::Selector(ref mut selection) = self.current {
+            Key(T) => self.current = Tool::Selector(Selection::default()),
+            Key(Delete) | Key(Back) => if let Tool::Selector(ref mut selection) = self.current {
                 #[allow(clippy::unneeded_field_pattern)]
                 let Selection {
                     mut enemies,
@@ -559,7 +561,7 @@ impl GameState for Editor {
                     self.level.weapons.remove(weapon);
                 }
             }
-            Comma => {
+            Key(Comma) => {
                 self.rotation_speed = 0.;
                 if shift {
                     match self.current {
@@ -569,7 +571,7 @@ impl GameState for Editor {
                     }
                 }
             }
-            Period => {
+            Key(Period) => {
                 self.rotation_speed = 0.;
                 if shift {
                     match self.current {
@@ -579,18 +581,23 @@ impl GameState for Editor {
                     }
                 }
             }
-            Up if ctrl => self.level.grid.shorten(),
-            Down if ctrl => self.level.grid.heighten(),
-            Left if ctrl => self.level.grid.thin(),
-            Right if ctrl => self.level.grid.widen(),
+            Key(Up) if ctrl => self.level.grid.shorten(),
+            Key(Down) if ctrl => self.level.grid.heighten(),
+            Key(Left) if ctrl => self.level.grid.thin(),
+            Key(Right) if ctrl => self.level.grid.widen(),
+            Mouse(Mb::Middle) | Key(Q) => self.level.start_point = Some(self.mousepos(&s)),
+            Mouse(Mb::Left) => self.click(s, ctx),
             _ => (),
         }
     }
-    fn mouse_down(&mut self, s: &mut State, _ctx: &mut Context, btn: MouseButton) {
-        use self::MouseButton::*;
+    fn event_down(&mut self, s: &mut State, ctx: &mut Context, event: Event) {
+        use self::KeyCode::*;
+
+        let shift = keyboard::is_mod_active(ctx, KeyMods::SHIFT);
         let mousepos = self.mousepos(&s);
-        if let Left = btn {
-            if let Tool::Selector(ref mut selection) = self.current {
+
+        match event {
+            Mouse(Mb::Left) => if let Tool::Selector(ref mut selection) = self.current {
                 for &i in &selection.enemies {
                     if (self.level.enemies[i].pl.obj.pos - mousepos).norm() <= 16. {
                         return selection.moving = Some(mousepos);
@@ -624,133 +631,119 @@ impl GameState for Editor {
                     }
                 }
             }
+            Key(Comma) if !shift => self.rotation_speed -= 6.,
+            Key(Period) if !shift => self.rotation_speed += 6.,
+            _ => (),
         }
     }
-    fn mouse_up(&mut self, s: &mut State, ctx: &mut Context, btn: MouseButton) {
-        use self::MouseButton::*;
+}
+
+impl Editor {
+    fn click(&mut self, s: &mut State, ctx: &mut Context) {
         let mousepos = self.mousepos(&s);
-        match btn {
-            Left => {
-                
-            if let Some(ins) = self.extra_bar.click(s.mouse) {
-                self.current = Tool::Inserter(ins);
-                return
+
+        if let Some(ins) = self.extra_bar.click(s.mouse) {
+            self.current = Tool::Inserter(ins);
+        } else if s.mouse.y <= 64. {
+            if s.mouse.x > START_X && s.mouse.x < START_X + self.level.palette.len() as f32 * 36. {
+                let i = ((s.mouse.x - START_X) / 36.) as u8;
+
+                self.current = Tool::Inserter(Insertion::Material(i));
             }
-                
-            if s.mouse.y <= 64. {
-                if s.mouse.x > START_X && s.mouse.x < START_X + self.level.palette.len() as f32 * 36. {
-                    let i = ((s.mouse.x - START_X) / 36.) as u8;
+            if let Some(ins) = self.entities_bar.click(s.mouse) {
+                self.current = Tool::Inserter(ins);
+            }
+        } else {
+            match self.current {
+                Tool::Inserter(Insertion::Material(_)) => (),
+                Tool::Selector(ref mut selection) => {
 
-                    self.current = Tool::Inserter(Insertion::Material(i));
-                }
-                if let Some(ins) = self.entities_bar.click(s.mouse) {
-                    self.current = Tool::Inserter(ins);
-                }
-            } else {
-                match self.current {
-                    Tool::Inserter(Insertion::Material(_)) => (),
-                    Tool::Selector(ref mut selection) => {
+                    if let Some(moved_from) = selection.moving {
+                        let dist = mousepos - moved_from;
 
-                        if let Some(moved_from) = selection.moving {
-                            let dist = mousepos - moved_from;
-
-                            if selection.exit {
-                                if let Some(ref mut exit) = self.level.exit {
-                                    *exit += dist;
-                                }
+                        if selection.exit {
+                            if let Some(ref mut exit) = self.level.exit {
+                                *exit += dist;
                             }
-                            for i in selection.enemies.iter().rev() {
-                                self.level.enemies[*i].pl.obj.pos += dist;
+                        }
+                        for i in selection.enemies.iter().rev() {
+                            self.level.enemies[*i].pl.obj.pos += dist;
+                        }
+                        for i in selection.intels.iter().rev() {
+                            self.level.intels[*i] += dist;
+                        }
+                        for i in selection.decorations.iter().rev() {
+                            self.level.decorations[*i].obj.pos += dist;
+                        }
+                        for i in selection.pickups.iter().rev() {
+                            self.level.pickups[*i].0 += dist;
+                        }
+                        for i in selection.weapons.iter().rev() {
+                            self.level.weapons[*i].pos += dist;
+                        }
+                        selection.moving = None;
+                    } else {
+                        if !keyboard::is_mod_active(ctx, KeyMods::CTRL) {
+                            *selection = Selection::default();
+                        }
+                        for (i, enemy) in self.level.enemies.iter().enumerate() {
+                            if (enemy.pl.obj.pos - mousepos).norm() <= 16. && !selection.enemies.contains(&i) {
+                                selection.enemies.push(i);
+                                return
                             }
-                            for i in selection.intels.iter().rev() {
-                                self.level.intels[*i] += dist;
+                        }
+                        if let Some(exit) = self.level.exit {
+                            if (exit - mousepos).norm() <= 16. && !selection.exit {
+                                selection.exit = true;
+                                return
                             }
-                            for i in selection.decorations.iter().rev() {
-                                self.level.decorations[*i].obj.pos += dist;
+                        }
+                        for (i, &intel) in self.level.intels.iter().enumerate() {
+                            if (intel - mousepos).norm() <= 16. && !selection.intels.contains(&i) {
+                                selection.intels.push(i);
+                                return
                             }
-                            for i in selection.pickups.iter().rev() {
-                                self.level.pickups[*i].0 += dist;
+                        }
+                        for (i, decoration) in self.level.decorations.iter().enumerate() {
+                            if (decoration.obj.pos - mousepos).norm() <= 16. && !selection.decorations.contains(&i) {
+                                selection.decorations.push(i);
+                                return
                             }
-                            for i in selection.weapons.iter().rev() {
-                                self.level.weapons[*i].pos += dist;
+                        }
+                        for (i, &pickup) in self.level.pickups.iter().enumerate() {
+                            if (pickup.0 - mousepos).norm() <= 16. && !selection.pickups.contains(&i) {
+                                selection.pickups.push(i);
+                                return
                             }
-                            selection.moving = None;
-                        } else {
-                            if !keyboard::is_mod_active(ctx, KeyMods::CTRL) {
-                                *selection = Selection::default();
-                            }
-                            for (i, enemy) in self.level.enemies.iter().enumerate() {
-                                if (enemy.pl.obj.pos - mousepos).norm() <= 16. && !selection.enemies.contains(&i) {
-                                    selection.enemies.push(i);
-                                    return
-                                }
-                            }
-                            if let Some(exit) = self.level.exit {
-                                if (exit - mousepos).norm() <= 16. && !selection.exit {
-                                    selection.exit = true;
-                                    return
-                                }
-                            }
-                            for (i, &intel) in self.level.intels.iter().enumerate() {
-                                if (intel - mousepos).norm() <= 16. && !selection.intels.contains(&i) {
-                                    selection.intels.push(i);
-                                    return
-                                }
-                            }
-                            for (i, decoration) in self.level.decorations.iter().enumerate() {
-                                if (decoration.obj.pos - mousepos).norm() <= 16. && !selection.decorations.contains(&i) {
-                                    selection.decorations.push(i);
-                                    return
-                                }
-                            }
-                            for (i, &pickup) in self.level.pickups.iter().enumerate() {
-                                if (pickup.0 - mousepos).norm() <= 16. && !selection.pickups.contains(&i) {
-                                    selection.pickups.push(i);
-                                    return
-                                }
-                            }
-                            for (i, weapon) in self.level.weapons.iter().enumerate() {
-                                if (weapon.pos - mousepos).norm() <= 16. && !selection.weapons.contains(&i) {
-                                    selection.weapons.push(i);
-                                    return
-                                }
+                        }
+                        for (i, weapon) in self.level.weapons.iter().enumerate() {
+                            if (weapon.pos - mousepos).norm() <= 16. && !selection.weapons.contains(&i) {
+                                selection.weapons.push(i);
+                                return
                             }
                         }
                     }
-                    Tool::Inserter(Insertion::Exit) => {
-                        self.level.exit = Some(self.mousepos(&s));
-                        self.current = Tool::Selector(Selection{exit: true, .. Default::default()});
-                    }
-                    Tool::Inserter(Insertion::Enemy{rot}) => {
-                        s.mplayer.play(ctx, "reload").unwrap();
-                        self.level.enemies.push(Enemy::new(Object::with_rot(mousepos, rot)));
-                        self.level.weapons.push(WEAPONS["glock"].make_drop(mousepos));
-                    },
-                    Tool::Inserter(Insertion::Decoration{spr, rot}) => {
-                        self.level.decorations.push(Decoration::new(Object::with_rot(mousepos, rot), spr));
-                    }
-                    Tool::Inserter(Insertion::Pickup(i)) => {
-                        self.level.pickups.push((mousepos, i));
-                    },
-                    Tool::Inserter(Insertion::Weapon(id)) => {
-                        self.level.weapons.push(WEAPONS[id].make_drop(mousepos));
-                    },
-                    Tool::Inserter(Insertion::Intel) => self.level.intels.push(mousepos),
                 }
-            }}
-            Middle => self.level.start_point = Some(self.mousepos(&s)),
-            _ => ()
-        }
-    }
-    fn key_down(&mut self, s: &mut State, ctx: &mut Context, keycode: KeyCode) {
-        let shift = keyboard::is_mod_active(ctx, KeyMods::SHIFT);
-
-        use self::KeyCode::*;
-        match keycode {
-            Comma if !shift => self.rotation_speed -= 6.,
-            Period if !shift => self.rotation_speed += 6.,
-            Q => self.level.start_point = Some(self.mousepos(&s)),
-            _ => (),
+                Tool::Inserter(Insertion::Exit) => {
+                    self.level.exit = Some(self.mousepos(&s));
+                    self.current = Tool::Selector(Selection{exit: true, .. Default::default()});
+                }
+                Tool::Inserter(Insertion::Enemy{rot}) => {
+                    s.mplayer.play(ctx, "reload").unwrap();
+                    self.level.enemies.push(Enemy::new(Object::with_rot(mousepos, rot)));
+                    self.level.weapons.push(WEAPONS["glock"].make_drop(mousepos));
+                },
+                Tool::Inserter(Insertion::Decoration{spr, rot}) => {
+                    self.level.decorations.push(Decoration::new(Object::with_rot(mousepos, rot), spr));
+                }
+                Tool::Inserter(Insertion::Pickup(i)) => {
+                    self.level.pickups.push((mousepos, i));
+                },
+                Tool::Inserter(Insertion::Weapon(id)) => {
+                    self.level.weapons.push(WEAPONS[id].make_drop(mousepos));
+                },
+                Tool::Inserter(Insertion::Intel) => self.level.intels.push(mousepos),
+            }
         }
     }
 }
