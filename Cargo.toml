@@ -14,6 +14,7 @@ rand = "0.6"
 clipboard = "0.5"
 toml = "0.5"
 lazy_static = "1"
+log = "0.4"
 [dependencies.nalgebra]
 version = "0.18"
 features = ["mint"]

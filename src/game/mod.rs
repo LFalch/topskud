@@ -1,6 +1,8 @@
 use std::path::{Path, PathBuf};
+use std::sync::Mutex;
+use std::fmt::{self, Display};
 use crate::{
-    util::{Vector2, Point2},
+    util::{Vector2, Point2, RED, GREEN, BLUE},
     io::{
         snd::MediaPlayer,
         tex::{Assets, PosText},
@@ -10,13 +12,15 @@ use crate::{
 use ggez::{
     nalgebra::Matrix4,
     Context, GameResult,
-    graphics::{self, DrawMode, Rect, Mesh, Text, DrawParam},
+    graphics::{self, DrawMode, Rect, Mesh, Text, TextFragment, DrawParam, Color},
     timer,
     input::mouse::{self, MouseCursor},
     event::EventHandler
 };
 use clipboard::{ClipboardContext, ClipboardProvider};
 use self::world::Level;
+use log::{Log, Metadata, Record, Level as LogLevel};
+use lazy_static::lazy_static;
 
 /// Stuff related to things in the world
 pub mod world;
@@ -74,6 +78,60 @@ pub trait GameState {
     }
 }
 
+lazy_static! {
+    static ref CONSOLE_LOGGER: ConsoleLogger = ConsoleLogger::default();
+}
+
+#[derive(Debug, Default)]
+struct ConsoleLogger {
+    fragments: Mutex<Vec<TextFragment>>
+}
+
+impl ConsoleLogger {
+    #[inline]
+    fn get_colour(l: LogLevel) -> Option<Color> {
+        use self::LogLevel::*;
+        match l {
+            Trace => Some(BLUE),
+            Info => None,
+            Debug => Some(GREEN),
+            Warn => Some(Color{r:1.,g:1.,b:0.,a:1.}),
+            Error => Some(RED),
+        }
+    }
+    fn empty(&self) -> impl Iterator<Item=TextFragment> {
+        let frags = std::mem::replace(&mut *self.fragments.lock().unwrap(), Vec::new());
+        
+        frags.into_iter()
+    }
+}
+
+impl Log for ConsoleLogger {
+    #[inline]
+    fn enabled(&self, metadata: &Metadata) -> bool {
+        // Only want to deal with logs from this crate
+        metadata.target().starts_with("topskud")
+    }
+    fn log(&self, record: &Record) {
+        if self.enabled(record.metadata()) {
+            print!("{}: ", record.level());
+
+            println!("{}", record.args());
+
+            let frag: TextFragment = format!("{}\n", record.args()).into();
+
+            let mut frags = self.fragments.lock().unwrap();
+
+            if let Some(color) = Self::get_colour(record.level()) {
+                frags.push(frag.color(color));
+            } else {
+                frags.push(frag);
+            }
+        }
+    }
+    fn flush(&self) {}
+}
+
 const PROMPT_Y: f32 = 196.;
 
 #[derive(Debug)]
@@ -82,8 +140,33 @@ pub struct Console {
     prompt: PosText,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum CommandError {
+    NoWorld,
+    NoCampaign,
+    InvalidArg,
+    NoSuchLevel,
+    NoSuchWeapon,
+}
+
+impl Display for CommandError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use self::CommandError::*;
+        match *self {
+            NoWorld => "No world".fmt(f),
+            NoCampaign => "No campaign loaded".fmt(f),
+            InvalidArg => "Invalid argument".fmt(f),
+            NoSuchLevel => "No such level".fmt(f),
+            NoSuchWeapon => "No such weapon".fmt(f),
+        }
+    }
+}
+
 impl Console {
     fn new(_ctx: &mut Context, assets: &Assets) -> GameResult<Self> {
+        log::set_logger(&*CONSOLE_LOGGER).expect("to be first logger");
+        log::set_max_level(log::LevelFilter::Trace);
+
         Ok(Console {
             history: assets.raw_text_with("Acheivements disabled.\n", 18.),
             prompt: assets.text(Point2::new(0., PROMPT_Y)).and_text("> ").and_text(String::with_capacity(32)),
@@ -98,44 +181,44 @@ impl Console {
         let prompt = mem::replace(prompt, String::with_capacity(cap));
         let args: Vec<_> = prompt.split(<char>::is_whitespace).collect();
         
+        if let Err(s) = self.handle(ctx, state, gs, args) {
+            error!("{}", s);
+        }
+
+        Ok(())
+    }
+    fn handle(&mut self, ctx: &mut Context, state: &mut State, gs: &mut dyn GameState, args: Vec<&str>) -> Result<(), CommandError> {
+        use self::CommandError::*;
+
         match args[0] {
             "" => (),
-            "pi" => if let Some(world) = gs.get_mut_world() {
+            "pi" => {
+                let world = gs.get_mut_world().ok_or(NoWorld)?;
                 world.intels.clear();
-                self.history.add("Intels got\n");
-            } else {
-                self.history.add("No world\n");
-            },
+                info!("Intels got");
+            }
             "clear" => self.history = state.assets.raw_text_with("", 18.),
-            "fa" => if let Some(world) = gs.get_mut_world() {
+            "fa" => {
+                let world = gs.get_mut_world().ok_or(NoWorld)?;
                 world.player.health.hp = 100.;
                 world.player.health.armour = 100.;
-            } else {
-                self.history.add("No world\n");
             },
-            "god" => if let Some(world) = gs.get_mut_world() {
+            "god" => {
+                let world = gs.get_mut_world().ok_or(NoWorld)?;
                 if world.player.health.hp.is_finite() {
                     world.player.health.hp = std::f32::INFINITY;
-                    self.history.add("Degreelessness\n");
+                    info!("Degreelessness");
                 } else {
                     world.player.health.hp = 100.;
-                    self.history.add("God off\n");
+                    info!("God off");
                 }
-            } else {
-                self.history.add("No world\n");
             },
-            "wep" => if let Some(world) = gs.get_mut_world() {
-                if let Some(&wep) = args.get(1) {
-                    if let Some(weapon) = WEAPONS.get(wep) {
-                        world.weapons.push(weapon.make_drop(state.mouse-state.offset));
-                    } else {
-                        self.history.add("No such weapon\n");
-                    }
-                } else {
-                    self.history.add("Please pass a weapon id\n");
-                }
-            } else {
-                self.history.add("No world\n");
+            "wep" => {
+                let world = gs.get_mut_world().ok_or(NoWorld)?;
+                let &wep = args.get(1).ok_or(InvalidArg)?;
+                let weapon = WEAPONS.get(wep).ok_or(NoSuchWeapon)?;
+
+                world.weapons.push(weapon.make_drop(state.mouse-state.offset));
             },
             "reload" => {
                 if let Some(arg) = args.get(1) {
@@ -147,53 +230,38 @@ impl Console {
             }
             "cmp" => if let Content::Campaign(ref mut cmp) = state.content {
                 if let Some(i) = args.get(1) {
-                    if let Ok(i) = i.parse() {
-                        cmp.current = i;
-                        if let Some(lvl) = cmp.next_level() {
-                            let (health, wep) = if let Some(world) = gs.get_world() {
-                                (world.player.health, world.player.wep)
-                            } else {
-                                (Health::default(), None)
-                            };
+                    let i = i.parse().map_err(|_| InvalidArg)?;
+                    cmp.current = i;
+                    let lvl = cmp.next_level().ok_or(NoSuchLevel)?;
 
-                            state.switch(StateSwitch::PlayWith{health, wep, lvl: Box::new(lvl)});
-                        } else {
-                            self.history.add("Level not found\n");
-                        }
+                    let (health, wep) = if let Some(world) = gs.get_world() {
+                        (world.player.health, world.player.wep)
                     } else {
-                        self.history.add("Not a valid index\n");
-                    }
+                        (Health::default(), None)
+                    };
+
+                    state.switch(StateSwitch::PlayWith{health, wep, lvl: Box::new(lvl)});
                 } else {
-                    self.history.add(format!("{} levels. Current is {}\n", cmp.levels.len(), cmp.current));
+                    info!("{} levels. Current is {}", cmp.levels.len(), cmp.current);
                 }
             } else {
-                self.history.add("No campaign loaded\n");
+                return Err(NoCampaign);
             }
-            "gg" => if let Some(world) = gs.get_mut_world() {
+            "gg" => {
+                let world = gs.get_mut_world().ok_or(NoWorld)?;
                 world.player.utilities.grenades += 3;
-                self.history.add("Gg'd\n");
-            } else {
-                self.history.add("No world\n");
+                info!("Gg'd");
             },
             "hello" => {
-                self.history.add("Hello!\n");
+                info!("Hello!");
             },
             "quit" => {
                 ctx.continuing = false;
             }
             cmd => {
-                self.history.add(format!("  Unknown command `{}'!\n", cmd));
+                warn!("  Unknown command `{}'!", cmd);
             }
         }
-
-        while self.history.height(ctx) > PROMPT_Y as u32 {
-            let new_history = self.history.fragments().iter().skip(1).cloned().fold(state.assets.raw_text(18.), |mut text, f| {
-                text.add(f);
-                text
-            });
-            self.history = new_history;
-        }
-
         Ok(())
     }
 }
@@ -332,6 +400,17 @@ impl EventHandler for Master {
         }
         if self.console_status.is_open() {
             while timer::check_update_time(ctx, DESIRED_FPS) {}
+
+            for frag in CONSOLE_LOGGER.empty() {
+                self.console.history.add(frag);
+            }
+            while self.console.history.height(ctx) > PROMPT_Y as u32 {
+                let new_history = self.console.history.fragments().iter().skip(1).cloned().fold(self.state.assets.raw_text(18.), |mut text, f| {
+                    text.add(f);
+                    text
+                });
+                self.console.history = new_history;
+            }
 
             Ok(())
         } else {

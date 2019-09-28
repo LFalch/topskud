@@ -122,11 +122,11 @@ impl Play {
                     world.player_pickup();
 
                     if world.player.wep.is_none() {
-                        eprintln!("Warning: player has no weapon");
+                        warn!(target: "console", "player has no weapon");
                     }
 
                     for enemy_pos in world.enemies.iter().filter_map(|enemy| if enemy.pl.wep.is_none() {Some(enemy.pl.obj.pos)}else{None}) {
-                        eprintln!("Warning: enemy at {:.2} has no weapon", enemy_pos)
+                        warn!(target: "console", "enemy at {:.2} has no weapon", enemy_pos)
                     }
 
                     world
