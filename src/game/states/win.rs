@@ -5,14 +5,15 @@ use crate::{
         btn::Button,
     },
     obj::{health::Health, weapon::WeaponInstance},
-    game::event::{Event::{self, Key, Mouse}, MouseButton, KeyCode},
+    game::{
+        State, Content, GameState, StateSwitch, world::{Level, Statistics},
+        event::{Event::{self, Key, Mouse}, MouseButton, KeyCode},
+    }
 };
 use ggez::{
     Context, GameResult,
     graphics::Rect,
 };
-
-use super::{State, Content, GameState, StateSwitch, world::{Level, Statistics}};
 
 #[allow(clippy::large_enum_variant)]
 enum WinButtons {

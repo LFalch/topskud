@@ -24,13 +24,9 @@ use lazy_static::lazy_static;
 
 /// Stuff related to things in the world
 pub mod world;
-pub mod editor;
-pub mod play;
-pub mod menu;
-pub mod lose;
-pub mod win;
+pub mod states;
 
-use self::menu::Menu;
+use self::states::menu::Menu;
 use self::world::Statistics;
 
 pub enum StateSwitch {
@@ -329,7 +325,6 @@ const DESIRED_FPS: u32 = 60;
 pub(crate) const DELTA: f32 = 1. / DESIRED_FPS as f32;
 
 impl Master {
-    #[allow(clippy::new_ret_no_self)]
     /// Make a new state object
     pub fn new(ctx: &mut Context, arg: &str) -> GameResult<Self> {
         // Initialise assets
@@ -390,12 +385,12 @@ impl EventHandler for Master {
 
             use self::StateSwitch::*;
             self.gs = match gsb {
-                PlayWith{lvl, health, wep} => play::Play::new(ctx, &mut self.state, *lvl, Some((health, wep))),
-                Play(lvl) => play::Play::new(ctx, &mut self.state, lvl, None),
-                Menu => menu::Menu::new(ctx, &mut self.state),
-                Editor(l) => editor::Editor::new(&self.state, l),
-                Win(stats) => win::Win::new(ctx, &mut self.state, *stats),
-                Lose(stats) => lose::Lose::new(ctx, &mut self.state, *stats),
+                PlayWith{lvl, health, wep} => states::play::Play::new(ctx, &mut self.state, *lvl, Some((health, wep))),
+                Play(lvl) => states::play::Play::new(ctx, &mut self.state, lvl, None),
+                Menu => states::menu::Menu::new(ctx, &mut self.state),
+                Editor(l) => states::editor::Editor::new(&self.state, l),
+                Win(stats) => states::win::Win::new(ctx, &mut self.state, *stats),
+                Lose(stats) => states::lose::Lose::new(ctx, &mut self.state, *stats),
             }?;
         }
         if self.console_status.is_open() {

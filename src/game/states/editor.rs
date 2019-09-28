@@ -6,7 +6,11 @@ use crate::{
         Vector2, Point2},
     io::tex::PosText,
     ext::BoolExt,
-    game::event::{Event::{self, Key, Mouse}, MouseButton as Mb, KeyCode, KeyMods},
+    game::{
+        DELTA, Content, GameState, State, StateSwitch,
+        world::{Grid, Level, Palette},
+        event::{Event::{self, Key, Mouse}, MouseButton as Mb, KeyCode, KeyMods}
+    },
     obj::{Object, enemy::Enemy, decoration::Decoration, pickup::PICKUPS, weapon::WEAPONS}
 };
 use ggez::{
@@ -17,11 +21,6 @@ use ggez::{
         keyboard,
         mouse,
     },
-};
-
-use super::{
-    DELTA, Content, GameState, State, StateSwitch,
-    world::{Grid, Level, Palette}
 };
 
 use std::path::PathBuf;

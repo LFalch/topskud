@@ -5,14 +5,15 @@ use crate::{
         tex::PosText,
         btn::Button,
     },
-    game::event::{Event::{self, Mouse}, MouseButton},
+    game::{
+        Campaign, Content, State, GameState, StateSwitch, world::Level,
+        event::{Event::{self, Mouse}, MouseButton}
+    },
 };
 use ggez::{
     Context, GameResult,
     graphics::Rect,
 };
-
-use super::{Campaign, Content, State, GameState, StateSwitch, world::Level};
 
 /// The state of the game
 pub struct Menu {

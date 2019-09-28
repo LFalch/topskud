@@ -17,7 +17,6 @@ const MISSING_TEXTURE: &str = "materials/missing";
 
 impl Assets {
     /// Initialises the assets with the context
-    #[allow(clippy::new_ret_no_self)]
     pub fn new(ctx: &mut Context) -> GameResult<Self> {
         Ok(Assets {
             texes: RefCell::new(HashMap::with_capacity(64)),

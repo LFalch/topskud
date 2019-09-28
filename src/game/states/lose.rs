@@ -5,14 +5,15 @@ use crate::{
         btn::Button,
     },
     obj::{health::Health, weapon::WeaponInstance},
-    game::event::{Event::{self, *}, MouseButton as Mb, KeyCode as Key},
+    game::{
+        State, Content, GameState, StateSwitch, world::{Statistics, Level},
+        event::{Event::{self, *}, MouseButton as Mb, KeyCode as Key}
+    },
 };
 use ggez::{
     Context, GameResult,
     graphics::{Rect, TextFragment},
 };
-
-use super::{State, Content, GameState, StateSwitch, world::{Statistics, Level}};
 
 /// The state of the game
 pub struct Lose {

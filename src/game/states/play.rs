@@ -8,7 +8,10 @@ use crate::{
     },
     io::tex::{Assets, PosText},
     obj::{Object, bullet::Bullet, pickup::Pickup, player::Player, enemy::{Enemy, Chaser}, health::Health, weapon::{self, WeaponInstance}, grenade::Explosion},
-    game::event::{Event::{self, Key, Mouse}, MouseButton, KeyCode, KeyMods},
+    game::{
+        DELTA, State, GameState, StateSwitch, world::{Level, Statistics, World},
+        event::{Event::{self, Key, Mouse}, MouseButton, KeyCode, KeyMods}
+    },
 };
 use ggez::{
     Context, GameResult,
@@ -24,7 +27,6 @@ use ggez::{
 };
 
 use rand::{thread_rng, prelude::SliceRandom};
-use super::{DELTA, State, GameState, StateSwitch, world::{Level, Statistics, World}};
 
 #[derive(Debug, Copy, Clone)]
 enum Blood {
