@@ -11,7 +11,7 @@ use crate::{
         world::{Grid, Level, Palette},
         event::{Event::{self, Key, Mouse}, MouseButton as Mb, KeyCode, KeyMods}
     },
-    obj::{Object, enemy::Enemy, decoration::Decoration, pickup::PICKUPS, weapon::WEAPONS}
+    obj::{Object, enemy::Enemy, decal::Decal, pickup::PICKUPS, weapon::WEAPONS}
 };
 use ggez::{
     Context, GameResult,
@@ -80,7 +80,7 @@ struct Selection {
     intels: Vec<usize>,
     pickups: Vec<usize>,
     weapons: Vec<usize>,
-    decorations: Vec<usize>,
+    decals: Vec<usize>,
     moving: Option<Point2>,
 }
 
@@ -93,7 +93,7 @@ struct EditorFile {
 struct EditorPalettes {
     materials: Vec<String>,
     weapons: Vec<String>,
-    decorations: Vec<String>,
+    decals: Vec<String>,
 }
 
 /// The state of the game
@@ -174,7 +174,7 @@ impl Editor {
             Insertion::Pickup(5),
         ];
 
-        let EditorFile{palettes: EditorPalettes{materials, weapons, decorations}} = {
+        let EditorFile{palettes: EditorPalettes{materials, weapons, decals}} = {
             let mut file = File::open("resources/editor.toml").unwrap();
             let mut s = String::new();
             file.read_to_string(&mut s).unwrap();
@@ -182,7 +182,7 @@ impl Editor {
             toml::from_str(&s).unwrap()
         };
         entities.extend(weapons.into_iter().map(|wep| Insertion::Weapon(&*Box::leak(wep.into_boxed_str()))));
-        entities.extend(decorations.into_iter().map(|dec| Insertion::Decoration{rot: 0., spr: &*Box::leak(dec.into_boxed_str())}));
+        entities.extend(decals.into_iter().map(|dec| Insertion::Decoration{rot: 0., spr: &*Box::leak(dec.into_boxed_str())}));
 
         let extra_entities = entities.drain(20..).collect();
 
@@ -321,14 +321,14 @@ impl GameState for Editor {
             }
             enemy.draw(ctx, &s.assets, WHITE)?;
         }
-        for (i, decoration) in self.level.decorations.iter().enumerate() {
-            if let Tool::Selector(Selection{ref decorations, ..})= self.current {
-                if decorations.contains(&i) {
-                    let mesh = Mesh::new_circle(ctx, DrawMode::fill(), decoration.obj.pos, 17., 0.5, YELLOW)?;
+        for (i, decal) in self.level.decals.iter().enumerate() {
+            if let Tool::Selector(Selection{ref decals, ..})= self.current {
+                if decals.contains(&i) {
+                    let mesh = Mesh::new_circle(ctx, DrawMode::fill(), decal.obj.pos, 17., 0.5, YELLOW)?;
                     graphics::draw(ctx, &mesh, DrawParam::default())?;
                 }
             }
-            decoration.draw(ctx, &s.assets, WHITE)?;
+            decal.draw(ctx, &s.assets, WHITE)?;
         }
 
         // Draw init pick-up-ables on top of enemies so they're visible
@@ -377,8 +377,8 @@ impl GameState for Editor {
                 let img = s.assets.get_img(ctx, "common/intel");
                 graphics::draw(ctx, &*img, drawparams)?;
             }
-            for &i in &selection.decorations {
-                let mut dec = self.level.decorations[i].clone();
+            for &i in &selection.decals {
+                let mut dec = self.level.decals[i].clone();
                 dec.obj.pos += dist;
                 dec.draw(ctx, &s.assets, TRANS)?;
             }
@@ -532,7 +532,7 @@ impl GameState for Editor {
                     mut intels,
                     mut pickups,
                     mut weapons,
-                    mut decorations,
+                    mut decals,
                     exit, moving: _,
                 } = ::std::mem::replace(selection, Selection::default());
 
@@ -547,9 +547,9 @@ impl GameState for Editor {
                 for intel in intels.into_iter().rev() {
                     self.level.intels.remove(intel);
                 }
-                decorations.sort();
-                for decoration in decorations.into_iter().rev() {
-                    self.level.decorations.remove(decoration);
+                decals.sort();
+                for decal in decals.into_iter().rev() {
+                    self.level.decals.remove(decal);
                 }
                 pickups.sort();
                 for pickup in pickups.into_iter().rev() {
@@ -607,8 +607,8 @@ impl GameState for Editor {
                         return selection.moving = Some(mousepos);
                     }
                 }
-                for &i in &selection.decorations {
-                    if (self.level.decorations[i].obj.pos - mousepos).norm() <= 16. {
+                for &i in &selection.decals {
+                    if (self.level.decals[i].obj.pos - mousepos).norm() <= 16. {
                         return selection.moving = Some(mousepos);
                     }
                 }
@@ -671,8 +671,8 @@ impl Editor {
                         for i in selection.intels.iter().rev() {
                             self.level.intels[*i] += dist;
                         }
-                        for i in selection.decorations.iter().rev() {
-                            self.level.decorations[*i].obj.pos += dist;
+                        for i in selection.decals.iter().rev() {
+                            self.level.decals[*i].obj.pos += dist;
                         }
                         for i in selection.pickups.iter().rev() {
                             self.level.pickups[*i].0 += dist;
@@ -703,9 +703,9 @@ impl Editor {
                                 return
                             }
                         }
-                        for (i, decoration) in self.level.decorations.iter().enumerate() {
-                            if (decoration.obj.pos - mousepos).norm() <= 16. && !selection.decorations.contains(&i) {
-                                selection.decorations.push(i);
+                        for (i, decal) in self.level.decals.iter().enumerate() {
+                            if (decal.obj.pos - mousepos).norm() <= 16. && !selection.decals.contains(&i) {
+                                selection.decals.push(i);
                                 return
                             }
                         }
@@ -733,7 +733,7 @@ impl Editor {
                     self.level.weapons.push(WEAPONS["glock"].make_drop(mousepos));
                 },
                 Tool::Inserter(Insertion::Decoration{spr, rot}) => {
-                    self.level.decorations.push(Decoration::new(Object::with_rot(mousepos, rot), spr));
+                    self.level.decals.push(Decal::new(Object::with_rot(mousepos, rot), spr));
                 }
                 Tool::Inserter(Insertion::Pickup(i)) => {
                     self.level.pickups.push((mousepos, i));

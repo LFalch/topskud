@@ -57,6 +57,7 @@ pub struct Weapon {
     pub spray_pattern: Box<[f32]>,
     pub spray_decay: f32,
     pub spray_repeat: usize,
+    pub bullet_speed: f32,
 }
 
 mod consts;
@@ -83,6 +84,10 @@ impl Weapon {
             ammo: cur_clip*self.clips.get(),
             weapon: self,
         }
+    }
+    #[inline]
+    pub fn get_bullet_spr(&self) -> &str {
+        "common/bullet"
     }
 }
 

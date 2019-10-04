@@ -11,7 +11,7 @@ use crate::{
         grenade::Grenade,
         weapon::{WeaponInstance, WeaponDrop, WEAPONS},
         pickup::Pickup,
-        decoration::{Decoration, OldDecoration},
+        decal::{Decal, OldDecoration},
     }
 };
 use ggez::{
@@ -40,7 +40,7 @@ pub struct World {
     pub bullets: Vec<Bullet<'static>>,
     pub grenades: Vec<Grenade>,
     pub weapons: Vec<WeaponDrop<'static>>,
-    pub decorations: Vec<Decoration>,
+    pub decals: Vec<Decal>,
     pub pickups: Vec<Pickup>,
 }
 
@@ -100,8 +100,7 @@ impl World {
 }
 
 pub struct Statistics {
-    pub hits: usize,
-    pub misses: usize,
+    pub time: usize,
     pub enemies_left: usize,
     pub health_left: Health,
     pub level: Level,
@@ -155,7 +154,7 @@ pub struct Level {
     pub exit: Option<Point2>,
     pub intels: Vec<Point2>,
     pub pickups: Vec<(Point2, u8)>,
-    pub decorations: Vec<Decoration>,
+    pub decals: Vec<Decal>,
     pub weapons: Vec<WeaponDrop<'static>>,
 }
 
@@ -169,7 +168,7 @@ impl Level {
             exit: None,
             intels: Vec::new(),
             pickups: Vec::new(),
-            decorations: Vec::new(),
+            decals: Vec::new(),
             weapons: Vec::new(),
         }
     }
@@ -218,10 +217,10 @@ impl Level {
                 "INTELS" => ret.intels = bincode::deserialize_from(&mut reader)
                     .map(|l: Vec<(f32, f32)>| l.into_iter().map(|(x, y)| Point2::new(x, y)).collect())
                     .map_err(|e| GameError::ResourceLoadError(format!("{:?}", e)))?,
-                "DECORATIONS" => ret.decorations = bincode::deserialize_from(&mut reader)
+                "DECORATIONS" => ret.decals = bincode::deserialize_from(&mut reader)
                     .map(|old_decs: Vec<OldDecoration>| old_decs.into_iter().map(|od| od.renew()).collect())
                     .map_err(|e| GameError::ResourceLoadError(format!("{:?}", e)))?,
-                "DECS" => ret.decorations = bincode::deserialize_from(&mut reader)
+                "DECS" => ret.decals = bincode::deserialize_from(&mut reader)
                     .map_err(|e| GameError::ResourceLoadError(format!("{:?}", e)))?,
                 "PICKUPS" => ret.pickups = bincode::deserialize_from(&mut reader)
                     .map(|l: Vec<((f32, f32), u8)>| l.into_iter().map(|((x, y), i)| (Point2::new(x, y), i)).collect())
@@ -266,9 +265,9 @@ impl Level {
             bincode::serialize_into(&mut file, &intels)
                 .map_err(|e| GameError::ResourceLoadError(format!("{:?}", e)))?;
         }
-        if !self.decorations.is_empty() {
+        if !self.decals.is_empty() {
             writeln!(file, "\nDECS")?;
-            bincode::serialize_into(&mut file, &self.decorations)
+            bincode::serialize_into(&mut file, &self.decals)
             .map_err(|e| GameError::ResourceLoadError(format!("{:?}", e)))?;
         }
         if !self.pickups.is_empty() {

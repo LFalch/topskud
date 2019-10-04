@@ -12,10 +12,10 @@ pub struct OldDecoration {
 }
 
 impl OldDecoration {
-    pub fn renew(self) -> Decoration {
+    pub fn renew(self) -> Decal {
         let OldDecoration{obj, i} = self;
 
-        Decoration {
+        Decal {
             obj,
             spr: OLD_DECORATION_LIST[i].into()
         }
@@ -41,15 +41,15 @@ const OLD_DECORATION_LIST: [&str; 15] = [
 ];
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Decoration {
+pub struct Decal {
     pub obj: Object,
     pub spr: Box<str>,
 }
 
-impl Decoration {
+impl Decal {
     #[inline]
     pub fn new<S: Into<Box<str>>>(obj: Object, spr: S) -> Self {
-        Decoration {
+        Decal {
             obj,
             spr: spr.into()
         }
@@ -58,9 +58,5 @@ impl Decoration {
     pub fn draw(&self, ctx: &mut Context, a: &Assets, color: Color) -> GameResult<()> {
         let img = a.get_img(ctx, &self.spr);
         self.obj.draw(ctx, &*img, color)
-    }
-    #[inline]
-    pub fn is_solid(&self) -> bool {
-        &*self.spr == "decorations/trashcan"
     }
 }

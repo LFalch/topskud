@@ -10,7 +10,7 @@ pub mod health;
 pub mod weapon;
 pub mod bullet;
 pub mod pickup;
-pub mod decoration;
+pub mod decal;
 pub mod grenade;
 
 use crate::game::world::{Grid, Palette};

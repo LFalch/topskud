@@ -30,7 +30,9 @@ impl Assets {
             if let Ok(tex) = Image::new(ctx, &format!("/{}.png", s)) {
                 self.texes.borrow_mut().insert(s.to_owned(), tex);
             } else if s != MISSING_TEXTURE {
-                return self.get_img(ctx, MISSING_TEXTURE)
+                let img = self.get_img(ctx, MISSING_TEXTURE).clone();
+                error!("Couldn't find texture {}. Loading default instead.", s);
+                self.texes.borrow_mut().insert(s.to_owned(), img);
             } else {
                 panic!("Missing texture not found");
             }

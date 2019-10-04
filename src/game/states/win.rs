@@ -6,6 +6,7 @@ use crate::{
     },
     obj::{health::Health, weapon::WeaponInstance},
     game::{
+        DELTA,
         State, Content, GameState, StateSwitch, world::{Level, Statistics},
         event::{Event::{self, Key, Mouse}, MouseButton, KeyCode},
     }
@@ -29,8 +30,7 @@ enum WinButtons {
 /// The state of the game
 pub struct Win {
     level_complete: PosText,
-    hits_text: PosText,
-    misses_text: PosText,
+    time_text: PosText,
     enemies_text: PosText,
     health_text: PosText,
     buttons: WinButtons,
@@ -45,10 +45,10 @@ impl Win {
         let w = s.width as f32;
 
         let level_complete = s.assets.text(Point2::new(s.width as f32/ 2., 10.)).and_text("LEVEL COMPLETE");
-        let hits_text = s.assets.text(Point2::new(4., 20.)).and_text("Hits: ").and_text(format!("Hits: {}", stats.hits));
-        let misses_text = s.assets.text(Point2::new(4., 36.)).and_text(format!("Misses: {}", stats.misses));
-        let enemies_text = s.assets.text(Point2::new(4., 52.)).and_text(format!("Enemies left: {}", stats.enemies_left));
-        let health_text = s.assets.text(Point2::new(4., 68.)).and_text(format!("Health left: {:02.0} / {:02.0}", stats.health_left.hp, stats.health_left.armour));
+        let time_text = s.assets.text(Point2::new(4., 20.)).and_text(format!("Time: {:.1}s", stats.time as f32 * DELTA));
+        let enemy_total = stats.level.enemies.len();
+        let enemies_text = s.assets.text(Point2::new(4., 36.)).and_text(format!("Enemies killed: {} / {}", enemy_total - stats.enemies_left, enemy_total));
+        let health_text = s.assets.text(Point2::new(4., 52.)).and_text(format!("Health left: {:02.0} / {:02.0}", stats.health_left.hp, stats.health_left.armour));
 
         Ok(Box::new(Win {
             buttons: {
@@ -63,8 +63,7 @@ impl Win {
                 }
             },
             level_complete,
-            hits_text,
-            misses_text,
+            time_text,
             enemies_text,
             health_text,
             level: stats.level,
@@ -108,8 +107,7 @@ impl GameState for Win {
         }
 
         self.level_complete.draw_center(ctx)?;
-        self.hits_text.draw_text(ctx)?;
-        self.misses_text.draw_text(ctx)?;
+        self.time_text.draw_text(ctx)?;
         self.enemies_text.draw_text(ctx)?;
         self.health_text.draw_text(ctx)
     }

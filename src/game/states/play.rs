@@ -6,8 +6,8 @@ use crate::{
         ver, hor,
         Vector2, Point2
     },
-    io::tex::{Assets, PosText},
-    obj::{Object, bullet::Bullet, pickup::Pickup, player::Player, enemy::{Enemy, Chaser}, health::Health, weapon::{self, WeaponInstance}, grenade::Explosion},
+    io::tex::PosText,
+    obj::{Object, bullet::Bullet, decal::Decal, pickup::Pickup, player::Player, enemy::{Enemy, Chaser}, health::Health, weapon::{self, WeaponInstance}, grenade::Explosion},
     game::{
         DELTA, State, GameState, StateSwitch, world::{Level, Statistics, World},
         event::{Event::{self, Key, Mouse}, MouseButton, KeyCode, KeyMods}
@@ -28,42 +28,20 @@ use ggez::{
 
 use rand::{thread_rng, prelude::SliceRandom};
 
-#[derive(Debug, Copy, Clone)]
-enum Blood {
-    B1,
-    B2,
-    B3,
-}
-
-struct BloodSplatter {
-    ty: Blood,
-    o: Object,
-}
-
-impl BloodSplatter {
-    fn new(mut o: Object) -> Self {
-        o.pos += 16. * angle_to_vec(o.rot);
-        BloodSplatter {
-            o,
-            ty: *[
-                Blood::B1,
-                Blood::B2,
-                Blood::B2,
-                Blood::B3,
-                Blood::B3,
-            ].choose(&mut thread_rng()).unwrap(),
-        }
-    }
-    fn draw(&self, ctx: &mut Context, a: &Assets) -> GameResult<()> {
-        let spr = match self.ty {
-            Blood::B1 => "common/blood1",
-            Blood::B2 => "common/blood2",
-            Blood::B3 => "common/blood3",
-        };
-        let img = a.get_img(ctx, spr);
-        self.o.draw(ctx, &*img, WHITE)
+pub fn new_blood(mut obj: Object) -> Decal {
+    obj.pos += 16. * angle_to_vec(obj.rot);
+    Decal {
+        obj,
+        spr: [
+            "common/blood1",
+            "common/blood2",
+            "common/blood2",
+            "common/blood3",
+            "common/blood3",
+        ].choose(&mut thread_rng()).copied().map(Into::into).unwrap(),
     }
 }
+
 /// The state of the game
 pub struct Play {
     hp_text: PosText,
@@ -74,10 +52,9 @@ pub struct Play {
     hud: Hud,
     world: World,
     holes: SpriteBatch,
-    bloods: Vec<BloodSplatter>,
     cur_pickup: Option<usize>,
     victory_time: f32,
-    misses: usize,
+    time: usize,
     initial: (Health, Option<WeaponInstance<'static>>),
     level: Level,
 }
@@ -102,9 +79,8 @@ impl Play {
                 wep_text: WeaponInstance::weapon_text(Point2::new(2., 87.), &s.assets),
                 status_text: s.assets.text(Point2::new(s.width as f32 / 2., s.height as f32 / 2. + 32.)).and_text(""),
                 hud: Hud::new(ctx)?,
-                misses: 0,
+                time: 0,
                 victory_time: 0.,
-                bloods: Vec::new(),
                 cur_pickup: None,
                 world: {
                     let mut world = World {
@@ -117,18 +93,18 @@ impl Play {
                         grid: level.grid,
                         exit: level.exit,
                         intels: level.intels,
-                        decorations: level.decorations,
+                        decals: level.decals,
                         pickups: level.pickups.into_iter().map(|(p, i)| Pickup::new(p, i)).collect(),
                     };
                     world.enemy_pickup();
                     world.player_pickup();
 
                     if world.player.wep.is_none() {
-                        warn!(target: "console", "player has no weapon");
+                        warn!("player has no weapon");
                     }
 
                     for enemy_pos in world.enemies.iter().filter_map(|enemy| if enemy.pl.wep.is_none() {Some(enemy.pl.obj.pos)}else{None}) {
-                        warn!(target: "console", "enemy at {:.2} has no weapon", enemy_pos)
+                        warn!("enemy at {:.2} has no weapon", enemy_pos)
                     }
 
                     world
@@ -163,13 +139,12 @@ impl GameState for Play {
                 s.mplayer.play(ctx, "boom")?;
 
                 if player_hit {
-                    self.bloods.push(BloodSplatter::new(self.world.player.obj.clone()));
+                    self.world.decals.push(new_blood(self.world.player.obj.clone()));
                     s.mplayer.play(ctx, "hit")?;
 
                     if self.world.player.health.is_dead() {
                         s.switch(StateSwitch::Lose(Box::new(Statistics{
-                            hits: self.bloods.len(),
-                            misses: self.misses,
+                            time: self.time,
                             enemies_left: self.world.enemies.len(),
                             health_left: self.initial.0,
                             level: self.level.clone(),
@@ -184,7 +159,7 @@ impl GameState for Play {
                     let enemy = &self.world.enemies[i];
                     s.mplayer.play(ctx, "hit")?;
 
-                    self.bloods.push(BloodSplatter::new(enemy.pl.obj.clone()));
+                    self.world.decals.push(new_blood(enemy.pl.obj.clone()));
                     if enemy.pl.health.is_dead() {
                         s.mplayer.play(ctx, "death")?;
 
@@ -221,18 +196,16 @@ impl GameState for Play {
                     let dir = angle_to_vec(bullet.obj.rot);
                     bullet.obj.pos += Vector2::new(5.*dir.x.signum(), 5.*dir.y.signum());
                     self.holes.add(bullet.obj.drawparams());
-                    self.misses += 1;
                     deads.push(i);
                 }
                 Hit::Player(hs) => {
                     deads.push(i);
-                    self.bloods.push(BloodSplatter::new(bullet.obj.clone()));
+                    self.world.decals.push(new_blood(bullet.obj.clone()));
                     s.mplayer.play(ctx, if hs {"ding"} else {"hit"})?;
 
                     if self.world.player.health.is_dead() {
                         s.switch(StateSwitch::Lose(Box::new(Statistics{
-                            hits: self.bloods.len(),
-                            misses: self.misses,
+                            time: self.time,
                             enemies_left: self.world.enemies.len(),
                             health_left: self.initial.0,
                             level: self.level.clone(),
@@ -248,7 +221,7 @@ impl GameState for Play {
                     let enemy = &self.world.enemies[e];
                     s.mplayer.play(ctx, if hs {"ding"} else {"hit"})?;
 
-                    self.bloods.push(BloodSplatter::new(bullet.obj.clone()));
+                    self.world.decals.push(new_blood(bullet.obj.clone()));
                     if enemy.pl.health.is_dead() {
                         s.mplayer.play(ctx, "death")?;
 
@@ -353,12 +326,13 @@ impl GameState for Play {
             self.victory_time += DELTA;
         } else if self.victory_time > 0. {
             self.victory_time += DELTA;
+        } else {
+            self.time += 1;
         }
         if self.victory_time >= 2. {
             s.switch(StateSwitch::Win(Box::new(Statistics{
                 level: self.level.clone(),
-                hits: self.bloods.len(),
-                misses: self.misses,
+                time: self.time,
                 enemies_left: self.world.enemies.len(),
                 health_left: self.world.player.health,
                 weapon: self.world.player.wep,
@@ -393,12 +367,8 @@ impl GameState for Play {
             let img = s.assets.get_img(ctx, "common/intel");
             graphics::draw(ctx, &*img, drawparams)?;
         }
-        for decoration in &self.world.decorations {
-            decoration.draw(ctx, &s.assets, WHITE)?;
-        }
-
-        for blood in &self.bloods {
-            blood.draw(ctx, &s.assets)?;
+        for decal in &self.world.decals {
+            decal.draw(ctx, &s.assets, WHITE)?;
         }
 
         for pickup in &self.world.pickups {

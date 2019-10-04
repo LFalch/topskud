@@ -17,7 +17,6 @@ pub struct Bullet<'a> {
     pub target: Point2,
 }
 
-const SPEED: f32 = 1200.;
 const HEADSHOT_BONUS: f32 = 1.5;
 
 impl Bullet<'_> {
@@ -34,12 +33,12 @@ impl Bullet<'_> {
     }
     #[inline]
     pub fn draw(&self, ctx: &mut Context, a: &Assets) -> GameResult<()> {
-        let img = a.get_img(ctx, "common/bullet");
+        let img = a.get_img(ctx, self.weapon.get_bullet_spr());
         self.obj.draw(ctx, &*img, WHITE)
     }
     pub fn update(&mut self, palette: &Palette, grid: &Grid, player: &mut Player, enemies: &mut [Enemy]) -> Hit {
         let start = self.obj.pos;
-        let d_pos = SPEED * DELTA * angle_to_vec(self.obj.rot);
+        let d_pos = self.weapon.bullet_speed * DELTA * angle_to_vec(self.obj.rot);
 
         if Grid::dist_line_circle(start, d_pos, player.obj.pos) <= 16. {
             let hs = self.apply_damage(&mut player.health, player.obj.pos);

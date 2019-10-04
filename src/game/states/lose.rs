@@ -6,6 +6,7 @@ use crate::{
     },
     obj::{health::Health, weapon::WeaponInstance},
     game::{
+        DELTA,
         State, Content, GameState, StateSwitch, world::{Statistics, Level},
         event::{Event::{self, *}, MouseButton as Mb, KeyCode as Key}
     },
@@ -18,8 +19,7 @@ use ggez::{
 /// The state of the game
 pub struct Lose {
     you_died: PosText,
-    hits_text: PosText,
-    misses_text: PosText,
+    time_text: PosText,
     enemies_text: PosText,
     restart_btn: Button<()>,
     edit_btn: Option<Button<()>>,
@@ -33,9 +33,9 @@ impl Lose {
     pub fn new(ctx: &mut Context, s: &mut State, stats: Statistics) -> GameResult<Box<dyn GameState>> {
         let w = s.width as f32;
         let you_died = s.assets.text(Point2::new(s.width as f32/ 2., 10.)).and_text(TextFragment::from("You died!").color(RED));
-        let hits_text = s.assets.text(Point2::new(4., 20.)).and_text(format!("Hits: {}", stats.hits));
-        let misses_text = s.assets.text(Point2::new(4., 36.)).and_text(format!("Misses: {}", stats.misses));
-        let enemies_text = s.assets.text(Point2::new(4., 52.)).and_text(format!("Enemies left: {}", stats.enemies_left));
+        let time_text = s.assets.text(Point2::new(4., 20.)).and_text(format!("Time: {:.0}s", stats.time as f32 * DELTA));
+        let enemy_total = stats.level.enemies.len();
+        let enemies_text = s.assets.text(Point2::new(4., 36.)).and_text(format!("Enemies killed: {} / {}", enemy_total - stats.enemies_left, enemy_total));
         let restart_btn = Button::new(ctx, &s.assets, Rect{x: 3. * w / 7., y: 64., w: w / 7., h: 64.}, "Restart", ())?;
         let edit_btn = if let Content::File(_) = s.content {
             Some(
@@ -47,8 +47,7 @@ impl Lose {
 
         Ok(Box::new(Lose {
             you_died,
-            hits_text,
-            misses_text,
+            time_text,
             enemies_text,
             restart_btn,
             edit_btn,
@@ -73,8 +72,7 @@ impl GameState for Lose {
         }
 
         self.you_died.draw_center(ctx)?;
-        self.hits_text.draw_text(ctx)?;
-        self.misses_text.draw_text(ctx)?;
+        self.time_text.draw_text(ctx)?;
         self.enemies_text.draw_text(ctx)
     }
     fn event_up(&mut self, s: &mut State, _ctx: &mut Context, event: Event) {
