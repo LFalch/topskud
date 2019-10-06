@@ -40,7 +40,7 @@ enum Insertion {
     Enemy{rot: f32},
     Pickup(u8),
     Weapon(&'static str),
-    Decoration{spr: &'static str, rot: f32},
+    Decal{spr: &'static str, rot: f32},
     Exit,
 }
 impl Insertion {
@@ -53,7 +53,7 @@ impl Insertion {
             Exit => "common/goal",
             Pickup(i) => PICKUPS[i as usize].spr,
             Weapon(wep) => &*WEAPONS[wep].entity_sprite, 
-            Decoration{spr, ..} => spr,
+            Decal{spr, ..} => spr,
         }
     }
 }
@@ -66,7 +66,7 @@ impl ::std::cmp::PartialEq for Insertion {
             (Enemy{..}, Enemy{..}) => true,
             (Pickup(i), Pickup(j)) if i == j => true,
             (Weapon(i), Weapon(j)) if i == j => true,
-            (Decoration{spr, ..}, Decoration{spr: spr2, ..}) if spr == spr2 => true,
+            (Decal{spr, ..}, Decal{spr: spr2, ..}) if spr == spr2 => true,
             (Exit, Exit) => true,
             _ => false
         }
@@ -182,7 +182,7 @@ impl Editor {
             toml::from_str(&s).unwrap()
         };
         entities.extend(weapons.into_iter().map(|wep| Insertion::Weapon(&*Box::leak(wep.into_boxed_str()))));
-        entities.extend(decals.into_iter().map(|dec| Insertion::Decoration{rot: 0., spr: &*Box::leak(dec.into_boxed_str())}));
+        entities.extend(decals.into_iter().map(|dec| Insertion::Decal{rot: 0., spr: &*Box::leak(dec.into_boxed_str())}));
 
         let extra_entities = entities.drain(20..).collect();
 
@@ -240,7 +240,7 @@ impl GameState for Editor {
 
         match self.current {
             Tool::Inserter(Insertion::Enemy{ref mut rot}) => *rot += self.rotation_speed * DELTA,
-            Tool::Inserter(Insertion::Decoration{ref mut rot, ..}) => *rot += self.rotation_speed * DELTA,
+            Tool::Inserter(Insertion::Decal{ref mut rot, ..}) => *rot += self.rotation_speed * DELTA,
             _ => (),
         }
         Ok(())
@@ -457,7 +457,7 @@ impl GameState for Editor {
                 let img = s.assets.get_img(ctx, "common/enemy");
                 graphics::draw(ctx, &*img, drawparams)?;
             }
-            Tool::Inserter(Insertion::Decoration{spr, rot}) => {
+            Tool::Inserter(Insertion::Decal{spr, rot}) => {
                 let drawparams = graphics::DrawParam {
                     dest,
                     rotation: rot,
@@ -565,7 +565,7 @@ impl GameState for Editor {
                 if shift {
                     match self.current {
                         Tool::Inserter(Insertion::Enemy{ref mut rot}) => *rot -= std::f32::consts::FRAC_PI_4,
-                        Tool::Inserter(Insertion::Decoration{ref mut rot, ..}) => *rot -= std::f32::consts::FRAC_PI_4,
+                        Tool::Inserter(Insertion::Decal{ref mut rot, ..}) => *rot -= std::f32::consts::FRAC_PI_4,
                         _ => (),
                     }
                 }
@@ -575,7 +575,7 @@ impl GameState for Editor {
                 if shift {
                     match self.current {
                         Tool::Inserter(Insertion::Enemy{ref mut rot}) => *rot += std::f32::consts::FRAC_PI_4,
-                        Tool::Inserter(Insertion::Decoration{ref mut rot, ..}) => *rot += std::f32::consts::FRAC_PI_4,
+                        Tool::Inserter(Insertion::Decal{ref mut rot, ..}) => *rot += std::f32::consts::FRAC_PI_4,
                         _ => (),
                     }
                 }
@@ -732,7 +732,7 @@ impl Editor {
                     self.level.enemies.push(Enemy::new(Object::with_rot(mousepos, rot)));
                     self.level.weapons.push(WEAPONS["glock"].make_drop(mousepos));
                 },
-                Tool::Inserter(Insertion::Decoration{spr, rot}) => {
+                Tool::Inserter(Insertion::Decal{spr, rot}) => {
                     self.level.decals.push(Decal::new(Object::with_rot(mousepos, rot), spr));
                 }
                 Tool::Inserter(Insertion::Pickup(i)) => {

@@ -14,6 +14,7 @@ use ggez::{Context, GameResult};
 use super::{Object, bullet::Bullet};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
+#[serde(rename_all = "lowercase")]
 pub enum FireMode {
     Automatic,
     SemiAutomatic,

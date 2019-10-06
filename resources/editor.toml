@@ -1,7 +1,7 @@
 [palettes]
 materials = ["grass", "wall", "floor", "dirt", "asphalt", "sand", "concrete", "wood_floor", "stairs"]
 weapons = ["glock", "five_seven", "magnum", "m4a1", "ak47", "arwp"]
-decorations = [
+decals = [
     "decorations/chair1",
     "decorations/chair2",
     "decorations/chair_boss",
