@@ -2,7 +2,7 @@
 name = "Glack"
 clip_size = 16
 clips = 7
-damage = 33.4
+damage = 37.7
 # Fraction of damage that will ignore armour (max 1)
 penetration = 0.24
 # Seconds between each shot
@@ -32,7 +32,7 @@ bullet_speed = 1200
 name = "5-SeveN"
 clip_size = 20
 clips = 5
-damage = 42.0
+damage = 50.4
 penetration = 0.46
 fire_rate = 0.20
 reload_time = 1.3
