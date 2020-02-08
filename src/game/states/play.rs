@@ -429,7 +429,8 @@ impl GameState for Play {
                 if let Some(wep) = &mut self.world.player.wep {
                     wep.reload(ctx, &mut s.mplayer).unwrap()
                 } else {
-                    self.world.bullets.push(Bullet{obj: self.world.player.obj.clone(), weapon: &weapon::WEAPONS["glock"], target: self.world.player.obj.pos});
+                    let weapon = &weapon::WEAPONS["glock"];
+                    self.world.bullets.push(Bullet{obj: self.world.player.obj.clone(), vel: Vector2::new(weapon.bullet_speed, 0.), weapon, target: self.world.player.obj.pos});
                 }
             },
             Key(F) => {

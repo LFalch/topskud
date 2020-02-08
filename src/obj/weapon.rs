@@ -2,7 +2,7 @@ use std::num::NonZeroU16;
 use std::fmt::{self, Display};
 
 use crate::{
-    util::{Point2, Rotation2},
+    util::{Point2, Rotation2, angle_to_vec},
     game::DELTA,
     io::{
         snd::MediaPlayer,
@@ -222,16 +222,23 @@ impl<'a> WeaponInstance<'a> {
     }
 }
 
+// Weapon, jerk
+// jerk is used to adjust the target position
 pub struct BulletMaker<'a>(&'a Weapon, f32);
 impl<'a> BulletMaker<'a> {
     pub fn make(self, mut obj: Object, target: Point2) -> Bullet<'a> {
+        let BulletMaker(weapon, jerk) = self;
+
+        // Vector from here to the target
         let dest = target - obj.pos;
 
-        obj.rot += self.1;
+        obj.rot += jerk;
         Bullet {
-            target: obj.pos + Rotation2::new(self.1) * dest,
+            vel: weapon.bullet_speed * angle_to_vec(obj.rot),
+            // Recalculate target including jerk
+            target: obj.pos + Rotation2::new(jerk) * dest,
             obj,
-            weapon: self.0
+            weapon,
         }
     }
 }

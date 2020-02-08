@@ -1,7 +1,7 @@
 use ggez::{Context, GameResult, graphics::WHITE};
 
 use crate::{
-    util::{Point2, angle_to_vec},
+    util::{Vector2, Point2},
     game::{
         DELTA,
         world::{Grid, Palette},
@@ -15,6 +15,7 @@ pub struct Bullet<'a> {
     pub obj: Object,
     pub weapon: &'a Weapon,
     pub target: Point2,
+    pub vel: Vector2,
 }
 
 const HEADSHOT_BONUS: f32 = 1.5;
@@ -26,7 +27,7 @@ impl Bullet<'_> {
             HEADSHOT_BONUS
         } else {
             1.
-        } * self.weapon.damage;
+        } * self.weapon.damage * self.vel.norm() / self.weapon.bullet_speed;
 
         health.weapon_damage(dmg, self.weapon.penetration);
         headshot
@@ -38,8 +39,16 @@ impl Bullet<'_> {
     }
     pub fn update(&mut self, palette: &Palette, grid: &Grid, player: &mut Player, enemies: &mut [Enemy]) -> Hit {
         let start = self.obj.pos;
-        let d_pos = self.weapon.bullet_speed * DELTA * angle_to_vec(self.obj.rot);
+        let d_pos = self.vel * DELTA;
 
+        const VELOCITY_DECREASE: f32 = 220. * DELTA;
+
+        if self.vel.norm() <= VELOCITY_DECREASE {
+            return Hit::Wall
+        }
+        self.vel -= self.vel.normalize() * VELOCITY_DECREASE;
+
+        // Check if we've hit a player or an enemy
         if Grid::dist_line_circle(start, d_pos, player.obj.pos) <= 16. {
             let hs = self.apply_damage(&mut player.health, player.obj.pos);
             return Hit::Player(hs);
@@ -50,6 +59,8 @@ impl Bullet<'_> {
                 return Hit::Enemy(i, hs);
             }
         }
+
+        // Ray cast bullet to see if we've hit a wall and move bullet accordingly
         let cast = grid.ray_cast(palette, start, d_pos, true);
         self.obj.pos = cast.into_point();
         if cast.full() {
