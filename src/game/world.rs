@@ -19,6 +19,7 @@ use ggez::{
     error::GameError,
 };
 
+use std::collections::btree_map::{BTreeMap, Range, RangeMut};
 use std::path::Path;
 use std::fs::File;
 use std::io::{Write, BufRead, BufReader};
@@ -28,25 +29,382 @@ use bincode;
 mod material;
 pub use material::*;
 
+#[derive(Debug, PartialOrd, Ord, PartialEq, Eq, Clone)]
+pub enum EntityId {
+    Exit,
+    Intel(u8),
+    Enemy(u8),
+    Bullet(u16),
+    Grenade(u8),
+    WeaponDrop(u8),
+    Pickup(u8),
+}
+
+union UEntity {
+    exit: *mut Point2,
+    intel: *mut Point2,
+    enemy: *mut Enemy,
+    bullet: *mut Bullet<'static>,
+    grenade: *mut Grenade,
+    weapon_drop: *mut WeaponDrop<'static>,
+    pickup: *mut Pickup,
+}
+
+pub struct EntityMap {
+    inner: BTreeMap<EntityId, UEntity>,
+    pub next: Next,
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct Next {
+    pub intel: u8,
+    pub enemy: u8,
+    pub bullet: u16,
+    pub grenade: u8,
+    pub weapon_drop: u8,
+    pub pickup: u8,
+}
+
+#[inline]
+fn bpointer<T>(t: T) -> *mut T {
+    Box::into_raw(Box::new(t))
+}
+
+macro_rules! impl_entity_map {
+    ($entitymap:ty; $($f_insert:ident, $f_remove:ident, $f_iter:ident, $f_iter_mut:ident, $id:ty, $idvariant:ident, $entity:ident, $enttype:ty,)*) => {
+        impl $entitymap {
+            $(
+            pub fn $f_insert(&mut self, id: Option<$id>, $entity: $enttype) -> Option<Box<$enttype>> {
+                let id = if let Some(id) = id {
+                    id
+                } else {
+                    let mut id = self.next.$entity;
+                    while self.inner.contains_key(&EntityId::$idvariant(id)) {
+                        id += 1;
+                    }
+                    self.next.$entity = id + 1;
+                    id
+                };
+
+                let ret = self.inner.insert(EntityId::$idvariant(id), UEntity { $entity: bpointer($entity) });
+
+                unsafe { ret.map(|UEntity{ $entity }| Box::from_raw($entity)) }
+            }
+            pub fn $f_remove(&mut self, id: $id) -> Option<Box<$enttype>> {
+                let ret = self.inner.remove(&EntityId::$idvariant(id));
+
+                unsafe { ret.map(|UEntity{ $entity }| Box::from_raw($entity)) }
+            }
+            #[inline]
+            pub fn $f_iter(&self) -> impl Iterator<Item=($id, &$enttype)> {
+                unsafe {
+                    self.inner.range(EntityId::$idvariant(0) ..= EntityId::$idvariant(<$id>::max_value()))
+                        .map(|(&EntityId::$idvariant(id), &UEntity { $entity: a })| (id, &*a))
+                }
+            }
+            #[inline]
+            pub fn $f_iter_mut(&mut self) -> impl Iterator<Item=($id, &mut $enttype)> {
+                unsafe {
+                    self.inner.range_mut(EntityId::$idvariant(0) ..= EntityId::$idvariant(<$id>::max_value()))
+                        .map(|(&EntityId::$idvariant(id), &mut UEntity { $entity: a })| (id, &mut *a))
+                }
+            }
+            )*
+        }
+    };
+}
+
+impl_entity_map!{EntityMap;
+    insert_intel, remove_intel, intel_iter, intel_iter_mut, u8, Intel, intel, Point2,
+    insert_enemy, remove_enemy, enemy_iter, enemy_iter_mut, u8, Enemy, enemy, Enemy,
+    insert_bullet, remove_bullet, bullet_iter, bullet_iter_mut, u16, Bullet, bullet, Bullet<'static>,
+    insert_grenade, remove_grenade, grenade_iter, grenade_iter_mut, u8, Grenade, grenade, Grenade,
+    insert_weapon_drop, remove_weapon_drop, weapon_drop_iter, weapon_drop_iter_mut, u8, WeaponDrop, weapon_drop, WeaponDrop<'static>,
+    insert_pickup, remove_pickup, pickup_iter, pickup_iter_mut, u8, Pickup, pickup, Pickup,
+}
+
+impl EntityMap {
+    #[inline]
+    pub fn new() -> Self {
+        EntityMap {
+            inner: BTreeMap::new(),
+            next: Next::default(),
+        }
+    }
+    pub fn insert_exit(&mut self, exit: Point2) -> Option<Box<Point2>> {
+        let ret = self.inner.insert(EntityId::Exit, UEntity { exit: bpointer(exit) });
+
+        unsafe { ret.map(|UEntity{ exit }| Box::from_raw(exit)) }
+    }
+    pub fn clear(&mut self) {
+        std::mem::replace(&mut self.inner, BTreeMap::new());
+
+        for (key, value) in self.inner.into_iter() {
+            unsafe { match (key, value) {
+                (EntityId::Exit, UEntity { exit }) => { Box::from_raw(exit); } ,
+                (EntityId::Intel(_), UEntity { intel }) => { Box::from_raw(intel); } ,
+                (EntityId::Enemy(_), UEntity { enemy }) => { Box::from_raw(enemy); } ,
+                (EntityId::Bullet(_), UEntity { bullet }) => { Box::from_raw(bullet); } ,
+                (EntityId::Grenade(_), UEntity { grenade }) => { Box::from_raw(grenade); } ,
+                (EntityId::WeaponDrop(_), UEntity { weapon_drop }) => { Box::from_raw(weapon_drop); } ,
+                (EntityId::Pickup(_), UEntity { pickup }) => { Box::from_raw(pickup); } ,
+            }}
+        }
+    }
+    pub fn ranger(&mut self) -> EntityRanger {
+        EntityRanger {
+            inner: self,
+            ref_ranges: Vec::new(),
+            mut_ranges: Vec::new(),
+        }
+    }
+    pub fn compare_ranges_mut<R: RangeBounds<EntityId>, R2: RangeBounds<EntityId>>(&mut self, range: R, range2: R2) -> CompareRangesMut<'_> {
+        let pointer = self as *mut EntityMap;
+
+        if bounds_overlap(range, range2) {
+            panic!("Overlapping bounds");
+        }
+
+        let first_set = self.inner.range_mut(range);
+        let second_set = unsafe { (*pointer) }.inner.range_mut(range2);
+
+        CompareRangesMut {
+            first_set_element: first_set.next().map(|(i, e)| EntityRefMut(i, e)).expect("at least element; fix this"),
+            pointer,
+            first_set,
+            second_set,
+            next_index: match range2.start_bound() {
+                Bound::Included(a) | Bound::Excluded(a) => a.clone(),
+                Bound::Unbounded => EntityId::Exit,
+            },
+            end_index: match range2.end_bound() {
+                Bound::Included(a) => Bound::Included(a.clone()),
+                Bound::Excluded(a) => Bound::Excluded(a.clone()),
+                Bound::Unbounded => Bound::Unbounded,
+            }
+        }
+    }
+}
+
+struct EntityRanger<'a> {
+    inner: &'a mut EntityMap,
+    ref_ranges: Vec<(Bound<EntityId>, Bound<EntityId>)>,
+    mut_ranges: Vec<(Bound<EntityId>, Bound<EntityId>)>,
+}
+
+fn to_owned(b: Bound<&EntityId>) -> Bound<EntityId> {
+    match b {
+        Bound::Included(a) => Bound::Included(a.clone()),
+        Bound::Excluded(a) => Bound::Excluded(a.clone()),
+        Bound::Unbounded => Bound::Unbounded,
+    }
+}
+
+impl<'a> EntityRanger<'a> {
+    fn range<'b, R: RangeBounds<EntityId>>(&'b mut self, range: R) -> Option<impl Iterator<Item = EntityRef<'a>>> {
+        if self.mut_ranges.iter().any(|mut_range| bounds_overlap(*mut_range, range)) {
+            return None;
+        }
+        self.ref_ranges.push((to_owned(range.start_bound()), to_owned(range.end_bound())));
+
+        Some(
+            unsafe { (*(self.inner as *mut EntityMap)).inner.range(range).map(|(i, e)| EntityRef(i, e)) } 
+        )
+    }
+    fn range_mut<'b, R: RangeBounds<EntityId> + Clone>(&'b mut self, range: R) -> Option<impl Iterator<Item = EntityRefMut<'a>>> {
+        let r = range.clone();
+        if self.mut_ranges.iter().chain(self.ref_ranges.iter()).any(|ref_range| bounds_overlap(*ref_range, r)) {
+            return None;
+        }
+        self.mut_ranges.push((to_owned(range.start_bound()), to_owned(range.end_bound())));
+        
+        Some(
+            unsafe { (*(self.inner as *mut EntityMap)).inner.range_mut(range).map(|(i, e)| EntityRefMut(i, e)) } 
+        )
+    }
+}
+
+#[inline]
+fn bounds_overlap<R: RangeBounds<EntityId>, R2: RangeBounds<EntityId>>(range: R, range2: R2) -> bool {
+    blte(range.start_bound(), range2.end_bound()) && blte(range2.start_bound(), range.end_bound())
+}
+
+#[test]
+#[cfg(test)]
+fn test_bounds_overlap() {
+    use self::{bounds_overlap, EntityId::*};
+
+    assert!(!bounds_overlap(Exit..Intel(2), Intel(2)..Intel(3)));
+    assert!(bounds_overlap(Exit..=Intel(2), Intel(2)..Intel(3)));
+    assert!(!bounds_overlap(Intel(2)..Intel(3), Exit..Intel(2)));
+    assert!(bounds_overlap(Intel(2)..Intel(3), Exit..=Intel(2)));
+}
+
+fn blte(b1: Bound<&EntityId>, b2: Bound<&EntityId>) -> bool {
+    match (b1, b2) {
+        (_, Bound::Unbounded) => false,
+        (Bound::Excluded(a), Bound::Excluded(b)) | (Bound::Included(a), Bound::Included(b)) => a <= b,
+        (Bound::Included(a), Bound::Excluded(b)) | (Bound::Excluded(a), Bound::Included(b)) => a < b, 
+    }
+}
+
+pub struct EntityRefMut<'a>(pub &'a EntityId, &'a mut UEntity);
+pub struct EntityRef<'a>(pub &'a EntityId, &'a UEntity);
+
+macro_rules! deref_functions {
+    ($($f_name:ident, $idvariant:ident, $entity:ident, $enttype:ty,)*) => {
+        impl<'a> EntityRefMut<'a> {
+            $( fn $f_name(&mut self) -> &mut $enttype {
+                if let &EntityId::$idvariant(_) = self.0 {
+                    unsafe { &mut *(self.1).$entity }
+                } else {
+                    panic!("Invalid entity type: Tried to cast {:?} as {}", self.0, stringify!($idvariant));
+                }
+            } )*
+        }
+        impl<'a> EntityRef<'a> {
+            $( fn $f_name(&mut self) -> &$enttype {
+                if let &EntityId::$idvariant(_) = self.0 {
+                    unsafe { &*(self.1).$entity }
+                } else {
+                    panic!("Invalid entity type: Tried to cast {:?} as {}", self.0, stringify!($idvariant));
+                }
+            } )*
+        }
+    };
+}
+
+deref_functions!{
+    as_intel, Intel, intel, Point2,
+    as_enemy, Enemy, enemy, Enemy,
+    as_bullet, Bullet, bullet, Bullet<'static>,
+    as_grenade, Grenade, grenade, Grenade,
+    as_weapon_drop, WeaponDrop, weapon_drop, WeaponDrop<'static>,
+    as_pickup, Pickup, pickup, Pickup,
+}
+
+use std::ops::{RangeBounds, Bound};
+
+struct CompareRangesMut<'a> {
+    pointer: *mut EntityMap,
+    first_set: RangeMut<'a, EntityId, UEntity>,
+    first_set_element: EntityRefMut<'a>,
+    second_set: RangeMut<'a, EntityId, UEntity>,
+    next_index: EntityId,
+    end_index: Bound<EntityId>,
+}
+
+impl<'a> Iterator for CompareRangesMut<'a> {
+    type Item = (EntityRefMut<'a>, EntityRefMut<'a>);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some((s_key, s_elem)) = self.second_set.next() {
+            if s_key > &self.next_index {
+                self.next_index = s_key.clone();
+            }
+
+            Some((self.first_set_element, EntityRefMut(s_key, s_elem)))
+        } else {
+            unsafe {
+                self.second_set = (*self.pointer).inner.range_mut((Bound::Included(self.next_index), self.end_index));
+            }
+            self.first_set_element = self.first_set.next().map(|(i, e)| EntityRefMut(i, e))?;
+
+            Some((self.first_set_element, self.second_set.next().map(|(i, e)| EntityRefMut(i, e))?))
+        }
+    }
+}
+
+use std::fmt::{self, Debug};
+
+impl Debug for EntityMap {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut map = f.debug_map();
+        
+        unsafe {
+            map.entries(self.inner.range(EntityId::Exit.. EntityId::Enemy(0)).map(|(k, UEntity { intel })| (k, &*intel )));
+            map.entries(self.inner.range(EntityId::Enemy(0).. EntityId::Bullet(0)).map(|(k, UEntity { enemy })| (k, &*enemy )));
+            map.entries(self.inner.range(EntityId::Bullet(0).. EntityId::Grenade(0)).map(|(k, UEntity { bullet })| (k, &*bullet )));
+            map.entries(self.inner.range(EntityId::Grenade(0).. EntityId::WeaponDrop(0)).map(|(k, UEntity { grenade })| (k, &*grenade )));
+            map.entries(self.inner.range(EntityId::WeaponDrop(0).. EntityId::Pickup(0)).map(|(k, UEntity { weapon_drop })| (k, &*weapon_drop )));
+            map.entries(self.inner.range(EntityId::Pickup(0)..).map(|(k, UEntity { pickup })| (k, &*pickup )));
+        }
+
+        map.finish()
+    }
+}
+
+impl Drop for EntityMap {
+    fn drop(&mut self) {
+        self.clear()
+    }
+}
+
 #[derive(Debug)]
 /// All the objects in the current world
 pub struct World {
     pub player: Player,
     pub palette: Palette,
     pub grid: Grid,
-    pub exit: Option<Point2>,
-    pub intels: Vec<Point2>,
-    pub enemies: Vec<Enemy>,
-    pub bullets: Vec<Bullet<'static>>,
-    pub grenades: Vec<Grenade>,
-    pub weapons: Vec<WeaponDrop<'static>>,
     pub decals: Vec<Decal>,
-    pub pickups: Vec<Pickup>,
+
+    pub entities: EntityMap,
 }
 
 impl World {
     pub fn enemy_pickup(&mut self) {
-        for enemy in &mut self.enemies {
+        let dead_weapons = Vec::new();
+        let dead_pickups = Vec::new();
+
+        let mut ranger = self.entities.ranger();
+        let mut weapons = ranger.range(EntityId::WeaponDrop(0)..=EntityId::WeaponDrop(255)).unwrap();
+        let mut pickups = ranger.range(EntityId::Pickup(0)..=EntityId::Pickup(255)).unwrap();
+
+        for enemy in ranger.range_mut(EntityId::Enemy(0)..=EntityId::Enemy(255)).unwrap() {
+            let enemy = enemy.as_enemy();
+
+            let mut dead = None;
+            for weapon in weapons {
+                let w = weapon.0;
+                let weapon = weapon.as_weapon_drop();
+                if (weapon.pos - enemy.pl.obj.pos).norm() <= 16. {
+                    dead = Some(w);
+                    break;
+                }
+            }
+            if let Some(i) = dead {
+                enemy.pl.wep = Some(WeaponInstance::from_drop(self.entities.remove_weapon_drop(i)));
+            }
+        }
+
+
+        for (enemy, pickup) in self.entities.compare_ranges_mut(EntityId::Enemy(0)..=EntityId::Enemy(255), EntityId::WeaponDrop(0)..=EntityId::Pickup(255)) {
+            let enemy = enemy.as_enemy();
+            match pickup.0 {
+                EntityId::WeaponDrop(w) => {
+                    let weapon_drop = pickup.as_weapon_drop();
+                    if (weapon_drop.pos - enemy.pl.obj.pos).norm() <= 16. {
+
+                        if dead_weapons.contains(w) {
+                            enemy.pl.wep = Some(WeaponInstance::from_drop(weapon_drop.clone()));
+    
+                            dead_weapons.push(w);
+                        }
+                    }
+
+                }
+                EntityId::Pickup(p) => {
+                    let pickup = pickup.as_pickup();
+                    if (pickup.pos - enemy.pl.obj.pos).norm() <= 16. {
+
+
+                        dead_pickups.push(p);
+                    }
+
+                }
+                _ => unreachable!(),
+            }
+
             let mut dead = None;
             for (w, weapon) in self.weapons.iter().enumerate() {
                 if (weapon.pos - enemy.pl.obj.pos).norm() <= 16. {

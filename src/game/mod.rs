@@ -190,7 +190,10 @@ impl Console {
             "" => (),
             "pi" => {
                 let world = gs.get_mut_world().ok_or(NoWorld)?;
-                world.intels.clear();
+                let ids: Vec<_> = world.entities.intel_iter().map(|(id, _)| id).collect();
+                for id in ids {
+                    world.entities.remove_intel(id);
+                }
                 info!("Intels got");
             }
             "clear" => self.history = state.assets.raw_text_with("", 18.),
@@ -214,7 +217,7 @@ impl Console {
                 let &wep = args.get(1).ok_or(InvalidArg)?;
                 let weapon = WEAPONS.get(wep).ok_or(NoSuchWeapon)?;
 
-                world.weapons.push(weapon.make_drop(state.mouse-state.offset));
+                world.entities.insert_weapon_drop(None, weapon.make_drop(state.mouse-state.offset));
             },
             "reload" => {
                 if let Some(arg) = args.get(1) {
