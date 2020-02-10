@@ -9,6 +9,7 @@ pub struct Health {
 impl Health {
     pub fn weapon_damage(&mut self, dmg: f32, penetration: f32) {
         let frac = (self.armour / 100.).limit(0., 1.);
+        debug_assert!(0. < penetration && penetration < 1.);
         let dmg_armour = (1. - penetration) * dmg * frac;
         let dmg_hp = dmg - dmg_armour;
 
@@ -29,7 +30,7 @@ impl Default for Health {
     fn default() -> Self {
         Self {
             hp: 100.,
-            armour: 9.,
+            armour: 5.,
         }
     }
 }

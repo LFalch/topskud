@@ -2,6 +2,7 @@ use crate::{
     util::{
         ver,
         hor,
+        sstr,
         TRANS,
         Vector2, Point2},
     io::tex::PosText,
@@ -181,15 +182,15 @@ impl Editor {
             
             toml::from_str(&s).unwrap()
         };
-        entities.extend(weapons.into_iter().map(|wep| Insertion::Weapon(&*Box::leak(wep.into_boxed_str()))));
-        entities.extend(decals.into_iter().map(|dec| Insertion::Decal{rot: 0., spr: &*Box::leak(dec.into_boxed_str())}));
+        entities.extend(weapons.into_iter().map(|wep| Insertion::Weapon(sstr(wep))));
+        entities.extend(decals.into_iter().map(|dec| Insertion::Decal{rot: 0., spr: sstr(dec)}));
 
         let extra_entities = entities.drain(20..).collect();
 
         let entities_bar = InsertionBar::new(Point2::new(392., 18.0), s, "Entitites:", entities.into_boxed_slice());
         let extra_bar = InsertionBar::new(Point2::new(392., 52.0), s, "", extra_entities);
 
-        let palette = Palette::new(materials.into_iter().map(|s| &*Box::leak(s.into_boxed_str())).collect());
+        let palette = Palette::new(materials.into_iter().map(sstr).collect());
 
         let save;
         if let Content::File(ref f) = s.content {

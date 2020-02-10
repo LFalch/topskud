@@ -1,5 +1,5 @@
 use crate::{
-    util::{Point2, Vector2},
+    util::{Point2, Vector2, sstr},
     io::tex::{Assets, },
     obj::{
         player::Player,
@@ -152,7 +152,7 @@ impl Level {
             match &*buf.trim_end() {
                 "" => continue,
                 "PALETTE" => ret.palette = bincode::deserialize_from(&mut reader)
-                    .map(|mats: Vec<Box<str>>| Palette::new(mats.into_iter().map(|s| &*Box::leak(s)).collect()))
+                    .map(|mats: Vec<Box<str>>| Palette::new(mats.into_iter().map(sstr).collect()))
                     .map_err(|e| GameError::ResourceLoadError(format!("{:?}", e)))?,
                 "GRD" => ret.grid = bincode::deserialize_from(&mut reader)
                     .map_err(|e| GameError::ResourceLoadError(format!("{:?}", e)))?,
