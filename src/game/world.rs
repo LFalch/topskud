@@ -1,9 +1,7 @@
 use crate::{
     util::{Point2, Vector2},
     io::tex::{Assets, },
-    io::save::Point2Def,
     obj::{
-        Object,
         player::Player,
         enemy::Enemy,
         health::Health,
@@ -106,44 +104,6 @@ pub struct Statistics {
     pub level: Level,
     pub weapon: Option<WeaponInstance<'static>>,
 }
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum Entity {
-    SimpleEnemy {
-        obj: Object,
-        weapon: usize,
-    },
-    Enemy {
-        obj: Object,
-        health: Health,
-        weapon: usize,
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DataLevel {
-    pub grid: Grid,
-    #[serde(with = "Point2Def")]
-    pub start_point: Point2,
-    #[serde(with = "opt_point")]
-    pub exit: Option<Point2>,
-    pub entities: Vec<Entity>,
-}
-
-mod opt_point {
-    use serde::{Serialize, Deserialize, Serializer, Deserializer};
-    use crate::util::Point2;
-
-    #[inline]
-    pub fn serialize<S: Serializer>(p: &Option<Point2>, s: S) -> Result<S::Ok, S::Error> {
-        p.map(|p| (p.x, p.y)).serialize(s)
-    }
-    #[inline]
-    pub fn deserialize<'de, D: Deserializer<'de>>(d: D) -> Result<Option<Point2>, D::Error> {
-        <Option<(f32, f32)>>::deserialize(d).map(|p| p.map(|(x, y)| Point2::new(x, y)))
-    }
-}
-
 
 #[derive(Debug, Clone)]
 pub struct Level {
