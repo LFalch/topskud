@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::fmt::{self, Display};
 use crate::{
-    util::{Vector2, Point2, RED, GREEN, BLUE},
+    util::{Vector2, Point2, RED, GREEN, BLUE, dbg_strs},
     io::{
         snd::MediaPlayer,
         tex::{Assets, PosText},
@@ -254,6 +254,7 @@ impl Console {
             "quit" => {
                 ctx.continuing = false;
             }
+            "strs" => dbg_strs(),
             cmd => {
                 warn!("  Unknown command `{}'!", cmd);
             }

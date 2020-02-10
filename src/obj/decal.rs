@@ -1,4 +1,5 @@
 use crate::{
+    util::Sstr,
     io::tex::{Assets, },
 };
 use ggez::{Context, GameResult, graphics::Color};
@@ -43,17 +44,8 @@ const OLD_DECORATION_LIST: [&str; 15] = [
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Decal {
     pub obj: Object,
-    #[serde(deserialize_with = "self::deserialize_to_static_str")]
-    pub spr: SStr,
-}
-
-type SStr = &'static str;
-
-use crate::util::sstr;
-use serde::{Deserializer, Deserialize};
-#[inline]
-fn deserialize_to_static_str<'de, D: Deserializer<'de>>(d: D) -> Result<SStr, D::Error> {
-    <Box<str>>::deserialize(d).map(sstr)
+    #[serde(deserialize_with = "crate::util::deserialize_sstr")]
+    pub spr: Sstr
 }
 
 impl Decal {

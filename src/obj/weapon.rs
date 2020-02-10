@@ -2,7 +2,7 @@ use std::num::NonZeroU16;
 use std::fmt::{self, Display};
 
 use crate::{
-    util::{Point2, angle_to_vec},
+    util::{Point2, angle_to_vec, Sstr},
     game::DELTA,
     io::{
         snd::MediaPlayer,
@@ -37,7 +37,7 @@ impl FireMode {
 
 #[derive(Debug, Clone)]
 pub struct Weapon {
-    pub name: Box<str>,
+    pub name: Sstr,
     pub clip_size: NonZeroU16,
     pub clips: NonZeroU16,
     pub damage: f32,
@@ -48,13 +48,13 @@ pub struct Weapon {
     /// Time to reload a new clip/magazine
     pub reload_time: f32,
     pub fire_mode: FireMode,
-    pub shot_snd: Box<str>,
-    pub cock_snd: Box<str>,
-    pub reload_snd: Box<str>,
-    pub click_snd: Box<str>,
-    pub impact_snd: Box<str>,
-    pub entity_sprite: Box<str>,
-    pub hands_sprite: Box<str>,
+    pub shot_snd: Sstr,
+    pub cock_snd: Sstr,
+    pub reload_snd: Sstr,
+    pub click_snd: Sstr,
+    pub impact_snd: Sstr,
+    pub entity_sprite: Sstr,
+    pub hands_sprite: Sstr,
     pub spray_pattern: Box<[f32]>,
     pub spray_decay: f32,
     pub spray_repeat: usize,

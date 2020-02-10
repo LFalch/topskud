@@ -1,6 +1,6 @@
 use crate::{
     io::tex::Assets,
-    util::{Point2, Vector2},
+    util::{Point2, Vector2, sstr, Sstr},
 };
 use ggez::{graphics::{self, Image}, Context, GameResult};
 use lazy_static::lazy_static;
@@ -12,7 +12,7 @@ use std::cell::Ref;
 
 #[derive(Debug)]
 pub struct Mat {
-    spr: Box<str>,
+    spr: Sstr,
     props: MaterialProperties
 }
 
@@ -32,7 +32,7 @@ fn ensure(mat: &str) {
         } else {
             MaterialProperties::default()
         };
-        let mat_data = Mat { spr: format!("materials/{}", mat).into_boxed_str(), props};
+        let mat_data = Mat { spr: sstr(format!("materials/{}", mat)), props};
 
         MATS.write().unwrap().insert(mat.to_owned(), mat_data);
     }

@@ -1,4 +1,5 @@
 use super::{FireMode, Weapon};
+use crate::util::{sstr, add_sstr, Sstr};
 
 use lazy_static::lazy_static;
 
@@ -21,7 +22,8 @@ lazy_static!{
 
 #[derive(Serialize, Deserialize)]
 pub struct WeaponTemplate {
-    name: Box<str>,
+    #[serde(deserialize_with = "crate::util::deserialize_sstr")]
+    name: Sstr,
     clip_size: NonZeroU16,
     clips: NonZeroU16,
     damage: f32,
@@ -29,15 +31,21 @@ pub struct WeaponTemplate {
     fire_rate: f32,
     reload_time: f32,
     fire_mode: FireMode,
-    shot_snd: Box<str>,
+    #[serde(deserialize_with = "crate::util::deserialize_sstr")]
+    shot_snd: Sstr,
     #[serde(default = "def_cock")]
-    cock_snd: Box<str>,
+    #[serde(deserialize_with = "crate::util::deserialize_sstr")]
+    cock_snd: Sstr,
     #[serde(default = "def_reload")]
-    reload_snd: Box<str>,
-    click_snd: Box<str>,
+    #[serde(deserialize_with = "crate::util::deserialize_sstr")]
+    reload_snd: Sstr,
+    #[serde(deserialize_with = "crate::util::deserialize_sstr")]
+    click_snd: Sstr,
     #[serde(default = "def_impact")]
-    impact_snd: Box<str>,
-    entity_sprite: Box<str>,
+    #[serde(deserialize_with = "crate::util::deserialize_sstr")]
+    impact_snd: Sstr,
+    #[serde(deserialize_with = "crate::util::deserialize_sstr")]
+    entity_sprite: Sstr,
     spray_pattern: Vec<f32>,
     spray_decay: f32,
     spray_repeat: usize,
@@ -49,16 +57,16 @@ pub struct WeaponTemplate {
 const fn def_speed() -> f32 {
     1200.
 }
-fn def_cock() -> Box<str> {
-    "cock".into()
+fn def_cock() -> Sstr {
+    add_sstr("cock")
 }
 #[inline]
-fn def_reload() -> Box<str> {
-    "reload".into()
+fn def_reload() -> Sstr {
+    add_sstr("reload")
 }
 #[inline]
-fn def_impact() -> Box<str> {
-    "impact".into()
+fn def_impact() -> Sstr {
+    add_sstr("impact")
 }
 
 const DEG2RAD: f32 = PI / 180.;
@@ -100,7 +108,7 @@ impl WeaponTemplate {
             reload_snd,
             click_snd,
             impact_snd,
-            hands_sprite: (entity_sprite.to_string() + "_hands").into(),
+            hands_sprite: sstr(entity_sprite.to_string() + "_hands"),
             entity_sprite,
             spray_pattern: spray_pattern.into_iter().map(|deg| deg * DEG2RAD).collect(),
             spray_decay,
