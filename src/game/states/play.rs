@@ -289,7 +289,9 @@ impl GameState for Play {
                         let mut bul = Object::new(pos);
                         bul.rot = enemy.pl.obj.rot;
 
-                        self.world.bullets.push(bm.make(bul));
+                        for bullet in bm.make(bul) {
+                            self.world.bullets.push(bullet);
+                        }
                     }
                 }
             }
@@ -309,7 +311,9 @@ impl GameState for Play {
                     let mut bul = Object::new(pos);
                     bul.rot = self.world.player.obj.rot;
 
-                    self.world.bullets.push(bm.make(bul));
+                    for bullet in bm.make(bul) {
+                        self.world.bullets.push(bullet);
+                    }
                 }
             }
         }
@@ -452,7 +456,9 @@ impl GameState for Play {
                         let mut bul = Object::new(pos);
                         bul.rot = self.world.player.obj.rot;
 
-                        self.world.bullets.push(bm.make(bul));
+                        for bullet in bm.make(bul) {
+                            self.world.bullets.push(bullet);
+                        }
                     }
                 }
             }
