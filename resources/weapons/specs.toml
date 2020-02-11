@@ -27,6 +27,7 @@ spray_repeat = 2
 # Speed of bullet in pixels per second
 # Optional, this is the default value
 bullet_speed = 1200
+slot = "holster"
 
 [five_seven]
 name = "5-SeveN"
@@ -43,6 +44,7 @@ entity_sprite = "weapons/five_seven"
 spray_pattern = [4.0, 6.0, -8.0, 4.0, -6.0, 4.0, -8.0, 6.0, 4.0]
 spray_decay = 0.34
 spray_repeat = 5
+slot = "holster"
 
 [magnum]
 name = "500-MG"
@@ -61,6 +63,7 @@ spray_pattern = [6.0, 2.0, -2.0]
 spray_decay = 0.85
 spray_repeat = 2
 bullet_speed = 1600
+slot = "holster"
 
 [m4a1]
 name = "M4A1"
@@ -80,6 +83,7 @@ spray_pattern = [3.3, 4.2, -3.0, 3.0, -3.0, 2.0, -4.0, 3.0, 2.0]
 spray_decay = 0.2
 spray_repeat = 5
 bullet_speed = 2000
+slot = "sling"
 
 [ak47]
 name = "AK-47"
@@ -98,6 +102,7 @@ spray_pattern = [-3.3, -4.2, 3.0, -3.0, 3.0, -2.0, 4.0, -3.0, -2.0, 3.0]
 spray_decay = 0.13
 spray_repeat = 5
 bullet_speed = 1800
+slot = "sling"
 
 [arwp]
 name = "ARWP"
@@ -117,6 +122,7 @@ spray_pattern = [5.6, 1.0, -1.0]
 spray_decay = 1.0
 spray_repeat = 2
 bullet_speed = 3200
+slot = "sling"
 
 [shotty]
 name = "M4 Shotty"
@@ -136,3 +142,4 @@ spray_pattern = [2.1, 3.3, 4.2, -3.0, 3.0, -3.0, 2.0, -4.0, 3.0, 2.0]
 spray_decay = 0.82
 spray_repeat = 5
 bullet_speed = 1140
+slot = "sling"

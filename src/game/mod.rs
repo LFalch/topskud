@@ -8,7 +8,7 @@ use crate::{
         snd::MediaPlayer,
         tex::{Assets, PosText},
     },
-    obj::{health::Health, weapon::WeaponInstance},
+    obj::{health::Health, player::WepSlots},
 };
 use ggez::{
     nalgebra::Matrix4,
@@ -37,7 +37,7 @@ pub enum StateSwitch {
     PlayWith{
         lvl: Box<Level>,
         health: Health,
-        wep: Option<WeaponInstance<'static>>,
+        wep: WepSlots,
     },
     Lose(Box<Statistics>),
     Win(Box<Statistics>),

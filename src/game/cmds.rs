@@ -95,9 +95,9 @@ pub(super) fn commands() -> HashMap<String, Command> {
                 let lvl = cmp.next_level().ok_or(NoSuchLevel)?;
 
                 let (health, wep) = if let Some(world) = gs.get_world() {
-                    (world.player.health, world.player.wep)
+                    (world.player.health, world.player.wep.clone())
                 } else {
-                    (Health::default(), None)
+                    (Health::default(), Default::default())
                 };
 
                 state.switch(StateSwitch::PlayWith{health, wep, lvl: Box::new(lvl)});

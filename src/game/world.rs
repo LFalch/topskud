@@ -2,7 +2,7 @@ use crate::{
     util::{Point2, Vector2, sstr},
     io::tex::{Assets, },
     obj::{
-        player::Player,
+        player::{Player, WepSlots},
         enemy::Enemy,
         health::Health,
         bullet::Bullet,
@@ -53,7 +53,11 @@ impl World {
                 }
             }
             if let Some(i) = dead {
-                enemy.pl.wep = Some(WeaponInstance::from_drop(self.weapons.remove(i)));
+                let weapon_slot = enemy.pl.wep.insert(&self.weapons[i].weapon);
+
+                if weapon_slot.is_none() {
+                    *weapon_slot = Some(WeaponInstance::from_drop(self.weapons.remove(i)));
+                }
             }
             let mut deads = Vec::new();
             for (p, pickup) in self.pickups.iter().enumerate() {
@@ -70,16 +74,20 @@ impl World {
     }
     pub fn player_pickup(&mut self) {
         let player = &mut self.player;
-        if player.wep.is_none() {
-            let mut dead = None;
+        {
+            let mut deads = vec![];
             for (w, weapon) in self.weapons.iter().enumerate() {
                 if (weapon.pos - player.obj.pos).norm() <= 16. {
-                    dead = Some(w);
+                    deads.push(w);
                     break;
                 }
             }
-            if let Some(i) = dead {
-                player.wep = Some(WeaponInstance::from_drop(self.weapons.remove(i)));
+            for i in deads {
+                let weapon_slot = player.wep.insert(&self.weapons[i].weapon);
+
+                if weapon_slot.is_none() {
+                    *weapon_slot = Some(WeaponInstance::from_drop(self.weapons.remove(i)));
+                }
             }
         }
 
@@ -102,7 +110,7 @@ pub struct Statistics {
     pub enemies_left: usize,
     pub health_left: Health,
     pub level: Level,
-    pub weapon: Option<WeaponInstance<'static>>,
+    pub weapon: WepSlots,
 }
 
 #[derive(Debug, Clone)]

@@ -1,4 +1,4 @@
-use super::{FireMode, Weapon};
+use super::{FireMode, Weapon, WeaponSlot};
 use crate::util::{sstr, add_sstr, Sstr};
 
 use lazy_static::lazy_static;
@@ -51,6 +51,7 @@ pub struct WeaponTemplate {
     spray_repeat: usize,
     #[serde(default = "def_speed")]
     bullet_speed: f32,
+    slot: WeaponSlot,
 }
 
 #[inline]
@@ -92,6 +93,7 @@ impl WeaponTemplate {
             spray_decay,
             spray_repeat,
             bullet_speed,
+            slot
         } = self;
 
         Weapon {
@@ -114,6 +116,7 @@ impl WeaponTemplate {
             spray_decay,
             spray_repeat,
             bullet_speed,
+            slot
         }
     }
 }

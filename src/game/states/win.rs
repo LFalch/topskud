@@ -4,7 +4,7 @@ use crate::{
         tex::PosText,
         btn::Button,
     },
-    obj::{health::Health, weapon::WeaponInstance},
+    obj::{health::Health, player::WepSlots},
     game::{
         DELTA,
         State, Content, GameState, StateSwitch, world::{Level, Statistics},
@@ -36,7 +36,7 @@ pub struct Win {
     buttons: WinButtons,
     health: Health,
     level: Level,
-    weapon: Option<WeaponInstance<'static>>
+    weapon: WepSlots,
 }
 
 impl Win {
@@ -90,7 +90,7 @@ impl Win {
             Content::None | Content::File(_) => return,
         }
 
-        s.switch(StateSwitch::PlayWith{health: self.health, wep: self.weapon, lvl: Box::new(lvl)});
+        s.switch(StateSwitch::PlayWith{health: self.health, wep: self.weapon.clone(), lvl: Box::new(lvl)});
     }
 }
 

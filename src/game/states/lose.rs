@@ -4,7 +4,7 @@ use crate::{
         tex::PosText,
         btn::Button,
     },
-    obj::{health::Health, weapon::WeaponInstance},
+    obj::{health::Health, player::WepSlots},
     game::{
         DELTA,
         State, Content, GameState, StateSwitch, world::{Statistics, Level},
@@ -25,7 +25,7 @@ pub struct Lose {
     edit_btn: Option<Button<()>>,
     level: Level,
     health: Health,
-    weapon: Option<WeaponInstance<'static>>
+    weapon: WepSlots
 }
 
 impl Lose {
@@ -60,7 +60,7 @@ impl Lose {
         s.switch(StateSwitch::Editor(Some(self.level.clone())));
     }
     fn restart(&self, s: &mut State) {
-        s.switch(StateSwitch::PlayWith{lvl: Box::new(self.level.clone()), health: self.health, wep: self.weapon})
+        s.switch(StateSwitch::PlayWith{lvl: Box::new(self.level.clone()), health: self.health, wep: self.weapon.clone()})
     }
 }
 

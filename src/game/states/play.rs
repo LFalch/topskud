@@ -7,7 +7,7 @@ use crate::{
         Vector2, Point2
     },
     io::tex::PosText,
-    obj::{Object, bullet::Bullet, decal::Decal, pickup::Pickup, player::Player, enemy::{Enemy, Chaser}, health::Health, weapon::{self, WeaponInstance}, grenade::Explosion},
+    obj::{Object, bullet::Bullet, decal::Decal, pickup::Pickup, player::{Player, WepSlots, ActiveSlot}, enemy::{Enemy, Chaser}, health::Health, weapon::{self, WeaponInstance}, grenade::Explosion},
     game::{
         DELTA, State, GameState, StateSwitch, world::{Level, Statistics, World},
         event::{Event::{self, Key, Mouse}, MouseButton, KeyCode, KeyMods}
@@ -17,6 +17,7 @@ use ggez::{
     Context, GameResult,
     graphics::{
         self, Drawable, DrawMode, Rect,
+        Color, DrawParam,
         MeshBuilder, Mesh, WHITE,
         spritebatch::SpriteBatch,
     },
@@ -55,13 +56,13 @@ pub struct Play {
     cur_pickup: Option<usize>,
     victory_time: f32,
     time: usize,
-    initial: (Health, Option<WeaponInstance<'static>>),
+    initial: (Health, WepSlots),
     level: Level,
 }
 
 impl Play {
     #[allow(clippy::new_ret_no_self)]
-    pub fn new(ctx: &mut Context, s: &mut State, level: Level, pl: Option<(Health, Option<WeaponInstance<'static>>)>) -> GameResult<Box<dyn GameState>> {
+    pub fn new(ctx: &mut Context, s: &mut State, level: Level, pl: Option<(Health, WepSlots)>) -> GameResult<Box<dyn GameState>> {
         mouse::set_cursor_hidden(ctx, true);
 
         let mut player = Player::from_point(level.start_point.unwrap_or_else(|| Point2::new(500., 500.)));
@@ -72,7 +73,7 @@ impl Play {
         Ok(Box::new(
             Play {
                 level: level.clone(),
-                initial: (player.health, player.wep),
+                initial: (player.health, player.wep.clone()),
                 hp_text: s.assets.text(Point2::new(4., 4.)).and_text("100"),
                 arm_text: s.assets.text(Point2::new(4., 33.)).and_text("100"),
                 reload_text: s.assets.text(Point2::new(4., 62.)).and_text("0.0").and_text("s"),
@@ -99,11 +100,11 @@ impl Play {
                     world.enemy_pickup();
                     world.player_pickup();
 
-                    if world.player.wep.is_none() {
+                    if world.player.wep.get_active().is_none() {
                         warn!("player has no weapon");
                     }
 
-                    for enemy_pos in world.enemies.iter().filter_map(|enemy| if enemy.pl.wep.is_none() {Some(enemy.pl.obj.pos)}else{None}) {
+                    for enemy_pos in world.enemies.iter().filter_map(|enemy| if enemy.pl.wep.get_active().is_none() {Some(enemy.pl.obj.pos)}else{None}) {
                         warn!("enemy at {:.2} has no weapon", enemy_pos)
                     }
 
@@ -120,11 +121,12 @@ impl GameState for Play {
     fn update(&mut self, s: &mut State, ctx: &mut Context) -> GameResult<()> {
         self.hp_text.update(0, format!("{:02.0}", self.world.player.health.hp))?;
         self.arm_text.update(0, format!("{:02.0}", self.world.player.health.armour))?;
-        if let Some(wep) = self.world.player.wep {
+        if let Some(wep) = self.world.player.wep.get_active() {
             self.reload_text.update(0, format!("{:.1}", wep.loading_time))?;
             wep.update_text(&mut self.wep_text)?;
         }
         if let Some(i) = self.cur_pickup {
+            // TODO change text to say what's being swapped out
             self.status_text.text.fragments_mut()[0]= format!("Press F to pick up {}", self.world.weapons[i]).into();
         } else {
             self.status_text.update(0, "")?;
@@ -148,7 +150,7 @@ impl GameState for Play {
                             enemies_left: self.world.enemies.len(),
                             health_left: self.initial.0,
                             level: self.level.clone(),
-                            weapon: self.initial.1,
+                            weapon: self.initial.1.clone(),
                         })));
                         s.mplayer.play(ctx, "death")?;
                     } else {
@@ -165,7 +167,7 @@ impl GameState for Play {
 
                         let Enemy{pl: Player{wep, obj: Object{pos, ..}, ..}, ..}
                             = self.world.enemies.remove(i);
-                        if let Some(wep) = wep {
+                        for wep in wep {
                             self.world.weapons.push(wep.into_drop(pos));
                         }
                     } else {
@@ -209,7 +211,7 @@ impl GameState for Play {
                             enemies_left: self.world.enemies.len(),
                             health_left: self.initial.0,
                             level: self.level.clone(),
-                            weapon: self.initial.1,
+                            weapon: self.initial.1.clone(),
                         })));
                         s.mplayer.play(ctx, "death")?;
                     } else {
@@ -227,7 +229,7 @@ impl GameState for Play {
 
                         let Enemy{pl: Player{wep, obj: Object{pos, ..}, ..}, ..}
                             = self.world.enemies.remove(e);
-                        if let Some(wep) = wep {
+                        for wep in wep {
                             self.world.weapons.push(wep.into_drop(pos));
                         }
                     } else {
@@ -283,7 +285,7 @@ impl GameState for Play {
                     vel: player_vel,
                 };
 
-                if let Some(wep) = &mut enemy.pl.wep {
+                if let Some(wep) = enemy.pl.wep.get_active_mut() {
                     if let Some(bm) = wep.shoot(ctx, &mut s.mplayer)? {
                         let pos = enemy.pl.obj.pos + 20. * angle_to_vec(enemy.pl.obj.rot);
                         let mut bul = Object::new(pos);
@@ -303,7 +305,7 @@ impl GameState for Play {
         } else {
             100.
         };
-        if let Some(wep) = &mut self.world.player.wep {
+        if let Some(wep) = self.world.player.wep.get_active_mut() {
             wep.update(ctx, &mut s.mplayer)?;
             if wep.cur_clip > 0 && mouse::button_pressed(ctx, MouseButton::Left) && wep.weapon.fire_mode.is_auto() {
                 if let Some(bm) = wep.shoot(ctx, &mut s.mplayer)? {
@@ -338,7 +340,7 @@ impl GameState for Play {
                 time: self.time,
                 enemies_left: self.world.enemies.len(),
                 health_left: self.world.player.health,
-                weapon: self.world.player.wep,
+                weapon: self.world.player.wep.clone(),
             })));
         }
         Ok(())
@@ -416,6 +418,29 @@ impl GameState for Play {
         self.wep_text.draw_text(ctx)?;
         self.status_text.draw_center(ctx)?;
 
+        let mesh = Mesh::new_rectangle(ctx, DrawMode::fill(), Rect{x:104.,y:2.,h: 32., w: 32.}, Color{r: 0.5, g: 0.5, b: 0.5, a: 1.})?;
+        let mesh1 = Mesh::new_rectangle(ctx, DrawMode::fill(), Rect{x:137.,y:2.,h: 32., w: 32.}, Color{r: 0.5, g: 0.5, b: 0.5, a: 1.})?;
+        let mesh2 = Mesh::new_rectangle(ctx, DrawMode::fill(), Rect{x:104.,y:35.,h: 32., w: 32.}, Color{r: 0.5, g: 0.5, b: 0.5, a: 1.})?;
+        graphics::draw(ctx, &mesh, DrawParam::default())?;
+        graphics::draw(ctx, &mesh1, DrawParam::default())?;
+        graphics::draw(ctx, &mesh2, DrawParam::default())?;
+
+        if let Some(holster_wep) = &self.world.player.wep.holster {
+            let drawparams = DrawParam::from(([104., 2.],));
+            let img = s.assets.get_img(ctx, &holster_wep.weapon.entity_sprite);
+            graphics::draw(ctx, &*img, drawparams)?;
+        }
+        if let Some(holster_wep) = &self.world.player.wep.holster2 {
+            let drawparams = DrawParam::from(([137., 2.],));
+            let img = s.assets.get_img(ctx, &holster_wep.weapon.entity_sprite);
+            graphics::draw(ctx, &*img, drawparams)?;
+        }
+        if let Some(sling_wep) = &self.world.player.wep.sling {
+            let drawparams = DrawParam::from(([104., 35.],));
+            let img = s.assets.get_img(ctx, &sling_wep.weapon.entity_sprite);
+            graphics::draw(ctx, &*img, drawparams)?;
+        }
+
         let drawparams = graphics::DrawParam {
             dest: s.mouse.into(),
             offset: Point2::new(0.5, 0.5).into(),
@@ -428,8 +453,11 @@ impl GameState for Play {
     fn event_up(&mut self, s: &mut State, ctx: &mut Context, event: Event) {
         use self::KeyCode::*;
         match event {
+            Key(Key1) | Key(Numpad1) => self.world.player.wep.switch(ActiveSlot::Holster),
+            Key(Key2) | Key(Numpad2) => self.world.player.wep.switch(ActiveSlot::Holster2),
+            Key(Key3) | Key(Numpad3) => self.world.player.wep.switch(ActiveSlot::Sling),
             Key(R) => {
-                if let Some(wep) = &mut self.world.player.wep {
+                if let Some(wep) = self.world.player.wep.get_active_mut() {
                     wep.reload(ctx, &mut s.mplayer).unwrap()
                 } else {
                     let weapon = &weapon::WEAPONS["glock"];
@@ -438,19 +466,14 @@ impl GameState for Play {
             },
             Key(F) => {
                 if let Some(i) = self.cur_pickup {
-                    self.world.player.wep = Some(WeaponInstance::from_drop(
-                        if let Some(wep) = self.world.player.wep {
-                            let w = wep.into_drop(self.world.player.obj.pos);
-                            std::mem::replace(&mut self.world.weapons[i], w)
-                        } else {
-                            self.world.weapons.remove(i)
-                        }
-                    ));
+                    if let Some(new_drop) = self.world.player.wep.add_weapon(WeaponInstance::from_drop(self.world.weapons.remove(i))) {
+                        self.world.weapons.push(new_drop.into_drop(self.world.player.obj.pos));
+                    }
                     self.cur_pickup = None;
                 }
             },
             Mouse(MouseButton::Left) | Key(Space) => {
-                if let Some(wep) = &mut self.world.player.wep {
+                if let Some(wep) = self.world.player.wep.get_active_mut() {
                     if let Some(bm) = wep.shoot(ctx, &mut s.mplayer).unwrap() {
                         let pos = self.world.player.obj.pos + 20. * angle_to_vec(self.world.player.obj.rot);
                         let mut bul = Object::new(pos);
@@ -513,7 +536,7 @@ impl Hud {
     pub fn update_bars(&mut self, ctx: &mut Context, p: &Player) -> GameResult<()> {
         self.hp_bar = Mesh::new_rectangle(ctx, DrawMode::fill(), Rect{x: 2., y: 2., w: p.health.hp.limit(0., 100.), h: 24.}, GREEN)?;
         self.armour_bar = Mesh::new_rectangle(ctx, DrawMode::fill(), Rect{x: 2., y: 30., w: p.health.armour.limit(0., 100.), h: 24.}, BLUE)?;
-        self.loading_bar = Mesh::new_rectangle(ctx, DrawMode::fill(), Rect{x: 2., y: 58., w: p.wep.map(|m| m.loading_time).unwrap_or(0.).limit(0., 1.)*100., h: 24.}, RED)?;
+        self.loading_bar = Mesh::new_rectangle(ctx, DrawMode::fill(), Rect{x: 2., y: 58., w: p.wep.get_active().map(|m| m.loading_time).unwrap_or(0.).limit(0., 1.)*100., h: 24.}, RED)?;
 
         Ok(())
     }

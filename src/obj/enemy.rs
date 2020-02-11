@@ -92,7 +92,7 @@ impl Enemy {
         }
     }
     pub fn update(&mut self, ctx: &mut Context, mplayer: &mut MediaPlayer) -> GameResult<()> {
-        if let Some(wep) = &mut self.pl.wep {
+        if let Some(wep) = self.pl.wep.get_active_mut() {
             wep.update(ctx, mplayer)?;
             if wep.cur_clip == 0 && wep.loading_time == 0. {
                 wep.reload(ctx, mplayer)?;
