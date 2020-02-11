@@ -182,23 +182,17 @@ impl Console {
         let cap = prompt.capacity();
         let prompt = mem::replace(prompt, String::with_capacity(cap));
         let args: Vec<_> = prompt.split(<char>::is_whitespace).collect();
-        
-        if let Err(s) = self.handle(ctx, state, gs, args) {
-            error!("{}", s);
-        }
 
-        Ok(())
-    }
-    fn handle(&mut self, ctx: &mut Context, state: &mut State, gs: &mut dyn GameState, args: Vec<&str>) -> Result<(), CommandError> {
         let command_name = args[0];
 
         match self.commands.get(command_name) {
-            Some(cmd) => cmd(self, ctx, state, gs, args),
-            None => {
-                warn!("  Unknown command `{}'!", command_name);
-                Ok(())
-            }
+            Some(cmd) => if let Err(e) = cmd(self, ctx, state, gs, args) {
+                error!("{}", e);
+            },
+            None => warn!("  Unknown command `{}'!", command_name),
         }
+
+        Ok(())
     }
 }
 
