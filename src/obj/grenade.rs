@@ -30,7 +30,7 @@ const DEC: f32 = 1.4;
 impl Grenade {
     #[inline]
     pub fn apply_damage(&self, health: &mut Health, high: bool) {
-        health.weapon_damage(if high { 105.} else {55.}, 85.);
+        health.weapon_damage(if high { 105.} else {55.}, 0.85);
     }
     #[inline]
     pub fn draw(&self, ctx: &mut Context, a: &Assets) -> GameResult<()> {
