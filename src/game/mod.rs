@@ -1,13 +1,14 @@
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::fmt::{self, Display};
+use std::collections::HashMap;
 use crate::{
-    util::{Vector2, Point2, RED, GREEN, BLUE, dbg_strs},
+    util::{Vector2, Point2, RED, GREEN, BLUE},
     io::{
         snd::MediaPlayer,
         tex::{Assets, PosText},
     },
-    obj::{health::Health, weapon::{WEAPONS, WeaponInstance}},
+    obj::{health::Health, weapon::WeaponInstance},
 };
 use ggez::{
     nalgebra::Matrix4,
@@ -130,8 +131,8 @@ impl Log for ConsoleLogger {
 
 const PROMPT_Y: f32 = 196.;
 
-#[derive(Debug)]
 pub struct Console {
+    commands: HashMap<String, Command>,
     history: Text,
     prompt: PosText,
 }
@@ -158,12 +159,17 @@ impl Display for CommandError {
     }
 }
 
+mod cmds;
+
+type Command = for<'a> fn(console: &'a mut Console, ctx: &'a mut Context, state: &'a mut State, gs: &'a mut dyn GameState, args: Vec<&'a str>) -> Result<(), CommandError>;
+
 impl Console {
     fn new(_ctx: &mut Context, assets: &Assets) -> GameResult<Self> {
         log::set_logger(&*CONSOLE_LOGGER).expect("to be first logger");
         log::set_max_level(log::LevelFilter::Trace);
 
         Ok(Console {
+            commands: cmds::commands(),
             history: assets.raw_text_with("Acheivements disabled.\n", 18.),
             prompt: assets.text(Point2::new(0., PROMPT_Y)).and_text("> ").and_text(String::with_capacity(32)),
         })
@@ -184,82 +190,15 @@ impl Console {
         Ok(())
     }
     fn handle(&mut self, ctx: &mut Context, state: &mut State, gs: &mut dyn GameState, args: Vec<&str>) -> Result<(), CommandError> {
-        use self::CommandError::*;
+        let command_name = args[0];
 
-        match args[0] {
-            "" => (),
-            "pi" => {
-                let world = gs.get_mut_world().ok_or(NoWorld)?;
-                world.intels.clear();
-                info!("Intels got");
-            }
-            "clear" => self.history = state.assets.raw_text_with("", 18.),
-            "fa" => {
-                let world = gs.get_mut_world().ok_or(NoWorld)?;
-                world.player.health.hp = 100.;
-                world.player.health.armour = 100.;
-            },
-            "god" => {
-                let world = gs.get_mut_world().ok_or(NoWorld)?;
-                if world.player.health.hp.is_finite() {
-                    world.player.health.hp = std::f32::INFINITY;
-                    info!("Degreelessness");
-                } else {
-                    world.player.health.hp = 100.;
-                    info!("God off");
-                }
-            },
-            "wep" => {
-                let world = gs.get_mut_world().ok_or(NoWorld)?;
-                let &wep = args.get(1).ok_or(InvalidArg)?;
-                let weapon = WEAPONS.get(wep).ok_or(NoSuchWeapon)?;
-
-                world.weapons.push(weapon.make_drop(state.mouse-state.offset));
-            },
-            "reload" => {
-                if let Some(arg) = args.get(1) {
-                    state.content = Content::File(arg.to_owned().into())
-                } else {
-                    state.content = Content::None
-                }
-                state.switch(StateSwitch::Menu);
-            }
-            "cmp" => if let Content::Campaign(ref mut cmp) = state.content {
-                if let Some(i) = args.get(1) {
-                    let i = i.parse().map_err(|_| InvalidArg)?;
-                    cmp.current = i;
-                    let lvl = cmp.next_level().ok_or(NoSuchLevel)?;
-
-                    let (health, wep) = if let Some(world) = gs.get_world() {
-                        (world.player.health, world.player.wep)
-                    } else {
-                        (Health::default(), None)
-                    };
-
-                    state.switch(StateSwitch::PlayWith{health, wep, lvl: Box::new(lvl)});
-                } else {
-                    info!("{} levels. Current is {}", cmp.levels.len(), cmp.current);
-                }
-            } else {
-                return Err(NoCampaign);
-            }
-            "gg" => {
-                let world = gs.get_mut_world().ok_or(NoWorld)?;
-                world.player.utilities.grenades += 3;
-                info!("Gg'd");
-            },
-            "hello" => {
-                info!("Hello!");
-            },
-            "quit" => {
-                ctx.continuing = false;
-            }
-            "strs" => dbg_strs(),
-            cmd => {
-                warn!("  Unknown command `{}'!", cmd);
+        match self.commands.get(command_name) {
+            Some(cmd) => cmd(self, ctx, state, gs, args),
+            None => {
+                warn!("  Unknown command `{}'!", command_name);
+                Ok(())
             }
         }
-        Ok(())
     }
 }
 
