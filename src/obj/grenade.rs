@@ -1,4 +1,5 @@
-use ggez::{Context, GameResult, graphics::WHITE};
+use ggez::{Context, GameResult, graphics::{self, WHITE, DrawMode, MeshBuilder, DrawParam, FillOptions}};
+use std::f32::consts::PI;
 
 use crate::{
     util::{angle_to_vec, Vector2},
@@ -30,12 +31,31 @@ const DEC: f32 = 1.4;
 impl Grenade {
     #[inline]
     pub fn apply_damage(&self, health: &mut Health, high: bool) {
-        health.weapon_damage(if high { 105.} else {55.}, 85.);
+        health.weapon_damage(if high { 105.} else {55.}, 0.85);
     }
     #[inline]
-    pub fn draw(&self, ctx: &mut Context, a: &Assets) -> GameResult<()> {
-        let img = a.get_img(ctx, "weapons/pineapple");
-        self.obj.draw(ctx, &*img, WHITE)
+    pub fn draw(&self, ctx: &mut Context, a: &Assets, palette: &Palette, grid: &Grid) -> GameResult<()> {
+        if self.fuse > 2.*DELTA {
+            let img = a.get_img(ctx, "weapons/pineapple");
+            self.obj.draw(ctx, &*img, WHITE)
+        } else {
+            let expl_img = a.get_img(ctx, "weapons/explosion");
+            // expl_img.set_wrap(WrapMode::Mirror,WrapMode::Mirror);
+            let mut explosion = Vec::new();
+            for i in 0..180 {
+                let cast = grid.ray_cast(palette, self.obj.pos, angle_to_vec(((i*2) as f32)*PI/180.)*144., true);
+                explosion.push(cast.into_point());
+            }
+
+            let explosion_mesh = MeshBuilder::new()
+                .polygon(DrawMode::Fill(FillOptions::even_odd()), &explosion, WHITE)?
+                // .texture(expl_img.clone())n
+                .build(ctx)?;
+            graphics::draw(ctx, &explosion_mesh, DrawParam::default())
+            // let mut explosion_mesh = Mesh::new_polygon(ctx, DrawMode::Fill(FillOptions::even_odd()), &explosion, Color::from_rgba(235, 91, 20, 255))?;
+            // self.obj.draw(ctx, &*expl_img, WHITE)
+            // self.obj.draw(ctx, &explosion_mesh, DrawParam::default())
+        }
     }
     pub fn update(&mut self, palette: &Palette, grid: &Grid, player: &mut Player, enemies: &mut [Enemy]) -> Option<Explosion> {
         let start = self.obj.pos;
