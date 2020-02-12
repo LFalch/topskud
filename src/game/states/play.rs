@@ -300,7 +300,7 @@ impl GameState for Play {
             enemy.update(ctx, &mut s.mplayer)?;
         }
 
-        let speed = if keyboard::is_mod_active(ctx, KeyMods::SHIFT) {
+        let speed = if !keyboard::is_mod_active(ctx, KeyMods::SHIFT) {
             200.
         } else {
             100.
