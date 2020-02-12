@@ -404,7 +404,7 @@ impl GameState for Play {
             bullet.draw(ctx, &s.assets)?;
         }
         for grenade in &self.world.grenades {
-            grenade.draw(ctx, &s.assets)?;
+            grenade.draw(ctx, &s.assets, &self.world.palette, &self.world.grid)?;
         }
 
         Ok(())
