@@ -194,7 +194,7 @@ impl Level {
                     .map(|l: Vec<((f32, f32), u8)>| l.into_iter().map(|((x, y), i)| (Point2::new(x, y), i)).collect())
                     .map_err(|e| GameError::ResourceLoadError(format!("{:?}", e)))?,
                 "WEPS" => ret.weapons = bincode::deserialize_from(&mut reader)
-                    .map(|l: Vec<((f32, f32), String)>| l.into_iter().map(|((x, y), id)| WEAPONS[&id].make_drop(Point2::new(x, y))).collect())
+                    .map(|l: Vec<((f32, f32), String)>| l.into_iter().map(|((x, y), id)| WEAPONS[&*id].make_drop(Point2::new(x, y))).collect())
                     .map_err(|e| GameError::ResourceLoadError(format!("{:?}", e)))?,
                 "WEAPONS" => ret.weapons = bincode::deserialize_from(&mut reader)
                     .map(|l: Vec<((f32, f32), u8)>| l.into_iter().map(|((x, y), i)| WEAPONS[WEAPONS_OLD[i as usize]].make_drop(Point2::new(x, y))).collect())
@@ -246,9 +246,7 @@ impl Level {
         }
         if !self.weapons.is_empty() {
             writeln!(file, "\nWEPS")?;
-            let pickups: Vec<((f32, f32), String)> = self.weapons.iter().map(|w| ((w.pos.x, w.pos.y), {
-                WEAPONS.iter().find(|(_, wep)| wep.name == w.weapon.name).map(|(id, _)| id.clone()).unwrap()
-            })).collect();
+            let pickups: Vec<((f32, f32), &'static str)> = self.weapons.iter().map(|w| ((w.pos.x, w.pos.y), w.weapon.id)).collect();
             bincode::serialize_into(&mut file, &pickups)
                 .map_err(|e| GameError::ResourceLoadError(format!("{:?}", e)))?;
         }

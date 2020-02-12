@@ -44,6 +44,7 @@ impl FireMode {
 
 #[derive(Debug, Clone)]
 pub struct Weapon {
+    pub id: Sstr,
     pub name: Sstr,
     pub clip_size: NonZeroU16,
     pub clips: NonZeroU16,

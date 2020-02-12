@@ -10,13 +10,16 @@ use std::collections::HashMap;
 use std::f32::consts::PI;
 
 lazy_static!{
-    pub static ref WEAPONS: HashMap<String, Weapon> = {
+    pub static ref WEAPONS: HashMap<&'static str, Weapon> = {
         let mut file = File::open("resources/weapons/specs.toml").expect("specs.toml file");
         let mut file_contents = String::new();
         file.read_to_string(&mut file_contents).expect("Reading to succeed");
 
-        let templates: HashMap<String, WeaponTemplate> = toml::from_str(&file_contents).expect("well-defined weapons");
-        templates.into_iter().map(|(k, v)| (k, v.build())).collect()
+        let templates: HashMap<Box<str>, WeaponTemplate> = toml::from_str(&file_contents).expect("well-defined weapons");
+        templates.into_iter().map(|(k, v)| {
+            let k = sstr(k);
+            (k, v.build(k))
+        }).collect()
     };
 }
 
@@ -73,7 +76,7 @@ fn def_impact() -> Sstr {
 const DEG2RAD: f32 = PI / 180.;
 
 impl WeaponTemplate {
-    fn build(self) -> Weapon {
+    fn build(self, id: &'static str) -> Weapon {
         let WeaponTemplate {
             name,
             clip_size,
@@ -97,6 +100,7 @@ impl WeaponTemplate {
         } = self;
 
         Weapon {
+            id,
             name,
             clip_size,
             clips,
