@@ -7,7 +7,7 @@ use crate::{
         Vector2, Point2
     },
     io::tex::PosText,
-    obj::{Object, bullet::Bullet, decal::Decal, pickup::Pickup, player::{Player, WepSlots, ActiveSlot}, enemy::{Enemy, Chaser}, health::Health, weapon::{self, WeaponInstance}, grenade::Explosion},
+    obj::{Object, bullet::Bullet, decal::Decal, pickup::Pickup, player::{Player, WepSlots, ActiveSlot}, enemy::{Enemy, Chaser}, health::Health, weapon::{self, WeaponInstance}, grenade::GrenadeUpdate},
     game::{
         DELTA, State, GameState, StateSwitch, world::{Level, Statistics, World},
         event::{Event::{self, Key, Mouse}, MouseButton, KeyCode, KeyMods}
@@ -134,51 +134,56 @@ impl GameState for Play {
 
         let mut deads = Vec::new();
         for (i, grenade) in self.world.grenades.iter_mut().enumerate().rev() {
-            let expl = grenade.update(&self.world.palette, &self.world.grid, &mut self.world.player, &mut *self.world.enemies);
+            let g_update = grenade.update(ctx, &s.assets, &self.world.palette, &self.world.grid, &mut self.world.player, &mut *self.world.enemies)?;
 
-            if let Some(Explosion{player_hit, enemy_hits}) = expl {
-                deads.push(i);
-                s.mplayer.play(ctx, "boom")?;
+            match g_update {
+                GrenadeUpdate::Explosion{player_hit, enemy_hits} => {
+                    s.mplayer.play(ctx, "boom")?;
 
-                if player_hit {
-                    self.world.decals.push(new_blood(self.world.player.obj.clone()));
-                    s.mplayer.play(ctx, "hit")?;
+                    if player_hit {
+                        self.world.decals.push(new_blood(self.world.player.obj.clone()));
+                        s.mplayer.play(ctx, "hit")?;
 
-                    if self.world.player.health.is_dead() {
-                        s.switch(StateSwitch::Lose(Box::new(Statistics{
-                            time: self.time,
-                            enemies_left: self.world.enemies.len(),
-                            health_left: self.initial.0,
-                            level: self.level.clone(),
-                            weapon: self.initial.1.clone(),
-                        })));
-                        s.mplayer.play(ctx, "death")?;
-                    } else {
-                        s.mplayer.play(ctx, "hurt")?;
+                        if self.world.player.health.is_dead() {
+                            s.switch(StateSwitch::Lose(Box::new(Statistics{
+                                time: self.time,
+                                enemies_left: self.world.enemies.len(),
+                                health_left: self.initial.0,
+                                level: self.level.clone(),
+                                weapon: self.initial.1.clone(),
+                            })));
+                            s.mplayer.play(ctx, "death")?;
+                        } else {
+                            s.mplayer.play(ctx, "hurt")?;
+                        }
+                    }
+                    for i in enemy_hits {
+                        let enemy = &self.world.enemies[i];
+                        s.mplayer.play(ctx, "hit")?;
+
+                        self.world.decals.push(new_blood(enemy.pl.obj.clone()));
+                        if enemy.pl.health.is_dead() {
+                            s.mplayer.play(ctx, "death")?;
+
+                            let Enemy{pl: Player{wep, obj: Object{pos, ..}, ..}, ..}
+                                = self.world.enemies.remove(i);
+                            for wep in wep {
+                                self.world.weapons.push(wep.into_drop(pos));
+                            }
+                        } else {
+                            if !enemy.behaviour.chasing() {
+                                self.world.enemies[i].behaviour = Chaser::LookAround{
+                                    dir: grenade.obj.pos - enemy.pl.obj.pos
+                                };
+                            }
+                            s.mplayer.play(ctx, "hurt")?;
+                        }
                     }
                 }
-                for i in enemy_hits {
-                    let enemy = &self.world.enemies[i];
-                    s.mplayer.play(ctx, "hit")?;
-
-                    self.world.decals.push(new_blood(enemy.pl.obj.clone()));
-                    if enemy.pl.health.is_dead() {
-                        s.mplayer.play(ctx, "death")?;
-
-                        let Enemy{pl: Player{wep, obj: Object{pos, ..}, ..}, ..}
-                            = self.world.enemies.remove(i);
-                        for wep in wep {
-                            self.world.weapons.push(wep.into_drop(pos));
-                        }
-                    } else {
-                        if !enemy.behaviour.chasing() {
-                            self.world.enemies[i].behaviour = Chaser::LookAround{
-                                dir: grenade.obj.pos - enemy.pl.obj.pos
-                            };
-                        }
-                        s.mplayer.play(ctx, "hurt")?;
-                    }
+                GrenadeUpdate::Dead => {
+                    deads.push(i);
                 }
+                GrenadeUpdate::None => (),
             }
         }
         for i in deads {
@@ -404,7 +409,7 @@ impl GameState for Play {
             bullet.draw(ctx, &s.assets)?;
         }
         for grenade in &self.world.grenades {
-            grenade.draw(ctx, &s.assets, &self.world.palette, &self.world.grid)?;
+            grenade.draw(ctx, &s.assets)?;
         }
 
         Ok(())
