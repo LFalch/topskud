@@ -1,4 +1,5 @@
-use ggez::{Context, GameResult, graphics::WHITE};
+use ggez::{Context, GameResult, graphics::{self, WHITE,WrapMode, Mesh, DrawParam}};
+use std::f32::consts::PI;
 
 use crate::{
     util::{angle_to_vec, Vector2},
@@ -33,9 +34,41 @@ impl Grenade {
         health.weapon_damage(if high { 105.} else {55.}, 0.85);
     }
     #[inline]
-    pub fn draw(&self, ctx: &mut Context, a: &Assets) -> GameResult<()> {
-        let img = a.get_img(ctx, "weapons/pineapple");
-        self.obj.draw(ctx, &*img, WHITE)
+    pub fn draw(&self, ctx: &mut Context, a: &Assets, palette: &Palette, grid: &Grid) -> GameResult<()> {
+        if self.fuse > 6.*DELTA {
+            let img = a.get_img(ctx, "weapons/pineapple");
+            self.obj.draw(ctx, &*img, WHITE)
+        } else {
+            let mut expl_img = (a.get_img(ctx, "weapons/explosion")).clone();
+            expl_img.set_wrap(WrapMode::Mirror,WrapMode::Mirror);
+            let tpos = graphics::Vertex{
+                pos: [self.obj.pos.x,self.obj.pos.y],
+                uv: [0.0, 0.0],
+                color: [1.0, 1.0, 1.0, 1.0],
+            };
+            let mut explosion = Vec::new();
+            explosion.push(tpos);
+            for i in 0..120 {
+                let angle = angle_to_vec(((i*3) as f32)*PI/180.);
+                let ux = angle.x;
+                let uy = angle.y;
+                let cast = grid.ray_cast(palette, self.obj.pos, angle*144., true);
+                let point = graphics::Vertex{
+                    pos: [cast.into_point().x,cast.into_point().y],
+                    uv: [ux, uy],
+                    color: [1.0, 1.0, 1.0, 1.0],
+                };
+                explosion.push(point);
+            }
+            let mut indices = Vec::new();
+            for i in 0..=120 {
+                indices.push(0);
+                indices.push((i+1)%120);
+                indices.push((i+2)%120);
+            }
+            let explosion_mesh = Mesh::from_raw(ctx, &explosion, &indices, Some(expl_img.clone()))?;
+            graphics::draw(ctx, &explosion_mesh, DrawParam::default())
+        }
     }
     pub fn update(&mut self, palette: &Palette, grid: &Grid, player: &mut Player, enemies: &mut [Enemy]) -> Option<Explosion> {
         let start = self.obj.pos;
