@@ -39,7 +39,7 @@ impl Grenade {
             let img = a.get_img(ctx, "weapons/pineapple");
             self.obj.draw(ctx, &*img, WHITE)
         } else {
-            let mut expl_img = (a.get_img(ctx, "weapons/explosion1")).clone();
+            let mut expl_img = (a.get_img(ctx, "weapons/explosion")).clone();
             expl_img.set_wrap(WrapMode::Mirror,WrapMode::Mirror);
             let tpos = graphics::Vertex{
                 pos: [self.obj.pos.x,self.obj.pos.y],
