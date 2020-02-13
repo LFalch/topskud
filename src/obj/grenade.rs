@@ -1,4 +1,4 @@
-use ggez::{Context, GameResult, graphics::{self, WHITE, DrawMode, MeshBuilder, DrawParam, FillOptions}};
+use ggez::{Context, GameResult, graphics::{self, WHITE,WrapMode, Mesh, DrawParam}};
 use std::f32::consts::PI;
 
 use crate::{
@@ -35,26 +35,39 @@ impl Grenade {
     }
     #[inline]
     pub fn draw(&self, ctx: &mut Context, a: &Assets, palette: &Palette, grid: &Grid) -> GameResult<()> {
-        if self.fuse > 2.*DELTA {
+        if self.fuse > 6.*DELTA {
             let img = a.get_img(ctx, "weapons/pineapple");
             self.obj.draw(ctx, &*img, WHITE)
         } else {
-            let expl_img = a.get_img(ctx, "weapons/explosion");
-            // expl_img.set_wrap(WrapMode::Mirror,WrapMode::Mirror);
+            let mut expl_img = (a.get_img(ctx, "weapons/explosion1")).clone();
+            expl_img.set_wrap(WrapMode::Mirror,WrapMode::Mirror);
+            let tpos = graphics::Vertex{
+                pos: [self.obj.pos.x,self.obj.pos.y],
+                uv: [0.0, 0.0],
+                color: [1.0, 1.0, 1.0, 1.0],
+            };
             let mut explosion = Vec::new();
-            for i in 0..180 {
-                let cast = grid.ray_cast(palette, self.obj.pos, angle_to_vec(((i*2) as f32)*PI/180.)*144., true);
-                explosion.push(cast.into_point());
+            explosion.push(tpos);
+            for i in 0..120 {
+                let angle = angle_to_vec(((i*3) as f32)*PI/180.);
+                let ux = angle.x;
+                let uy = angle.y;
+                let cast = grid.ray_cast(palette, self.obj.pos, angle*144., true);
+                let point = graphics::Vertex{
+                    pos: [cast.into_point().x,cast.into_point().y],
+                    uv: [ux, uy],
+                    color: [1.0, 1.0, 1.0, 1.0],
+                };
+                explosion.push(point);
             }
-
-            let explosion_mesh = MeshBuilder::new()
-                .polygon(DrawMode::Fill(FillOptions::even_odd()), &explosion, WHITE)?
-                // .texture(expl_img.clone())n
-                .build(ctx)?;
+            let mut indices = Vec::new();
+            for i in 0..=120 {
+                indices.push(0);
+                indices.push((i+1)%120);
+                indices.push((i+2)%120);
+            }
+            let explosion_mesh = Mesh::from_raw(ctx, &explosion, &indices, Some(expl_img.clone()))?;
             graphics::draw(ctx, &explosion_mesh, DrawParam::default())
-            // let mut explosion_mesh = Mesh::new_polygon(ctx, DrawMode::Fill(FillOptions::even_odd()), &explosion, Color::from_rgba(235, 91, 20, 255))?;
-            // self.obj.draw(ctx, &*expl_img, WHITE)
-            // self.obj.draw(ctx, &explosion_mesh, DrawParam::default())
         }
     }
     pub fn update(&mut self, palette: &Palette, grid: &Grid, player: &mut Player, enemies: &mut [Enemy]) -> Option<Explosion> {
