@@ -19,28 +19,41 @@ pub struct Player {
     pub wep: WepSlots,
     #[serde(skip)]
     pub health: Health,
-    #[serde(skip)]
-    pub utilities: Utilities,
 }
 
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ActiveSlot {
+    Knife = 0,
     Holster = 1,
     Holster2 = 2,
     Sling = 3,
 }
 
+impl ActiveSlot {
+    #[inline]
+    fn subtract(&mut self) {
+        use self::ActiveSlot::*;
+        *self = match *self {
+            Knife => Knife,
+            Holster => Knife,
+            Holster2 => Holster,
+            Sling => Holster2,
+        };
+    }
+}
+
 impl Default for ActiveSlot {
     #[inline(always)]
     fn default() -> Self {
-        ActiveSlot::Holster
+        ActiveSlot::Knife
     }
 }
 
 #[derive(Debug, Default, Clone)]
 pub struct WepSlots {
     pub active: ActiveSlot,
+    pub utilities: Utilities,
     pub holster: Option<WeaponInstance<'static>>,
     pub holster2: Option<WeaponInstance<'static>>,
     pub sling: Option<WeaponInstance<'static>>,
@@ -48,33 +61,58 @@ pub struct WepSlots {
 
 impl WepSlots {
     #[inline(always)]
-    pub fn has_weapon(&self, new_active: ActiveSlot) -> bool {
+    pub fn slot_has_weapon(&self, new_active: ActiveSlot) -> bool {
         match new_active {
+            ActiveSlot::Knife => true,
             ActiveSlot::Holster => self.holster.is_some(),
             ActiveSlot::Holster2 => self.holster2.is_some(),
             ActiveSlot::Sling => self.sling.is_some(),
         }
     }
+    /// Set active to first weapon, falling back to knife
+    pub fn init_active(&mut self) {
+        self.active = match self {
+            WepSlots{holster: Some(_), ..} => ActiveSlot::Holster,
+            WepSlots{holster: None, holster2: Some(_), ..} => ActiveSlot::Holster2,
+            WepSlots{holster: None, holster2: None, sling: Some(_), ..} => ActiveSlot::Sling,
+            WepSlots{holster: None, holster2: None, sling: None, ..} => ActiveSlot::Knife,
+        };
+    }
     #[inline(always)]
     pub fn switch(&mut self, new_active: ActiveSlot) {
-        if self.has_weapon(new_active) {
+        if self.slot_has_weapon(new_active) {
             self.active = new_active;
         }
     }
+    #[must_use]
+    pub fn take_active(&mut self) -> Option<WeaponInstance<'static>> {
+        let wep = match self.active {
+            ActiveSlot::Knife => None,
+            ActiveSlot::Holster => std::mem::take(&mut self.holster),
+            ActiveSlot::Holster2 => std::mem::take(&mut self.holster2),
+            ActiveSlot::Sling => std::mem::take(&mut self.sling),
+        };
+        while !self.slot_has_weapon(self.active) {
+            self.active.subtract();
+        }
+        wep
+    }
     #[inline(always)]
-    pub fn get_active(&self) -> &Option<WeaponInstance<'static>> {
+    pub fn get_active(&self) -> Option<&WeaponInstance<'static>> {
         match self.active {
-            ActiveSlot::Holster => &self.holster,
-            ActiveSlot::Holster2 => &self.holster2,
-            ActiveSlot::Sling => &self.sling,
+            ActiveSlot::Knife => None,
+            ActiveSlot::Holster => self.holster.as_ref(),
+            ActiveSlot::Holster2 => self.holster2.as_ref(),
+            ActiveSlot::Sling => self.sling.as_ref(),
         }
     }
     #[inline(always)]
-    pub fn get_active_mut(&mut self) -> &mut Option<WeaponInstance<'static>> {
+    pub fn get_active_mut(&mut self) -> Option<&mut WeaponInstance<'static>> {
         match self.active {
-            ActiveSlot::Holster => &mut self.holster,
-            ActiveSlot::Holster2 => &mut self.holster2,
-            ActiveSlot::Sling => &mut self.sling,
+            ActiveSlot::Knife => None,
+            ActiveSlot::Holster => self.holster.as_mut(),
+            ActiveSlot::Holster2 => self.holster2.as_mut(),
+            ActiveSlot::Sling => self.sling.as_mut(),
         }
     }
     #[must_use]
@@ -103,7 +141,7 @@ impl IntoIterator for WepSlots {
     type Item = <Self::IntoIter as Iterator>::Item;
     fn into_iter(self) -> Self::IntoIter {
         #[allow(clippy::unneeded_field_pattern)]
-        let WepSlots{active: _, holster, holster2, sling} = self;
+        let WepSlots{active: _, utilities: _, holster, holster2, sling} = self;
 
         holster.into_iter().chain(holster2).chain(sling)
     }
@@ -116,7 +154,6 @@ impl Player {
             obj,
             wep: Default::default(),
             health: Health::default(),
-            utilities: Utilities::default(),
         }
     }
     #[inline]
@@ -143,14 +180,19 @@ impl Player {
         self.draw(ctx, a, "common/player", WHITE)
     }
     pub fn draw(&self, ctx: &mut Context, a: &Assets, sprite: &str, color: Color) -> GameResult<()> {
-        if let Some(wep) = self.wep.get_active() {
+        {
+            let hands_sprite = if let Some(wep) = self.wep.get_active() {
+                wep.weapon.hands_sprite
+            } else {
+                "weapons/knife_hands"
+            };
+
             let dp = graphics::DrawParam {
                 dest: (self.obj.pos+angle_to_vec(self.obj.rot)*16.).into(),
                 color,
                 .. self.obj.drawparams()
             };
-
-            let img = a.get_img(ctx, &wep.weapon.hands_sprite);
+            let img = a.get_img(ctx, hands_sprite);
             graphics::draw(ctx, &*img, dp)?;
         }
         let img = a.get_img(ctx, sprite);

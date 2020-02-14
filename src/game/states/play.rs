@@ -1,3 +1,4 @@
+use std::f32::consts::FRAC_1_SQRT_2 as COS_45_D;
 use crate::{
     ext::FloatExt,
     util::{
@@ -423,28 +424,28 @@ impl GameState for Play {
         self.wep_text.draw_text(ctx)?;
         self.status_text.draw_center(ctx)?;
 
-        let mesh = Mesh::new_rectangle(ctx, DrawMode::fill(), Rect{x:104.,y:2.,h: 32., w: 32.}, Color{r: 0.5, g: 0.5, b: 0.5, a: 1.})?;
-        let mesh1 = Mesh::new_rectangle(ctx, DrawMode::fill(), Rect{x:137.,y:2.,h: 32., w: 32.}, Color{r: 0.5, g: 0.5, b: 0.5, a: 1.})?;
-        let mesh2 = Mesh::new_rectangle(ctx, DrawMode::fill(), Rect{x:104.,y:35.,h: 32., w: 32.}, Color{r: 0.5, g: 0.5, b: 0.5, a: 1.})?;
-        graphics::draw(ctx, &mesh, DrawParam::default())?;
-        graphics::draw(ctx, &mesh1, DrawParam::default())?;
-        graphics::draw(ctx, &mesh2, DrawParam::default())?;
-
-        if let Some(holster_wep) = &self.world.player.wep.holster {
+        {
             let drawparams = DrawParam::from(([104., 2.],));
-            let img = s.assets.get_img(ctx, &holster_wep.weapon.entity_sprite);
+            let img = s.assets.get_img(ctx, "weapons/knife");
             graphics::draw(ctx, &*img, drawparams)?;
         }
-        if let Some(holster_wep) = &self.world.player.wep.holster2 {
+        if let Some(holster_wep) = &self.world.player.wep.holster {
             let drawparams = DrawParam::from(([137., 2.],));
             let img = s.assets.get_img(ctx, &holster_wep.weapon.entity_sprite);
             graphics::draw(ctx, &*img, drawparams)?;
         }
-        if let Some(sling_wep) = &self.world.player.wep.sling {
+        if let Some(holster_wep) = &self.world.player.wep.holster2 {
             let drawparams = DrawParam::from(([104., 35.],));
+            let img = s.assets.get_img(ctx, &holster_wep.weapon.entity_sprite);
+            graphics::draw(ctx, &*img, drawparams)?;
+        }
+        if let Some(sling_wep) = &self.world.player.wep.sling {
+            let drawparams = DrawParam::from(([153., 35.],)).offset(Point2::new(0.5, 0.));
             let img = s.assets.get_img(ctx, &sling_wep.weapon.entity_sprite);
             graphics::draw(ctx, &*img, drawparams)?;
         }
+        let selection = Mesh::new_rectangle(ctx, DrawMode::stroke(2.), RECTS[self.world.player.wep.active as u8 as usize], Color{r: 1., g: 1., b: 0., a: 1.})?;
+        graphics::draw(ctx, &selection, DrawParam::default())?;
 
         let drawparams = graphics::DrawParam {
             dest: s.mouse.into(),
@@ -458,9 +459,17 @@ impl GameState for Play {
     fn event_up(&mut self, s: &mut State, ctx: &mut Context, event: Event) {
         use self::KeyCode::*;
         match event {
+            Key(Q) | Key(Key0) | Key(Numpad0) => self.world.player.wep.switch(ActiveSlot::Knife),
             Key(Key1) | Key(Numpad1) => self.world.player.wep.switch(ActiveSlot::Holster),
             Key(Key2) | Key(Numpad2) => self.world.player.wep.switch(ActiveSlot::Holster2),
             Key(Key3) | Key(Numpad3) => self.world.player.wep.switch(ActiveSlot::Sling),
+            Key(G) => {
+                if let Some(wep) = self.world.player.wep.take_active() {
+                    self.world.weapons.push(wep.into_drop(self.world.player.obj.pos));
+                } else {
+                    warn!("Dropped nothing");
+                }
+            }
             Key(R) => {
                 if let Some(wep) = self.world.player.wep.get_active_mut() {
                     wep.reload(ctx, &mut s.mplayer).unwrap()
@@ -488,10 +497,41 @@ impl GameState for Play {
                             self.world.bullets.push(bullet);
                         }
                     }
+                } else {
+                    // TODO do knives with bullets too
+                    let player = &mut self.world.player;
+                    let mut backstab = false;
+                    let mut dead = None;
+
+                    for (i, enemy) in self.world.enemies.iter_mut().enumerate() {
+                        let dist = player.obj.pos-enemy.pl.obj.pos;
+                        let dist_len = dist.norm();
+                        if dist_len < 44. {
+                            backstab = angle_to_vec(enemy.pl.obj.rot).dot(&dist) / dist_len < COS_45_D;
+
+                            self.world.decals.push(new_blood(enemy.pl.obj.clone()));
+                            enemy.pl.health.weapon_damage(if backstab { 165. } else { 33. }, 0.92);
+                            if enemy.pl.health.is_dead() {
+                                dead = Some(i);
+                                break;
+                            }
+                        }
+                    }
+                    if let Some(i) = dead {
+                        s.mplayer.play(ctx, "death").unwrap();
+
+                        let Enemy{pl: Player{wep, obj: Object{pos, ..}, ..}, ..}
+                            = self.world.enemies.remove(i);
+                        for wep in wep {
+                            self.world.weapons.push(wep.into_drop(pos));
+                        }
+                    }
+
+                    s.mplayer.play(ctx, if backstab {"shuk"} else {"hling"}).unwrap();
                 }
             }
             Mouse(MouseButton::Right) => {
-                if let Some(gm) = self.world.player.utilities.throw_grenade(ctx, &mut s.mplayer).unwrap() {
+                if let Some(gm) = self.world.player.wep.utilities.throw_grenade(ctx, &mut s.mplayer).unwrap() {
                     let pos = self.world.player.obj.pos + 20. * angle_to_vec(self.world.player.obj.rot);
                     let mut gren = Object::new(pos);
                     gren.rot = self.world.player.obj.rot;
@@ -519,12 +559,23 @@ pub struct Hud {
     loading_bar: Mesh,
 }
 
+const RECTS: [Rect; 4] = [
+    Rect{x:104.,y:2.,h: 32., w: 32.},
+    Rect{x:137.,y:2.,h: 32., w: 32.},
+    Rect{x:104.,y:35.,h: 32., w: 32.},
+    Rect{x:137.,y:35.,h: 32., w: 32.}
+];
+
 impl Hud {
     pub fn new(ctx: &mut Context) -> GameResult<Self> {
         let hud_bar = MeshBuilder::new()
             .rectangle(DrawMode::fill(), Rect{x: 1., y: 1., w: 102., h: 26.}, graphics::BLACK)
             .rectangle(DrawMode::fill(), Rect{x: 1., y: 29., w: 102., h: 26.}, graphics::BLACK)
             .rectangle(DrawMode::fill(), Rect{x: 1., y: 57., w: 102., h: 26.}, graphics::BLACK)
+            .rectangle(DrawMode::fill(), Rect{x:104.,y:2.,h: 32., w: 32.}, Color{r: 0.5, g: 0.5, b: 0.5, a: 1.})
+            .rectangle(DrawMode::fill(), Rect{x:137.,y:2.,h: 32., w: 32.}, Color{r: 0.5, g: 0.5, b: 0.5, a: 1.})
+            .rectangle(DrawMode::fill(), Rect{x:104.,y:35.,h: 32., w: 32.}, Color{r: 0.5, g: 0.5, b: 0.5, a: 1.})
+            .rectangle(DrawMode::fill(), Rect{x:137.,y:35.,h: 32., w: 32.}, Color{r: 0.5, g: 0.5, b: 0.5, a: 1.})
             .build(ctx)?;
 
         let hp_bar = Mesh::new_rectangle(ctx, DrawMode::fill(), Rect{x: 2., y: 2., w: 0., h: 24.}, GREEN)?;
