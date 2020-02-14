@@ -77,7 +77,7 @@ impl Grenade {
             let cast = grid.ray_cast(palette, self.obj.pos, angle*RANGE, true);
             graphics::Vertex{
                 pos: cast.into_point().coords.into(),
-                uv: angle.into(),
+                uv: ((cast.clip().norm()-RANGE)/RANGE * angle).into(),
                 color: [1.0, 1.0, 1.0, 1.0],
             }
         }).chain(iter::once(centre)).collect();
