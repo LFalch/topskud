@@ -1869,7 +1869,7 @@ dependencies = [
 
 [[package]]
 name = "topskud"
-version = "0.1.8"
+version = "0.1.9"
 dependencies = [
  "bincode 1.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "clipboard 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
