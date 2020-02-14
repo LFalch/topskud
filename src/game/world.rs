@@ -70,6 +70,7 @@ impl World {
                 let pickup = self.pickups.remove(i);
                 let _action_done = pickup.apply(&mut enemy.pl.health);
             }
+            enemy.pl.wep.init_active();
         }
     }
     pub fn player_pickup(&mut self) {
@@ -102,6 +103,7 @@ impl World {
             let pickup = self.pickups.remove(i);
             let _action_done = pickup.apply(&mut player.health);
         }
+        player.wep.init_active();
     }
 }
 

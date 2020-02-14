@@ -110,8 +110,14 @@ pub(super) fn commands() -> HashMap<String, Command> {
         }},
         "gg" => {
             let world = gs.get_mut_world().ok_or(NoWorld)?;
-            world.player.utilities.grenades += 3;
-            info!("Gg'd");
+            world.player.wep.utilities.grenades += 3;
+            info!("Grenades given");
+            Ok(())
+        },
+        "ggg" => {
+            let world = gs.get_mut_world().ok_or(NoWorld)?;
+            world.player.wep.utilities.grenades += 100;
+            info!("Gggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg'd");
             Ok(())
         },
         "hello" => {
