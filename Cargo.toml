@@ -16,7 +16,7 @@ toml = "0.5"
 lazy_static = "1"
 log = "0.4"
 [dependencies.nalgebra]
-version = ">=0.18.0, <0.20.0"
+version = "0.18"
 features = ["mint"]
 
 [profile.dev]
