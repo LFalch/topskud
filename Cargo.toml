@@ -10,13 +10,13 @@ bincode = "1"
 serde_derive = "1"
 serde = "1"
 self-compare = "0.2"
-rand = "0.6"
+rand = ">=0.6.0, <0.8.0"
 clipboard = "0.5"
 toml = "0.5"
 lazy_static = "1"
 log = "0.4"
 [dependencies.nalgebra]
-version = "0.18"
+version = ">=0.18.0, <0.20.0"
 features = ["mint"]
 
 [profile.dev]
