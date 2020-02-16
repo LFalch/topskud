@@ -1,5 +1,8 @@
-use ggez::{Context, GameResult, graphics::{self, WHITE,WrapMode, Mesh, DrawParam}};
-use std::{iter, f32::consts::PI};
+use ggez::{Context, GameResult, graphics::{self, WHITE, Color, Mesh, DrawParam}};
+use std::{iter, f32::consts::{PI, FRAC_PI_2 as HALF_PI}};
+use rand::{thread_rng, Rng};
+
+const PI_MUL_2: f32 = 2. * PI;
 
 use crate::{
     util::{angle_to_vec, Vector2},
@@ -56,8 +59,19 @@ impl Grenade {
                 let img = a.get_img(ctx, "weapons/pineapple");
                 self.obj.draw(ctx, &*img, WHITE)
             }
-            GrenadeState::Explosion { mesh, .. } => {
-                graphics::draw(ctx, mesh, DrawParam::default())
+            GrenadeState::Explosion { mesh, alive_time } => {
+                const EXPANDING_TIME: f32 = 0.1;
+                let mut dp = DrawParam::from((self.obj.pos,));
+
+                if *alive_time <= EXPANDING_TIME {
+                    let scale = alive_time / EXPANDING_TIME;
+                    dp = dp.scale(Vector2::new(scale, scale));
+                } else {
+                    let colour = (HALF_PI * (alive_time - EXPANDING_TIME) / (EXPLOSION_LIFETIME - EXPANDING_TIME)).cos();
+                    dp = dp.color(Color{r: colour, g: colour, b: colour, a: 0.5+0.5*colour});
+                }
+
+                graphics::draw(ctx, mesh, dp)
             }
         }
     }
@@ -65,24 +79,26 @@ impl Grenade {
         const NUM_VERTICES: u32 = 120;
         const RADIANS_PER_VERT: f32 = (360. / NUM_VERTICES as f32) * PI/180.;
 
-        let mut expl_img = (a.get_img(ctx, "weapons/explosion")).clone();
-        expl_img.set_wrap(WrapMode::Mirror,WrapMode::Mirror);
+        let random_offset = thread_rng().gen_range(0., PI_MUL_2);
+
         let centre = graphics::Vertex {
-            pos: self.obj.pos.coords.into(),
-            uv: [0.0, 0.0],
+            pos: [0., 0.],
+            uv: [0.5, 0.5],
             color: [1.0, 1.0, 1.0, 1.0],
         };
         let vertices: Vec<_> = (0..NUM_VERTICES).map(|i| {
-            let angle = angle_to_vec(i as f32 * RADIANS_PER_VERT);
-            let cast = grid.ray_cast(palette, self.obj.pos, angle*RANGE, true);
+            let angle = RANGE * angle_to_vec(i as f32 * RADIANS_PER_VERT);
+            let angle_uv = 0.5 * angle_to_vec(i as f32 * RADIANS_PER_VERT + random_offset);
+            let cast = grid.ray_cast(palette, self.obj.pos, angle, true);
             graphics::Vertex{
-                pos: cast.into_point().coords.into(),
-                uv: angle.into(),
+                pos: (cast.into_point() - self.obj.pos).into(),
+                uv: (Vector2::new(0.5, 0.5) + (cast.clip().norm()-RANGE)/RANGE * angle_uv).into(),
                 color: [1.0, 1.0, 1.0, 1.0],
             }
         }).chain(iter::once(centre)).collect();
-
+        
         let indices = (0..NUM_VERTICES).flat_map(|i| iter::once(NUM_VERTICES).chain(iter::once(i)).chain(iter::once((i + 1) % NUM_VERTICES))).collect::<Vec<_>>();
+        let expl_img = (a.get_img(ctx, "weapons/explosion1")).clone();
         Mesh::from_raw(ctx, &vertices, &indices, Some(expl_img))
     }
     pub fn update_fused(obj: &mut Object, vel: &mut Vector2, fuse: &mut f32, palette: &Palette, grid: &Grid, player: &mut Player, enemies: &mut [Enemy]) -> GrenadeUpdate {
