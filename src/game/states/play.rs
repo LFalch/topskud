@@ -8,7 +8,7 @@ use crate::{
         Vector2, Point2
     },
     io::tex::PosText,
-    obj::{Object, bullet::Bullet, decal::Decal, pickup::Pickup, player::{Player, WepSlots, ActiveSlot}, enemy::{Enemy, Chaser}, health::Health, weapon::{self, WeaponInstance}, grenade::GrenadeUpdate},
+    obj::{Object, bullet::Bullet, decal::Decal, pickup::Pickup, player::{Player, WepSlots, ActiveSlot}, enemy::{Enemy, Chaser}, health::Health, weapon::{self, WeaponInstance, ReloadMode}, grenade::GrenadeUpdate},
     game::{
         DELTA, State, GameState, StateSwitch, world::{Level, Statistics, World},
         event::{Event::{self, Key, Mouse}, MouseButton, KeyCode, KeyMods}

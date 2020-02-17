@@ -201,14 +201,17 @@ impl<'a> WeaponInstance<'a> {
     }
     pub fn reload(&mut self, ctx: &mut Context, mplayer: &mut MediaPlayer) -> GameResult<()> {
         let clip_size = self.weapon.clip_size.get();
-        if self.cur_clip == clip_size || self.ammo == 0 {
+        if self.cur_clip == clip_size || self.ammo == 0 || self.loading_time != 0. {
             return Ok(())
         }
-
+        let ammo_to_reload: u16;
+        if let ReloadMode::RoundByRound = self.weapon.reload_mode { 
+            ammo_to_reload = 1;
+        } else {
+            ammo_to_reload = self.weapon.clip_size.get() - self.cur_clip;
+        }
         self.loading_time = self.weapon.reload_time;
-
-        let ammo_to_reload = self.weapon.clip_size.get() - self.cur_clip;
-
+        
         if self.ammo < ammo_to_reload {
             self.cur_clip += self.ammo;
             self.ammo = 0;
