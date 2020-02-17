@@ -42,6 +42,19 @@ impl FireMode {
     }
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
+#[serde(rename_all = "lowercase")]
+pub enum ReloadMode {
+    Magazine,
+    RoundByRound,
+}
+
+impl Default for ReloadMode {
+    fn default() -> Self{
+        ReloadMode::Magazine
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Weapon {
     pub id: Sstr,
@@ -55,6 +68,7 @@ pub struct Weapon {
     pub fire_rate: f32,
     /// Time to reload a new clip/magazine
     pub reload_time: f32,
+    pub reload_mode: ReloadMode,
     pub fire_mode: FireMode,
     pub shot_snd: Sstr,
     pub cock_snd: Sstr,
