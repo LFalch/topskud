@@ -32,7 +32,7 @@ pub struct Grenade {
 
 #[derive(Debug, Clone)]
 pub enum GrenadeState {
-    Cocked {
+    Cooked {
         fuse: f32,
     },
     Fused {
@@ -59,7 +59,7 @@ impl Grenade {
     #[inline]
     pub fn draw(&self, ctx: &mut Context, a: &Assets) -> GameResult<()> {
         match &self.state {
-            GrenadeState::Cocked{..} => {
+            GrenadeState::Cooked{..} => {
                 let img = a.get_img(ctx, "weapons/pineapple");
                 self.obj.draw(ctx, &*img, WHITE)
             }
@@ -173,7 +173,7 @@ impl Grenade {
         }
         GrenadeUpdate::None
     }
-    pub fn update_cocked(ctx: &mut Context, obj: &mut Object, fuse: &mut f32, palette: &Palette, grid: &Grid, player: &mut Player, enemies: &mut [Enemy]) -> GrenadeUpdate {
+    pub fn update_cooked(ctx: &mut Context, obj: &mut Object, fuse: &mut f32, palette: &Palette, grid: &Grid, player: &mut Player, enemies: &mut [Enemy]) -> GrenadeUpdate {
         obj.pos = player.obj.pos + 20. * angle_to_vec(player.obj.rot);
         if *fuse > DELTA {
             *fuse -= DELTA;
@@ -196,8 +196,8 @@ impl Grenade {
                     GrenadeUpdate::None
                 }
             }
-            GrenadeState::Cocked{ref mut fuse} => {
-                Self::update_cocked(ctx, &mut self.obj, fuse, palette, grid, player, enemies)
+            GrenadeState::Cooked{ref mut fuse} => {
+                Self::update_cooked(ctx, &mut self.obj, fuse, palette, grid, player, enemies)
             }
             GrenadeState::Fused{ref mut fuse} => {
                 Self::update_fused(&mut self.obj, &mut self.vel, fuse, palette, grid, player, enemies)
@@ -219,7 +219,7 @@ impl Grenade {
 }
 
 impl Utilities {
-    pub fn cock_grenade(&mut self, ctx: &mut Context, mplayer: &mut MediaPlayer) -> GameResult<Option<GrenadeMaker>> {
+    pub fn cook_grenade(&mut self, ctx: &mut Context, mplayer: &mut MediaPlayer) -> GameResult<Option<GrenadeMaker>> {
         if self.grenades > 0 {
             self.grenades -= 1;
 
@@ -237,7 +237,7 @@ impl GrenadeMaker {
         let vel = angle_to_vec(obj.rot) * self.0;
         obj.rot = 0.;
         Grenade {
-            state: GrenadeState::Cocked{fuse: 1.5},
+            state: GrenadeState::Cooked{fuse: 1.5},
             vel,
             obj,
         }

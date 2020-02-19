@@ -536,7 +536,7 @@ impl GameState for Play {
                 }
             }
             Mouse(MouseButton::Right) => {
-                if let Some(gm) = self.world.player.wep.utilities.cock_grenade(ctx, &mut s.mplayer).unwrap() {
+                if let Some(gm) = self.world.player.wep.utilities.cook_grenade(ctx, &mut s.mplayer).unwrap() {
                     let pos = self.world.player.obj.pos + 20. * angle_to_vec(self.world.player.obj.rot);
                     let mut gren = Object::new(pos);
                     gren.rot = self.world.player.obj.rot;
