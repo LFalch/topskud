@@ -1,4 +1,4 @@
-use ggez::{Context, GameResult, graphics::{self, WHITE, Color, Mesh, DrawParam}};
+use ggez::{Context, GameResult, graphics::{self, WHITE, Color, Mesh, DrawParam}, input::{mouse}};
 use std::{iter, f32::consts::{PI, FRAC_PI_2 as HALF_PI}};
 use rand::{thread_rng, Rng};
 
@@ -9,6 +9,7 @@ use crate::{
     game::{
         DELTA,
         world::{Grid, Palette},
+        event::MouseButton,
     },
     io::{
         snd::MediaPlayer,
@@ -31,6 +32,9 @@ pub struct Grenade {
 
 #[derive(Debug, Clone)]
 pub enum GrenadeState {
+    Cocked {
+        fuse: f32,
+    },
     Fused {
         fuse: f32,
     },
@@ -55,6 +59,10 @@ impl Grenade {
     #[inline]
     pub fn draw(&self, ctx: &mut Context, a: &Assets) -> GameResult<()> {
         match &self.state {
+            GrenadeState::Cocked{..} => {
+                let img = a.get_img(ctx, "weapons/pineapple");
+                self.obj.draw(ctx, &*img, WHITE)
+            }
             GrenadeState::Fused{..} => {
                 let img = a.get_img(ctx, "weapons/pineapple");
                 self.obj.draw(ctx, &*img, WHITE)
@@ -101,6 +109,29 @@ impl Grenade {
         let expl_img = (a.get_img(ctx, "weapons/explosion1")).clone();
         Mesh::from_raw(ctx, &vertices, &indices, Some(expl_img))
     }
+    pub fn explode(obj: &mut Object, palette: &Palette, grid: &Grid, player: &mut Player, enemies: &mut [Enemy]) -> GrenadeUpdate {
+        let start = obj.pos;
+        let player_hit;
+        let mut enemy_hits = Vec::new();
+
+        let d_player = player.obj.pos-start;
+        if d_player.norm() < RANGE && grid.ray_cast(palette, start, d_player, true).full() {
+            Self::apply_damage(&mut player.health, d_player.norm() <= LETHAL_RANGE);
+            player_hit = true;
+        } else {
+            player_hit = false;
+        }
+
+        for (i, enem) in enemies.iter_mut().enumerate().rev() {
+            let d_enemy = enem.pl.obj.pos - start;
+            if d_enemy.norm() < 144. && grid.ray_cast(palette, start, d_enemy, true).full() {
+                Self::apply_damage(&mut enem.pl.health, d_enemy.norm() <= 64.);
+                enemy_hits.push(i);
+            }
+        }
+
+        GrenadeUpdate::Explosion{player_hit, enemy_hits}
+    }
     pub fn update_fused(obj: &mut Object, vel: &mut Vector2, fuse: &mut f32, palette: &Palette, grid: &Grid, player: &mut Player, enemies: &mut [Enemy]) -> GrenadeUpdate {
         let start = obj.pos;
         let d_vel = -DEC * (*vel) * DELTA;
@@ -110,27 +141,7 @@ impl Grenade {
             *fuse -= DELTA;
         } else {
             *fuse = 0.;
-
-            let player_hit;
-            let mut enemy_hits = Vec::new();
-
-            let d_player = player.obj.pos-start;
-            if d_player.norm() < RANGE && grid.ray_cast(palette, start, d_player, true).full() {
-                Self::apply_damage(&mut player.health, d_player.norm() <= LETHAL_RANGE);
-                player_hit = true;
-            } else {
-                player_hit = false;
-            }
-
-            for (i, enem) in enemies.iter_mut().enumerate().rev() {
-                let d_enemy = enem.pl.obj.pos - start;
-                if d_enemy.norm() < 144. && grid.ray_cast(palette, start, d_enemy, true).full() {
-                    Self::apply_damage(&mut enem.pl.health, d_enemy.norm() <= 64.);
-                    enemy_hits.push(i);
-                }
-            }
-
-            return GrenadeUpdate::Explosion{player_hit, enemy_hits};
+            return Self::explode(obj, palette, grid, player, enemies)
         }
 
         let closest_p = Grid::closest_point_of_line_to_circle(start, d_pos, player.obj.pos);
@@ -162,7 +173,19 @@ impl Grenade {
         }
         GrenadeUpdate::None
     }
-
+    pub fn update_cocked(ctx: &mut Context, obj: &mut Object, fuse: &mut f32, palette: &Palette, grid: &Grid, player: &mut Player, enemies: &mut [Enemy]) -> GrenadeUpdate {
+        obj.pos = player.obj.pos + 20. * angle_to_vec(player.obj.rot);
+        if *fuse > DELTA {
+            *fuse -= DELTA;
+            if (*fuse) > DELTA && !mouse::button_pressed(ctx, MouseButton::Right) {
+                return GrenadeUpdate::Thrown{fuse: *fuse};
+            }
+        } else {
+            *fuse = 0.;
+            return Self::explode(obj, palette, grid, player, enemies)
+        }
+        GrenadeUpdate::None
+    }
     pub fn update(&mut self, ctx: &mut Context, a: &Assets, palette: &Palette, grid: &Grid, player: &mut Player, enemies: &mut [Enemy]) -> GameResult<GrenadeUpdate> {
         let update = match self.state {
             GrenadeState::Explosion{ref mut alive_time, ..} => {
@@ -173,10 +196,18 @@ impl Grenade {
                     GrenadeUpdate::None
                 }
             }
+            GrenadeState::Cocked{ref mut fuse} => {
+                Self::update_cocked(ctx, &mut self.obj, fuse, palette, grid, player, enemies)
+            }
             GrenadeState::Fused{ref mut fuse} => {
                 Self::update_fused(&mut self.obj, &mut self.vel, fuse, palette, grid, player, enemies)
             }
         };
+        if let GrenadeUpdate::Thrown{ref fuse} = update {
+            self.state = GrenadeState::Fused{
+                fuse: *fuse,
+            };
+        }
         if let GrenadeUpdate::Explosion{..} = update {
             self.state = GrenadeState::Explosion {
                 alive_time: 0.,
@@ -188,11 +219,10 @@ impl Grenade {
 }
 
 impl Utilities {
-    pub fn throw_grenade(&mut self, ctx: &mut Context, mplayer: &mut MediaPlayer) -> GameResult<Option<GrenadeMaker>> {
+    pub fn cock_grenade(&mut self, ctx: &mut Context, mplayer: &mut MediaPlayer) -> GameResult<Option<GrenadeMaker>> {
         if self.grenades > 0 {
             self.grenades -= 1;
 
-            mplayer.play(ctx, "throw")?;
             Ok(Some(GrenadeMaker(620.)))
         } else {
             mplayer.play(ctx, "cock")?;
@@ -207,7 +237,7 @@ impl GrenadeMaker {
         let vel = angle_to_vec(obj.rot) * self.0;
         obj.rot = 0.;
         Grenade {
-            state: GrenadeState::Fused{fuse: 1.5},
+            state: GrenadeState::Cocked{fuse: 1.5},
             vel,
             obj,
         }
@@ -216,6 +246,9 @@ impl GrenadeMaker {
 
 #[derive(Debug, Clone)]
 pub enum GrenadeUpdate {
+    Thrown {
+        fuse: f32,
+    },
     Explosion {
         player_hit: bool,
         enemy_hits: Vec<usize>,
