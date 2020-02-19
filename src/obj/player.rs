@@ -53,6 +53,7 @@ impl Default for ActiveSlot {
 #[derive(Debug, Default, Clone)]
 pub struct WepSlots {
     pub active: ActiveSlot,
+    pub last_active: ActiveSlot,
     pub utilities: Utilities,
     pub holster: Option<WeaponInstance<'static>>,
     pub holster2: Option<WeaponInstance<'static>>,
@@ -80,6 +81,7 @@ impl WepSlots {
     }
     #[inline(always)]
     pub fn switch(&mut self, new_active: ActiveSlot) {
+        self.last_active = self.active;
         if self.slot_has_weapon(new_active) {
             self.active = new_active;
         }
@@ -92,6 +94,7 @@ impl WepSlots {
             ActiveSlot::Holster2 => std::mem::take(&mut self.holster2),
             ActiveSlot::Sling => std::mem::take(&mut self.sling),
         };
+        self.last_active = ActiveSlot::Knife;
         while !self.slot_has_weapon(self.active) {
             self.active.subtract();
         }
@@ -140,8 +143,7 @@ impl IntoIterator for WepSlots {
     >;
     type Item = <Self::IntoIter as Iterator>::Item;
     fn into_iter(self) -> Self::IntoIter {
-        #[allow(clippy::unneeded_field_pattern)]
-        let WepSlots{active: _, utilities: _, holster, holster2, sling} = self;
+        let WepSlots{holster, holster2, sling, ..} = self;
 
         holster.into_iter().chain(holster2).chain(sling)
     }

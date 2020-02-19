@@ -459,15 +459,14 @@ impl GameState for Play {
     fn event_up(&mut self, s: &mut State, ctx: &mut Context, event: Event) {
         use self::KeyCode::*;
         match event {
-            Key(Q) | Key(Key0) | Key(Numpad0) => self.world.player.wep.switch(ActiveSlot::Knife),
-            Key(Key1) | Key(Numpad1) => self.world.player.wep.switch(ActiveSlot::Holster),
-            Key(Key2) | Key(Numpad2) => self.world.player.wep.switch(ActiveSlot::Holster2),
-            Key(Key3) | Key(Numpad3) => self.world.player.wep.switch(ActiveSlot::Sling),
+            Key(Q) => self.world.player.wep.switch(self.world.player.wep.last_active),
+            Key(Key1) | Key(Numpad1) => self.world.player.wep.switch(ActiveSlot::Knife),
+            Key(Key2) | Key(Numpad2) => self.world.player.wep.switch(ActiveSlot::Holster),
+            Key(Key3) | Key(Numpad3) => self.world.player.wep.switch(ActiveSlot::Holster2),
+            Key(Key4) | Key(Numpad4) => self.world.player.wep.switch(ActiveSlot::Sling),
             Key(G) => {
                 if let Some(wep) = self.world.player.wep.take_active() {
                     self.world.weapons.push(wep.into_drop(self.world.player.obj.pos));
-                } else {
-                    warn!("Dropped nothing");
                 }
             }
             Key(R) => {
@@ -536,7 +535,7 @@ impl GameState for Play {
                     let mut gren = Object::new(pos);
                     gren.rot = self.world.player.obj.rot;
 
-                    self.world.grenades.push(gm.make(gren));
+                    self.world.grenades.push(gm.make(gren, s.mouse - s.offset));
                 }
             }
             _ => (),
