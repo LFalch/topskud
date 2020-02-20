@@ -461,7 +461,7 @@ impl GameState for Play {
         let img = s.assets.get_img(ctx, "common/crosshair");
         graphics::draw(ctx, &*img, drawparams)
     }
-    fn event_down(&mut self, s: &mut State, ctx: &mut Context, event: Event) {
+    fn event_up(&mut self, s: &mut State, ctx: &mut Context, event: Event) {
         use self::KeyCode::*;
         match event {
             Key(Q) | Key(Key0) | Key(Numpad0) => self.world.player.wep.switch(ActiveSlot::Knife),
@@ -535,6 +535,12 @@ impl GameState for Play {
                     s.mplayer.play(ctx, if backstab {"shuk"} else {"hling"}).unwrap();
                 }
             }
+            _ => (),
+        }
+    }
+
+    fn event_down(&mut self, s: &mut State, ctx: &mut Context, event: Event) {
+        match event {
             Mouse(MouseButton::Right) => {
                 if let Some(gm) = self.world.player.wep.utilities.cook_grenade(ctx, &mut s.mplayer).unwrap() {
                     let pos = self.world.player.obj.pos + 20. * angle_to_vec(self.world.player.obj.rot);

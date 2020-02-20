@@ -109,11 +109,21 @@ impl Grenade {
         let expl_img = (a.get_img(ctx, "weapons/explosion1")).clone();
         Mesh::from_raw(ctx, &vertices, &indices, Some(expl_img))
     }
-    pub fn explode(obj: &mut Object, palette: &Palette, grid: &Grid, player: &mut Player, enemies: &mut [Enemy]) -> GrenadeUpdate {
+    pub fn fuse_update(obj: &Object, fuse: &mut f32, palette: &Palette, grid: &Grid, player: &mut Player, enemies: &mut [Enemy]) -> GrenadeUpdate {
+        if *fuse > DELTA {
+            *fuse -= DELTA;
+            GrenadeUpdate::None
+        } else {
+            *fuse = 0.;
+            Self::explode(obj, palette, grid, player, enemies)
+        }
+    }
+    pub fn explode(obj: &Object, palette: &Palette, grid: &Grid, player: &mut Player, enemies: &mut [Enemy]) -> GrenadeUpdate {
         let start = obj.pos;
+
         let player_hit;
         let mut enemy_hits = Vec::new();
-
+        
         let d_player = player.obj.pos-start;
         if d_player.norm() < RANGE && grid.ray_cast(palette, start, d_player, true).full() {
             Self::apply_damage(&mut player.health, d_player.norm() <= LETHAL_RANGE);
@@ -121,15 +131,14 @@ impl Grenade {
         } else {
             player_hit = false;
         }
-
+        
         for (i, enem) in enemies.iter_mut().enumerate().rev() {
             let d_enemy = enem.pl.obj.pos - start;
             if d_enemy.norm() < 144. && grid.ray_cast(palette, start, d_enemy, true).full() {
                 Self::apply_damage(&mut enem.pl.health, d_enemy.norm() <= 64.);
                 enemy_hits.push(i);
             }
-        }
-
+        }   
         GrenadeUpdate::Explosion{player_hit, enemy_hits}
     }
     pub fn update_fused(obj: &mut Object, vel: &mut Vector2, fuse: &mut f32, palette: &Palette, grid: &Grid, player: &mut Player, enemies: &mut [Enemy]) -> GrenadeUpdate {
@@ -137,13 +146,10 @@ impl Grenade {
         let d_vel = -DEC * (*vel) * DELTA;
         let d_pos = 0.5 * DELTA * d_vel + (*vel) * DELTA;
         *vel += d_vel;
-        if *fuse > DELTA {
-            *fuse -= DELTA;
-        } else {
-            *fuse = 0.;
-            return Self::explode(obj, palette, grid, player, enemies)
+        let change_fuse = Self::fuse_update(obj, fuse, palette, grid, player, enemies);
+        if change_fuse != GrenadeUpdate::None {
+            return change_fuse
         }
-
         let closest_p = Grid::closest_point_of_line_to_circle(start, d_pos, player.obj.pos);
         let r_player = player.obj.pos - closest_p;
         if r_player.norm() <= 16. {
@@ -171,20 +177,15 @@ impl Grenade {
             obj.pos += clip -  2. * clip.dot(&to_wall)/to_wall.norm_squared() * to_wall;
             *vel -= 2. * vel.dot(&to_wall)/to_wall.norm_squared() * to_wall;
         }
-        GrenadeUpdate::None
+        change_fuse
     }
     pub fn update_cooked(ctx: &mut Context, obj: &mut Object, fuse: &mut f32, palette: &Palette, grid: &Grid, player: &mut Player, enemies: &mut [Enemy]) -> GrenadeUpdate {
         obj.pos = player.obj.pos + 20. * angle_to_vec(player.obj.rot);
-        if *fuse > DELTA {
-            *fuse -= DELTA;
-            if (*fuse) > DELTA && !mouse::button_pressed(ctx, MouseButton::Right) {
-                return GrenadeUpdate::Thrown{fuse: *fuse};
-            }
-        } else {
-            *fuse = 0.;
-            return Self::explode(obj, palette, grid, player, enemies)
+        let change_fuse = Self::fuse_update(obj, fuse, palette, grid, player, enemies);
+        if change_fuse == GrenadeUpdate::None  && !mouse::button_pressed(ctx, MouseButton::Right) {
+            return GrenadeUpdate::Thrown{fuse: *fuse};
         }
-        GrenadeUpdate::None
+        change_fuse
     }
     pub fn update(&mut self, ctx: &mut Context, a: &Assets, palette: &Palette, grid: &Grid, player: &mut Player, enemies: &mut [Enemy]) -> GameResult<GrenadeUpdate> {
         let update = match self.state {
@@ -244,7 +245,7 @@ impl GrenadeMaker {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum GrenadeUpdate {
     Thrown {
         fuse: f32,
