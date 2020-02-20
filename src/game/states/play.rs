@@ -535,7 +535,7 @@ impl GameState for Play {
                     let mut gren = Object::new(pos);
                     gren.rot = self.world.player.obj.rot;
 
-                    self.world.grenades.push(gm.make(gren, s.mouse - s.offset));
+                    self.world.grenades.push(gm.make(gren));
                 }
             }
             _ => (),
