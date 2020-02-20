@@ -7,7 +7,7 @@ const EFFECTS_LIMIT: usize = 25;
 
 fn new_source(ctx: &mut Context, data: &SoundData) -> GameResult<Source> {
     Source::from_data(ctx, data.clone()).map(|mut src| {
-        src.set_volume(0.01);
+        src.set_volume(0.1);
         src
     })
 }
