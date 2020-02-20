@@ -1,11 +1,11 @@
-use ggez::{Context, GameResult, graphics::{self, WHITE, Color, Mesh, DrawParam}};
-use std::{iter, f32::consts::{PI, FRAC_PI_2 as HALF_PI}};
+use ggez::{Context, GameResult, graphics::{self, Color, Mesh, DrawParam}};
+use std::{iter, f32::consts::{PI, FRAC_PI_2 as HALF_PI, SQRT_2}};
 use rand::{thread_rng, Rng};
 
 const PI_MUL_2: f32 = 2. * PI;
 
 use crate::{
-    util::{angle_to_vec, Vector2},
+    util::{angle_to_vec, Vector2, Point2},
     game::{
         DELTA,
         world::{Grid, Palette},
@@ -25,13 +25,15 @@ pub struct Utilities {
 #[derive(Debug, Clone)]
 pub struct Grenade {
     pub obj: Object,
-    pub vel: Vector2,
     pub state: GrenadeState,
 }
 
 #[derive(Debug, Clone)]
 pub enum GrenadeState {
     Fused {
+        vel: Vector2,
+        height: f32,
+        height_vel: f32,
         fuse: f32,
     },
     Explosion {
@@ -42,7 +44,6 @@ pub enum GrenadeState {
 }
 
 const EXPLOSION_LIFETIME: f32 = 0.5;
-const DEC: f32 = 1.4;
 
 const RANGE: f32 = 144.;
 const LETHAL_RANGE: f32 = 64.;
@@ -55,9 +56,12 @@ impl Grenade {
     #[inline]
     pub fn draw(&self, ctx: &mut Context, a: &Assets) -> GameResult<()> {
         match &self.state {
-            GrenadeState::Fused{..} => {
+            GrenadeState::Fused{height, ..} => {
+                let height_scale = (height / 32. + 0.5).sqrt();
+
                 let img = a.get_img(ctx, "weapons/pineapple");
-                self.obj.draw(ctx, &*img, WHITE)
+                let drawparams = self.obj.drawparams().scale(Vector2::new(height_scale, height_scale));
+                graphics::draw(ctx, &*img, drawparams)
             }
             GrenadeState::Explosion { mesh, alive_time } => {
                 const EXPANDING_TIME: f32 = 0.1;
@@ -101,11 +105,19 @@ impl Grenade {
         let expl_img = (a.get_img(ctx, "weapons/explosion1")).clone();
         Mesh::from_raw(ctx, &vertices, &indices, Some(expl_img))
     }
-    pub fn update_fused(obj: &mut Object, vel: &mut Vector2, fuse: &mut f32, palette: &Palette, grid: &Grid, player: &mut Player, enemies: &mut [Enemy]) -> GrenadeUpdate {
+    pub fn update_fused(obj: &mut Object, vel: &mut Vector2, height: &mut f32, height_vel: &mut f32, fuse: &mut f32, palette: &Palette, grid: &Grid, player: &mut Player, enemies: &mut [Enemy]) -> GrenadeUpdate {
         let start = obj.pos;
-        let d_vel = -DEC * (*vel) * DELTA;
-        let d_pos = 0.5 * DELTA * d_vel + (*vel) * DELTA;
-        *vel += d_vel;
+
+        *height += (*height_vel) * DELTA - 0.5 * G * DELTA * DELTA;
+        *height_vel -= G * DELTA;
+
+        if *height < 0. {
+            *height = -*height;
+            *height_vel = -*height_vel * 0.3;
+            *vel *= 0.3;
+        }
+
+        let d_pos = (*vel) * DELTA;
         if *fuse > DELTA {
             *fuse -= DELTA;
         } else {
@@ -173,8 +185,8 @@ impl Grenade {
                     GrenadeUpdate::None
                 }
             }
-            GrenadeState::Fused{ref mut fuse} => {
-                Self::update_fused(&mut self.obj, &mut self.vel, fuse, palette, grid, player, enemies)
+            GrenadeState::Fused{ref mut vel, ref mut height, ref mut height_vel, ref mut fuse} => {
+                Self::update_fused(&mut self.obj, vel, height, height_vel, fuse, palette, grid, player, enemies)
             }
         };
         if let GrenadeUpdate::Explosion{..} = update {
@@ -193,7 +205,7 @@ impl Utilities {
             self.grenades -= 1;
 
             mplayer.play(ctx, "throw")?;
-            Ok(Some(GrenadeMaker(620.)))
+            Ok(Some(GrenadeMaker(520.)))
         } else {
             mplayer.play(ctx, "cock")?;
             Ok(None)
@@ -201,14 +213,40 @@ impl Utilities {
     }
 }
 
+const G: f32 = 9.81 * 32.;
+
 pub struct GrenadeMaker(f32);
 impl GrenadeMaker {
-    pub fn make(self, mut obj: Object) -> Grenade {
-        let vel = angle_to_vec(obj.rot) * self.0;
+    pub fn make(self, mut obj: Object, dest: Point2) -> Grenade {
+        let GrenadeMaker(v) = self;
+
+        let d = (dest - obj.pos).norm();
+
+        const H: f32 = 1.1 * 32.;
+
+        let denom = v.powi(4) * (d*d + H*H);
+        
+        let l1a2 = d * d * v * v * (-G * H + v*v);
+        let l3 = (-d.powi(4) * v.powi(4) * (d*d*G*G + 2.*G*H*v*v - v*v*v*v)).sqrt();
+
+        // This calculation is hard
+
+        let angle = /**/ (( /**/(l1a2 - l3)/denom).sqrt()/SQRT_2).acos();
+        // let angle = /**/ -(( /**/(l1a2 + l3)/denom).sqrt()/SQRT_2).acos();
+        // let angle = /**/ -(( /**/(l1a2 + l3)/denom).sqrt()/SQRT_2).acos();
+
+        if angle.is_nan() {
+            warn!("NaN throw");
+        }
+
+        let (sin, cos) = angle.sin_cos();
+        
+        let height_vel = sin * v;
+        let vel = angle_to_vec(obj.rot) * cos * v;
+
         obj.rot = 0.;
         Grenade {
-            state: GrenadeState::Fused{fuse: 1.5},
-            vel,
+            state: GrenadeState::Fused{fuse: 1.5, vel, height: H, height_vel},
             obj,
         }
     }
