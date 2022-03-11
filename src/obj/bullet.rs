@@ -1,4 +1,4 @@
-use ggez::{Context, GameResult, graphics::WHITE};
+use ggez::{Context, GameResult, graphics::Color};
 
 use crate::{
     util::{Vector2},
@@ -26,7 +26,7 @@ impl Bullet<'_> {
     #[inline]
     pub fn draw(&self, ctx: &mut Context, a: &Assets) -> GameResult<()> {
         let img = a.get_img(ctx, self.weapon.get_bullet_spr());
-        self.obj.draw(ctx, &*img, WHITE)
+        self.obj.draw(ctx, &*img, Color::WHITE)
     }
     pub fn update(&mut self, palette: &Palette, grid: &Grid, player: &mut Player, enemies: &mut [Enemy]) -> Hit {
         let start = self.obj.pos;

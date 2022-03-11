@@ -1,6 +1,6 @@
 use crate::{
     io::tex::Assets,
-    util::{Point2, Vector2, sstr, Sstr},
+    util::{Point2, sstr, Sstr},
 };
 use ggez::{graphics::{self, Image}, Context, GameResult};
 use lazy_static::lazy_static;
@@ -108,11 +108,16 @@ impl Palette {
             materials: mats.into_boxed_slice(),
         }
     }
-    pub fn draw_mat(&self, i: u8, ctx: &mut Context, assets: &Assets, x: f32, y: f32, dp: graphics::DrawParam) -> GameResult<()> {
+    pub fn draw_mat(&self, i: u8, ctx: &mut Context, assets: &Assets, x: f32, y: f32, mut dp: graphics::DrawParam) -> GameResult<()> {
         let mat = self.materials[i as usize];
 
+        match &mut dp.trans {
+            graphics::Transform::Values { dest, ..} => *dest = (Point2::from(*dest) + vector!(x, y)).into(),
+            _ => panic!("Oopsie"),
+        }
+
         let img = get_img(ctx, assets, mat);
-        graphics::draw(ctx, &*img, (Point2::from(dp.dest) + Vector2::new(x, y),))
+        graphics::draw(ctx, &*img, dp)
     }
     pub fn is_solid(&self, i: u8) -> bool {
         is_solid(self.materials[i as usize])

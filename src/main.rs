@@ -6,6 +6,8 @@
 extern crate serde_derive;
 #[macro_use]
 extern crate log;
+#[macro_use]
+extern crate nalgebra;
 
 use std::env::args;
 
@@ -39,7 +41,7 @@ pub mod util {
     /// Makes a unit vector from a given direction angle
     pub fn angle_to_vec(angle: f32) -> Vector2 {
         let (sin, cos) = angle.sin_cos();
-        Vector2::new(cos, sin)
+        vector!(cos, sin)
     }
     /// Gets the direction angle on the screen (0 is along the x-axis) of a vector
     pub fn angle_from_vec(v: Vector2) -> f32 {
@@ -106,7 +108,7 @@ fn main() {
     let window_mode = conf::WindowMode::default().dimensions(1152., 648.);
 
     // Create a context (the part that runs the game loop)
-    let (mut ctx, mut events) = ContextBuilder::new("topskud", "LFalch")
+    let (mut ctx, events) = ContextBuilder::new("topskud", "LFalch")
         .window_setup(conf::WindowSetup::default().title("Topskud"))
         .window_mode(window_mode)
         .build().unwrap();
@@ -126,11 +128,6 @@ fn main() {
         Err(e) => {
             eprintln!("Couldn't load game {}", e);
         }
-        Ok(mut game) => {
-            match run(&mut ctx, &mut events, &mut game) {
-                Ok(_) => (),
-                Err(e) => eprintln!("Error occured: {}", e)
-            }
-        }
+        Ok(game) => run(ctx, events, game),
     }
 }

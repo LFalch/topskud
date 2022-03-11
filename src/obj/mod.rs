@@ -42,12 +42,10 @@ impl Object {
     }
     #[inline]
     pub fn drawparams(&self) -> graphics::DrawParam {
-        graphics::DrawParam {
-            dest: self.pos.into(),
-            rotation: self.rot,
-            offset: Point2::new(0.5, 0.5).into(),
-            .. Default::default()
-        }
+        graphics::DrawParam::default()
+            .dest(self.pos)
+            .rotation(self.rot)
+            .offset(point!(0.5, 0.5))
     }
     /// Draw the object
     pub fn draw(&self, ctx: &mut Context, img: &Image, color: Color) -> GameResult<()> {
@@ -60,13 +58,13 @@ impl Object {
     }
     pub fn move_on_grid(&mut self, mut v: Vector2, speed: f32, pal: &Palette, grid: &Grid) {
         if v.x != 0. {
-            let (xx, xy) = Grid::snap(self.pos + Vector2::new(16. * v.x, 0.));
+            let (xx, xy) = Grid::snap(self.pos + vector!(16. * v.x, 0.));
             if grid.is_solid(pal, xx, xy) {
                 v.x = 0.;
             }
         }
         if v.y != 0. {
-            let (yx, yy) = Grid::snap(self.pos + Vector2::new(0., 16. * v.y));
+            let (yx, yy) = Grid::snap(self.pos + vector!(0., 16. * v.y));
             if grid.is_solid(pal, yx, yy) {
                 v.y = 0.;
             }
