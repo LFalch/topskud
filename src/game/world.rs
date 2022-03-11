@@ -143,6 +143,8 @@ impl Level {
         }
     }
     pub fn load<P: AsRef<Path>>(path: P) -> GameResult<Self> {
+        info!("Loading level {}", path.as_ref().display());
+
         let mut reader = BufReader::new(File::open(path)?);
         let mut ret = Level::new(Palette::default(), 0, 0);
 
@@ -209,6 +211,8 @@ impl Level {
         Ok(ret)
     }
     pub fn save<P: AsRef<Path>>(&self, path: P) -> GameResult<()> {
+        info!("Saving {}", path.as_ref().display());
+
         let mut file = File::create(path)?;
 
         writeln!(file, "GRD")?;
@@ -254,6 +258,9 @@ impl Level {
         }
 
         writeln!(file, "\nEND")?;
+
+        info!("Level saved");
+
         Ok(())
     }
 }

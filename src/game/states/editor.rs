@@ -515,7 +515,7 @@ impl GameState for Editor {
                     self.level.weapons.remove(weapon);
                 }
             }
-            Key(Comma) => {
+            Key(Q) => {
                 self.rotation_speed = 0.;
                 if shift {
                     match self.current {
@@ -525,7 +525,7 @@ impl GameState for Editor {
                     }
                 }
             }
-            Key(Period) => {
+            Key(E) => {
                 self.rotation_speed = 0.;
                 if shift {
                     match self.current {
@@ -539,9 +539,9 @@ impl GameState for Editor {
             Key(Down) if ctrl => self.level.grid.heighten(),
             Key(Left) if ctrl => self.level.grid.thin(),
             Key(Right) if ctrl => self.level.grid.widen(),
-            Mouse(Mb::Middle) | Key(Q) => self.level.start_point = Some(self.mousepos(&s)),
+            Mouse(Mb::Middle) | Key(Home) => self.level.start_point = Some(self.mousepos(&s)),
             Mouse(Mb::Left) => self.click(s, ctx),
-            _ => (),
+            _ => ()
         }
     }
     fn event_down(&mut self, s: &mut State, ctx: &mut Context, event: Event) {
@@ -585,8 +585,8 @@ impl GameState for Editor {
                     }
                 }
             }
-            Key(Comma) if !shift => self.rotation_speed -= 6.,
-            Key(Period) if !shift => self.rotation_speed += 6.,
+            Key(Q) if !shift => self.rotation_speed -= 6.,
+            Key(E) if !shift => self.rotation_speed += 6.,
             _ => (),
         }
     }
