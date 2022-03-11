@@ -11,11 +11,10 @@ use crate::{
     obj::{health::Health, player::WepSlots},
 };
 use ggez::{
-    nalgebra::Matrix4,
     Context, GameResult,
     graphics::{self, DrawMode, Rect, Mesh, Text, TextFragment, DrawParam, Color},
     timer,
-    input::mouse::{self, MouseCursor},
+    input::mouse::{self, CursorIcon},
     event::EventHandler
 };
 use clipboard::{ClipboardContext, ClipboardProvider};
@@ -171,7 +170,7 @@ impl Console {
         Ok(Console {
             commands: cmds::commands(),
             history: assets.raw_text_with("Acheivements disabled.\n", 18.),
-            prompt: assets.text(Point2::new(0., PROMPT_Y)).and_text("> ").and_text(String::with_capacity(32)),
+            prompt: assets.text(point!(0., PROMPT_Y)).and_text("> ").and_text(String::with_capacity(32)),
         })
     }
     fn execute(&mut self, ctx: &mut Context, state: &mut State, gs: &mut dyn GameState) -> GameResult<()> {
@@ -199,7 +198,7 @@ impl Console {
 #[derive(Debug, Clone, Copy)]
 pub enum ConsoleStatus {
     Open {
-        cursor: MouseCursor,
+        cursor: CursorIcon,
         cursor_hidden: bool,
     },
     Closed
@@ -285,8 +284,8 @@ impl Master {
             mplayer,
             width,
             height,
-            mouse: Point2::new(0., 0.),
-            offset: Vector2::new(0., 0.),
+            mouse: point![0., 0.],
+            offset: vector![0., 0.],
         };
 
         Ok(Master {
@@ -301,7 +300,7 @@ impl Master {
 impl State {
     /// Sets the offset so that the given point will be centered on the screen
     fn focus_on(&mut self, p: Point2) {
-        self.offset = -p.coords + 0.5 * Vector2::new(self.width, self.height);
+        self.offset = -p.coords + 0.5 * vector!(self.width, self.height);
     }
     fn switch(&mut self, ss: StateSwitch) {
         self.switch_state = Some(ss);
@@ -315,7 +314,7 @@ impl EventHandler for Master {
     fn update(&mut self, ctx: &mut Context) -> GameResult<()> {
         if let Some(gsb) = mem::replace(&mut self.state.switch_state, None) {
             mouse::set_cursor_hidden(ctx, false);
-            mouse::set_cursor_type(ctx, MouseCursor::Default);
+            mouse::set_cursor_type(ctx, CursorIcon::Default);
 
             use self::StateSwitch::*;
             self.gs = match gsb {
@@ -333,7 +332,7 @@ impl EventHandler for Master {
             for frag in CONSOLE_LOGGER.empty() {
                 self.console.history.add(frag);
             }
-            while self.console.history.height(ctx) > PROMPT_Y as u32 {
+            while self.console.history.height(ctx) > PROMPT_Y {
                 let new_history = self.console.history.fragments().iter().skip(1).cloned().fold(self.state.assets.raw_text(18.), |mut text, f| {
                     text.add(f);
                     text
@@ -358,20 +357,23 @@ impl EventHandler for Master {
         // Clear the screen first
         graphics::clear(ctx, (33, 33, 255, 255).into());
 
-        // Offset the current drawing with a translation from the `offset`
-        graphics::push_transform(ctx, Some(Matrix4::new_translation(&self.state.offset.fixed_resize(0.))));
-        graphics::apply_transformations(ctx)?;
 
+        // Save the screen coordinates and make a set with the current offset
+        let sc = graphics::screen_coordinates(ctx);
+        let mut sc_offset = sc;
+        sc_offset.translate(-self.state.offset);
+
+        // Draw with the offset screen coordinates
+        graphics::set_screen_coordinates(ctx, sc_offset)?;
         self.gs.draw(&self.state, ctx)?;
 
-        // Pop the offset tranformation to draw the UI on the screen
-        graphics::pop_transform(ctx);
-        graphics::apply_transformations(ctx)?;
+        // Restore the previous screen coordinates
+        graphics::set_screen_coordinates(ctx, sc)?;
 
         self.gs.draw_hud(&self.state, ctx)?;
 
         if self.console_status.is_open() {
-            let console_bg = Mesh::new_rectangle(ctx, DrawMode::fill(), Rect::new(0., 0., self.state.width as f32, self.state.height as f32 / 3.), graphics::BLACK)?;
+            let console_bg = Mesh::new_rectangle(ctx, DrawMode::fill(), Rect::new(0., 0., self.state.width as f32, self.state.height as f32 / 3.), Color::BLACK)?;
             graphics::draw(ctx, &console_bg, DrawParam::new())?;
 
 
@@ -452,13 +454,13 @@ impl EventHandler for Master {
     }
     /// Handles mouse movement events
     fn mouse_motion_event(&mut self, ctx: &mut Context, x: f32, y: f32, _: f32, _: f32) {
-        self.state.mouse = Point2::new(x, y);
+        self.state.mouse = point!(x, y);
         if let ConsoleStatus::Open{cursor, cursor_hidden} = self.console_status {
             if y > PROMPT_Y {
                 mouse::set_cursor_type(ctx, cursor);
                 mouse::set_cursor_hidden(ctx, cursor_hidden);
             } else {
-                mouse::set_cursor_type(ctx, MouseCursor::Default);
+                mouse::set_cursor_type(ctx, CursorIcon::Default);
                 mouse::set_cursor_hidden(ctx, false);
             }
         }

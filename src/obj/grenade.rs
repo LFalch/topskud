@@ -60,7 +60,7 @@ impl Grenade {
                 let height_scale = (height / 32. + 0.5).sqrt();
 
                 let img = a.get_img(ctx, "weapons/pineapple");
-                let drawparams = self.obj.drawparams().scale(Vector2::new(height_scale, height_scale));
+                let drawparams = self.obj.drawparams().scale(vector!(height_scale, height_scale));
                 graphics::draw(ctx, &*img, drawparams)
             }
             GrenadeState::Explosion { mesh, alive_time } => {
@@ -69,7 +69,7 @@ impl Grenade {
 
                 if *alive_time <= EXPANDING_TIME {
                     let scale = alive_time / EXPANDING_TIME;
-                    dp = dp.scale(Vector2::new(scale, scale));
+                    dp = dp.scale(vector!(scale, scale));
                 } else {
                     let colour = (HALF_PI * (alive_time - EXPANDING_TIME) / (EXPLOSION_LIFETIME - EXPANDING_TIME)).cos();
                     dp = dp.color(Color{r: colour, g: colour, b: colour, a: 0.5+0.5*colour});
@@ -83,7 +83,7 @@ impl Grenade {
         const NUM_VERTICES: u32 = 120;
         const RADIANS_PER_VERT: f32 = (360. / NUM_VERTICES as f32) * PI/180.;
 
-        let random_offset = thread_rng().gen_range(0., PI_MUL_2);
+        let random_offset = thread_rng().gen_range(0. ..= PI_MUL_2);
 
         let centre = graphics::Vertex {
             pos: [0., 0.],
@@ -96,7 +96,7 @@ impl Grenade {
             let cast = grid.ray_cast(palette, self.obj.pos, angle, true);
             graphics::Vertex{
                 pos: (cast.into_point() - self.obj.pos).into(),
-                uv: (Vector2::new(0.5, 0.5) + (cast.clip().norm()-RANGE)/RANGE * angle_uv).into(),
+                uv: (vector!(0.5, 0.5) + (cast.clip().norm()-RANGE)/RANGE * angle_uv).into(),
                 color: [1.0, 1.0, 1.0, 1.0],
             }
         }).chain(iter::once(centre)).collect();

@@ -1,6 +1,6 @@
 use std::{option::IntoIter, iter::{Chain, IntoIterator}};
 
-use ggez::{Context, GameResult, graphics::{self, WHITE, Color}};
+use ggez::{Context, GameResult, graphics::{self, Color}};
 
 use crate::{
     util::{Point2, angle_to_vec},
@@ -179,7 +179,7 @@ impl Player {
 
     #[inline]
     pub fn draw_player(&self, ctx: &mut Context, a: &Assets) -> GameResult<()> {
-        self.draw(ctx, a, "common/player", WHITE)
+        self.draw(ctx, a, "common/player", Color::WHITE)
     }
     pub fn draw(&self, ctx: &mut Context, a: &Assets, sprite: &str, color: Color) -> GameResult<()> {
         {
@@ -189,11 +189,9 @@ impl Player {
                 "weapons/knife_hands"
             };
 
-            let dp = graphics::DrawParam {
-                dest: (self.obj.pos+angle_to_vec(self.obj.rot)*16.).into(),
-                color,
-                .. self.obj.drawparams()
-            };
+            let dp = self.obj.drawparams()
+                .dest(self.obj.pos+angle_to_vec(self.obj.rot)*16.)
+                .color(color);
             let img = a.get_img(ctx, hands_sprite);
             graphics::draw(ctx, &*img, dp)?;
         }

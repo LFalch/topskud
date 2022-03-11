@@ -10,7 +10,7 @@ pub fn vec_ser<S: Serializer>(p: &Vector2, ser: S) -> Result<S::Ok, S::Error> {
 /// Deserialize a `Vector2`
 #[allow(dead_code)]
 pub fn vec_des<'de, D: Deserializer<'de>>(des: D) -> Result<Vector2, D::Error> {
-    <(f32, f32)>::deserialize(des).map(|(x, y)| Vector2::new(x, y))
+    <(f32, f32)>::deserialize(des).map(|(x, y)| vector!(x, y))
 }
 
 #[inline]
@@ -32,7 +32,7 @@ pub struct Point2Def {
 
 impl From<Point2Def> for Point2 {
     fn from(def: Point2Def) -> Self {
-        Point2::new(def.coords.0, def.coords.1)
+        point!(def.coords.0, def.coords.1)
     }
 }
 
@@ -45,6 +45,6 @@ impl From<Point2Def> for Point2 {
 
 // impl From<Vector2Def> for Vector2 {
 //     fn from(def: Vector2Def) -> Self {
-//         Vector2::new(def.coords.0, def.coords.1)
+//         vector!(def.coords.0, def.coords.1)
 //     }
 // }

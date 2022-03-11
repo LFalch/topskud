@@ -54,14 +54,14 @@ impl MediaPlayer {
         let snd;
 
         if let Some(music) = self.music_sources.get_mut(s) {
-            return music.play();
+            return music.play(ctx);
         } else if let Some(s) = self.data.get(s) {
             snd = s;
         } else {
             snd = self.add_effect(ctx, s)?;
         }
         let mut src = new_source(ctx, snd)?;
-        src.play()?;
+        src.play(ctx)?;
 
         self.clear_effects();
 
@@ -85,7 +85,7 @@ impl MediaPlayer {
         let repeat;
         if let Some(music_source) = self.music_sources.get_mut(s) {
             repeat = music_source.repeat();
-            music_source.stop();
+            music_source.stop(ctx)?;
         } else {
             panic!("{:?} can't be stopped", s);
         }

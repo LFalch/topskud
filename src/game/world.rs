@@ -176,16 +176,16 @@ impl Level {
                 }
                 "START" => ret.start_point = Some(
                     bincode::deserialize_from(&mut reader)
-                        .map(|(x, y)| Point2::new(x, y))
+                        .map(|(x, y)| point!(x, y))
                         .map_err(|e| GameError::ResourceLoadError(format!("{:?}", e)))?
                 ),
                 "ENEMIES" => ret.enemies = bincode::deserialize_from(&mut reader)
                     .map_err(|e| GameError::ResourceLoadError(format!("{:?}", e)))?,
                 "POINT GOAL" => ret.exit = Some(bincode::deserialize_from(&mut reader)
-                    .map(|(x, y)| Point2::new(x, y))
+                    .map(|(x, y)| point!(x, y))
                     .map_err(|e| GameError::ResourceLoadError(format!("{:?}", e)))?),
                 "INTELS" => ret.intels = bincode::deserialize_from(&mut reader)
-                    .map(|l: Vec<(f32, f32)>| l.into_iter().map(|(x, y)| Point2::new(x, y)).collect())
+                    .map(|l: Vec<(f32, f32)>| l.into_iter().map(|(x, y)| point!(x, y)).collect())
                     .map_err(|e| GameError::ResourceLoadError(format!("{:?}", e)))?,
                 "DECORATIONS" => ret.decals = bincode::deserialize_from(&mut reader)
                     .map(|old_decs: Vec<OldDecoration>| old_decs.into_iter().map(|od| od.renew()).collect())
@@ -193,13 +193,13 @@ impl Level {
                 "DECS" => ret.decals = bincode::deserialize_from(&mut reader)
                     .map_err(|e| GameError::ResourceLoadError(format!("{:?}", e)))?,
                 "PICKUPS" => ret.pickups = bincode::deserialize_from(&mut reader)
-                    .map(|l: Vec<((f32, f32), u8)>| l.into_iter().map(|((x, y), i)| (Point2::new(x, y), i)).collect())
+                    .map(|l: Vec<((f32, f32), u8)>| l.into_iter().map(|((x, y), i)| (point!(x, y), i)).collect())
                     .map_err(|e| GameError::ResourceLoadError(format!("{:?}", e)))?,
                 "WEPS" => ret.weapons = bincode::deserialize_from(&mut reader)
-                    .map(|l: Vec<((f32, f32), String)>| l.into_iter().map(|((x, y), id)| WEAPONS[&*id].make_drop(Point2::new(x, y))).collect())
+                    .map(|l: Vec<((f32, f32), String)>| l.into_iter().map(|((x, y), id)| WEAPONS[&*id].make_drop(point!(x, y))).collect())
                     .map_err(|e| GameError::ResourceLoadError(format!("{:?}", e)))?,
                 "WEAPONS" => ret.weapons = bincode::deserialize_from(&mut reader)
-                    .map(|l: Vec<((f32, f32), u8)>| l.into_iter().map(|((x, y), i)| WEAPONS[WEAPONS_OLD[i as usize]].make_drop(Point2::new(x, y))).collect())
+                    .map(|l: Vec<((f32, f32), u8)>| l.into_iter().map(|((x, y), i)| WEAPONS[WEAPONS_OLD[i as usize]].make_drop(point!(x, y))).collect())
                     .map_err(|e| GameError::ResourceLoadError(format!("{:?}", e)))?,
                 "END" => break, 
                 _ => return Err(GameError::ResourceLoadError("Bad section".to_string()))
@@ -363,7 +363,7 @@ impl Grid {
         let dest = from + dist;
 
         let mut cur = from;
-        let mut to_wall = Vector2::new(0., 0.);
+        let mut to_wall = vector!(0., 0.);
         let (mut gx, mut gy) = Self::snap(cur);
         let x_dir = Direction::new(dist.x);
         let y_dir = Direction::new(dist.y);
@@ -386,7 +386,7 @@ impl Grid {
                 break RayCast::n_off_edge(cur, dest-cur);
             }
 
-            let nearest_corner = Point2::new(x_dir.on(f32::from(gx) * 32.), y_dir.on(f32::from(gy) * 32.));
+            let nearest_corner = point!(x_dir.on(f32::from(gx) * 32.), y_dir.on(f32::from(gy) * 32.));
             let distance = nearest_corner - cur;
 
             let time = (distance.x/dist.x, distance.y/dist.y);
@@ -519,7 +519,7 @@ impl RayCast {
         RayCast{
             result: RayCastResult::Full,
             point,
-            clip: Vector2::new(0., 0.)
+            clip: vector!(0., 0.)
         }
     }
     fn n_half(point: Point2, clip: Vector2, to_wall: Vector2) -> Self {

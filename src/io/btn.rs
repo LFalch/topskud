@@ -3,7 +3,7 @@ use super::tex::{Assets, PosText};
 
 use ggez::{GameResult, Context};
 use ggez::graphics::{Drawable, Color, Rect, Mesh, DrawMode, DrawParam};
-use ggez::nalgebra::coordinates::XY;
+use nalgebra::coordinates::XY;
 
 pub struct Button<T> {
     width: f32,
@@ -16,7 +16,7 @@ pub struct Button<T> {
 impl<T> Button<T> {
     pub fn new(ctx: &mut Context, assets: &Assets, rect: Rect, text: &str, callback: T) -> GameResult<Self> {
         let mesh = Mesh::new_rectangle(ctx, DrawMode::fill(), rect, Color{r: 0.5, g: 0.5, b: 0.75, a: 1.})?;
-        let text = assets.text(Point2::new(rect.x + rect.w / 2., rect.y + rect.h / 2.)).and_text(text);
+        let text = assets.text(point!(rect.x + rect.w / 2., rect.y + rect.h / 2.)).and_text(text);
 
         Ok(Button{
             text,

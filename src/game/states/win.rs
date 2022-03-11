@@ -1,5 +1,4 @@
 use crate::{
-    util::Point2,
     io::{
         tex::PosText,
         btn::Button,
@@ -44,11 +43,11 @@ impl Win {
     pub fn new(ctx: &mut Context, s: &mut State, stats: Statistics) -> GameResult<Box<dyn GameState>> {
         let w = s.width as f32;
 
-        let level_complete = s.assets.text(Point2::new(s.width as f32/ 2., 10.)).and_text("LEVEL COMPLETE");
-        let time_text = s.assets.text(Point2::new(4., 20.)).and_text(format!("Time: {:.1}s", stats.time as f32 * DELTA));
+        let level_complete = s.assets.text(point!(s.width as f32/ 2., 10.)).and_text("LEVEL COMPLETE");
+        let time_text = s.assets.text(point!(4., 20.)).and_text(format!("Time: {:.1}s", stats.time as f32 * DELTA));
         let enemy_total = stats.level.enemies.len();
-        let enemies_text = s.assets.text(Point2::new(4., 36.)).and_text(format!("Enemies killed: {} / {}", enemy_total - stats.enemies_left, enemy_total));
-        let health_text = s.assets.text(Point2::new(4., 52.)).and_text(format!("Health left: {:02.0} / {:02.0}", stats.health_left.hp, stats.health_left.armour));
+        let enemies_text = s.assets.text(point!(4., 36.)).and_text(format!("Enemies killed: {} / {}", enemy_total - stats.enemies_left, enemy_total));
+        let health_text = s.assets.text(point!(4., 52.)).and_text(format!("Health left: {:02.0} / {:02.0}", stats.health_left.hp, stats.health_left.armour));
 
         Ok(Box::new(Win {
             buttons: {

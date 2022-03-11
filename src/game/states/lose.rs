@@ -1,5 +1,5 @@
 use crate::{
-    util::{Point2, RED},
+    util::{RED},
     io::{
         tex::PosText,
         btn::Button,
@@ -32,10 +32,10 @@ impl Lose {
     #[allow(clippy::new_ret_no_self, clippy::needless_pass_by_value)]
     pub fn new(ctx: &mut Context, s: &mut State, stats: Statistics) -> GameResult<Box<dyn GameState>> {
         let w = s.width as f32;
-        let you_died = s.assets.text(Point2::new(s.width as f32/ 2., 10.)).and_text(TextFragment::from("You died!").color(RED));
-        let time_text = s.assets.text(Point2::new(4., 20.)).and_text(format!("Time: {:.0}s", stats.time as f32 * DELTA));
+        let you_died = s.assets.text(point!(s.width as f32/ 2., 10.)).and_text(TextFragment::from("You died!").color(RED));
+        let time_text = s.assets.text(point!(4., 20.)).and_text(format!("Time: {:.0}s", stats.time as f32 * DELTA));
         let enemy_total = stats.level.enemies.len();
-        let enemies_text = s.assets.text(Point2::new(4., 36.)).and_text(format!("Enemies killed: {} / {}", enemy_total - stats.enemies_left, enemy_total));
+        let enemies_text = s.assets.text(point!(4., 36.)).and_text(format!("Enemies killed: {} / {}", enemy_total - stats.enemies_left, enemy_total));
         let restart_btn = Button::new(ctx, &s.assets, Rect{x: 3. * w / 7., y: 64., w: w / 7., h: 64.}, "Restart", ())?;
         let edit_btn = if let Content::File(_) = s.content {
             Some(

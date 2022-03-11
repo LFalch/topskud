@@ -4,7 +4,7 @@ use crate::{
 };
 use ggez::{
     GameResult, Context,
-    graphics::self,
+    graphics,
 };
 
 use std::fmt::{self, Debug};
@@ -45,11 +45,9 @@ pub struct PickupType {
 impl PickupType {
     #[inline]
     pub fn draw(&self, pos: Point2, ctx: &mut Context, assets: &Assets) -> GameResult<()> {
-        let drawparams = graphics::DrawParam {
-            dest: pos.into(),
-            offset: Point2::new(0.5, 0.5).into(),
-            .. Default::default()
-        };
+        let drawparams = graphics::DrawParam::default()
+            .dest( pos)
+            .offset( point!(0.5, 0.5));
         let img = assets.get_img(ctx, self.spr);
         graphics::draw(ctx, &*img, drawparams)
     }

@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 use std::cell::{RefCell, Ref};
 
-use crate::util::{Point2, Vector2};
+use crate::util::{Point2};
 
 use ggez::{Context, GameResult, GameError};
-use ggez::graphics::{Image, Font, Text, TextFragment, Drawable, DrawParam, Scale};
+use ggez::graphics::{Image, Font, Text, TextFragment, Drawable, DrawParam};
 
 /// All the assets
 pub struct Assets {
@@ -45,13 +45,13 @@ impl Assets {
     #[inline]
     pub fn raw_text(&self, size: f32) -> Text {
         let mut text = Text::default();
-        text.set_font(self.font, Scale::uniform(size));
+        text.set_font(self.font, size.into());
 
         text
     }
     pub fn raw_text_with(&self, s: &str, size: f32) -> Text {
         let mut text = Text::new(s);
-        text.set_font(self.font, Scale::uniform(size));
+        text.set_font(self.font, size.into());
 
         text
     }
@@ -87,14 +87,11 @@ impl PosText {
     }
     /// Draw the text
     pub fn draw_text(&self, ctx: &mut Context) -> GameResult<()> {
-        self.text.draw(ctx, DrawParam {
-            dest: self.pos.into(),
-            .. Default::default()
-        })
+        self.text.draw(ctx, DrawParam::default().dest(self.pos))
     }
     pub fn draw_center(&self, ctx: &mut Context) -> GameResult<()> {
-        let (w, h) = self.text.dimensions(ctx);
-        let drawparams = DrawParam::new().dest(self.pos - Vector2::new(w as f32 / 2., h as f32 / 2.));
+        let rect = self.text.dimensions(ctx);
+        let drawparams = DrawParam::new().dest(self.pos - vector!(rect.w as f32 / 2., rect.h as f32 / 2.));
         self.text.draw(ctx, drawparams)
     }
     pub fn update<T: Into<TextFragment>>(&mut self, fragment_index: usize, new_text: T) -> GameResult<&mut Self> {

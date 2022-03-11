@@ -5,7 +5,6 @@ use crate::{
         BLUE, GREEN, RED,
         angle_to_vec, angle_from_vec,
         ver, hor,
-        Vector2, Point2
     },
     io::tex::PosText,
     obj::{Object, bullet::Bullet, decal::Decal, pickup::Pickup, player::{Player, WepSlots, ActiveSlot}, enemy::{Enemy, Chaser}, health::Health, weapon::{self, WeaponInstance}, grenade::GrenadeUpdate},
@@ -19,7 +18,7 @@ use ggez::{
     graphics::{
         self, Drawable, DrawMode, Rect,
         Color, DrawParam,
-        MeshBuilder, Mesh, WHITE,
+        MeshBuilder, Mesh,
         spritebatch::SpriteBatch,
     },
     input::{
@@ -66,7 +65,7 @@ impl Play {
     pub fn new(ctx: &mut Context, s: &mut State, level: Level, pl: Option<(Health, WepSlots)>) -> GameResult<Box<dyn GameState>> {
         mouse::set_cursor_hidden(ctx, true);
 
-        let mut player = Player::from_point(level.start_point.unwrap_or_else(|| Point2::new(500., 500.)));
+        let mut player = Player::from_point(level.start_point.unwrap_or_else(|| point!(500., 500.)));
         if let Some((h, w)) = pl {
             player = player.with_health(h).with_weapon(w);
         };
@@ -75,11 +74,11 @@ impl Play {
             Play {
                 level: level.clone(),
                 initial: (player.health, player.wep.clone()),
-                hp_text: s.assets.text(Point2::new(4., 4.)).and_text("100"),
-                arm_text: s.assets.text(Point2::new(4., 33.)).and_text("100"),
-                reload_text: s.assets.text(Point2::new(4., 62.)).and_text("0.0").and_text("s"),
-                wep_text: WeaponInstance::weapon_text(Point2::new(2., 87.), &s.assets),
-                status_text: s.assets.text(Point2::new(s.width as f32 / 2., s.height as f32 / 2. + 32.)).and_text(""),
+                hp_text: s.assets.text(point!(4., 4.)).and_text("100"),
+                arm_text: s.assets.text(point!(4., 33.)).and_text("100"),
+                reload_text: s.assets.text(point!(4., 62.)).and_text("0.0").and_text("s"),
+                wep_text: WeaponInstance::weapon_text(point!(2., 87.), &s.assets),
+                status_text: s.assets.text(point!(s.width as f32 / 2., s.height as f32 / 2. + 32.)).and_text(""),
                 hud: Hud::new(ctx)?,
                 time: 0,
                 victory_time: 0.,
@@ -202,7 +201,7 @@ impl GameState for Play {
                 Hit::Wall => {
                     s.mplayer.play(ctx, &bullet.weapon.impact_snd)?;
                     let dir = angle_to_vec(bullet.obj.rot);
-                    bullet.obj.pos += Vector2::new(5.*dir.x.signum(), 5.*dir.y.signum());
+                    bullet.obj.pos += vector!(5.*dir.x.signum(), 5.*dir.y.signum());
                     self.holes.add(bullet.obj.drawparams());
                     deads.push(i);
                 }
@@ -282,7 +281,7 @@ impl GameState for Play {
         }
 
         // Define player velocity here already because enemies need it
-        let player_vel = Vector2::new(hor(&ctx), ver(&ctx));
+        let player_vel = vector!(hor(&ctx), ver(&ctx));
 
         for enemy in self.world.enemies.iter_mut() {
             if enemy.can_see(self.world.player.obj.pos, &self.world.palette, &self.world.grid) {
@@ -370,33 +369,27 @@ impl GameState for Play {
         self.holes.draw(ctx, Default::default())?;
 
         for &intel in &self.world.intels {
-            let drawparams = graphics::DrawParam {
-                dest: intel.into(),
-                offset: Point2::new(0.5, 0.5).into(),
-                .. Default::default()
-            };
+            let drawparams = graphics::DrawParam::default()
+                .dest(intel)
+                .offset(point!(0.5, 0.5));
             let img = s.assets.get_img(ctx, "common/intel");
             graphics::draw(ctx, &*img, drawparams)?;
         }
         for decal in &self.world.decals {
-            decal.draw(ctx, &s.assets, WHITE)?;
+            decal.draw(ctx, &s.assets, Color::WHITE)?;
         }
 
         for pickup in &self.world.pickups {
-            let drawparams = graphics::DrawParam {
-                dest: pickup.pos.into(),
-                offset: Point2::new(0.5, 0.5).into(),
-                .. Default::default()
-            };
+            let drawparams = graphics::DrawParam::default()
+                .dest(pickup.pos)
+                .offset(point!(0.5, 0.5));
             let img = s.assets.get_img(ctx, pickup.pickup_type.spr);
             graphics::draw(ctx, &*img, drawparams)?;
         }
         for wep in &self.world.weapons {
-            let drawparams = graphics::DrawParam {
-                dest: wep.pos.into(),
-                offset: Point2::new(0.5, 0.5).into(),
-                .. Default::default()
-            };
+            let drawparams = graphics::DrawParam::default()
+                .dest(wep.pos)
+                .offset(point!(0.5, 0.5));
             let img = s.assets.get_img(ctx, &wep.weapon.entity_sprite);
             graphics::draw(ctx, &*img, drawparams)?;
         }
@@ -404,7 +397,7 @@ impl GameState for Play {
         self.world.player.draw_player(ctx, &s.assets)?;
 
         for enemy in &self.world.enemies {
-            enemy.draw(ctx, &s.assets, WHITE)?;
+            enemy.draw(ctx, &s.assets, Color::WHITE)?;
         }
         for bullet in &self.world.bullets {
             bullet.draw(ctx, &s.assets)?;
@@ -440,19 +433,17 @@ impl GameState for Play {
             graphics::draw(ctx, &*img, drawparams)?;
         }
         if let Some(sling_wep) = &self.world.player.wep.sling {
-            let drawparams = DrawParam::from(([153., 35.],)).offset(Point2::new(0.5, 0.));
+            let drawparams = DrawParam::from(([153., 35.],)).offset(point!(0.5, 0.));
             let img = s.assets.get_img(ctx, &sling_wep.weapon.entity_sprite);
             graphics::draw(ctx, &*img, drawparams)?;
         }
         let selection = Mesh::new_rectangle(ctx, DrawMode::stroke(2.), RECTS[self.world.player.wep.active as u8 as usize], Color{r: 1., g: 1., b: 0., a: 1.})?;
         graphics::draw(ctx, &selection, DrawParam::default())?;
 
-        let drawparams = graphics::DrawParam {
-            dest: s.mouse.into(),
-            offset: Point2::new(0.5, 0.5).into(),
-            color: RED,
-            .. Default::default()
-        };
+        let drawparams = graphics::DrawParam::default()
+            .dest(s.mouse)
+            .offset(point!(0.5, 0.5))
+            .color(RED);
         let img = s.assets.get_img(ctx, "common/crosshair");
         graphics::draw(ctx, &*img, drawparams)
     }
@@ -474,7 +465,7 @@ impl GameState for Play {
                     wep.reload(ctx, &mut s.mplayer).unwrap()
                 } else {
                     let weapon = &weapon::WEAPONS["glock"];
-                    self.world.bullets.push(Bullet{obj: self.world.player.obj.clone(), vel: Vector2::new(weapon.bullet_speed, 0.), weapon});
+                    self.world.bullets.push(Bullet{obj: self.world.player.obj.clone(), vel: vector!(weapon.bullet_speed, 0.), weapon});
                 }
             },
             Key(F) => {
@@ -568,13 +559,13 @@ const RECTS: [Rect; 4] = [
 impl Hud {
     pub fn new(ctx: &mut Context) -> GameResult<Self> {
         let hud_bar = MeshBuilder::new()
-            .rectangle(DrawMode::fill(), Rect{x: 1., y: 1., w: 102., h: 26.}, graphics::BLACK)
-            .rectangle(DrawMode::fill(), Rect{x: 1., y: 29., w: 102., h: 26.}, graphics::BLACK)
-            .rectangle(DrawMode::fill(), Rect{x: 1., y: 57., w: 102., h: 26.}, graphics::BLACK)
-            .rectangle(DrawMode::fill(), Rect{x:104.,y:2.,h: 32., w: 32.}, Color{r: 0.5, g: 0.5, b: 0.5, a: 1.})
-            .rectangle(DrawMode::fill(), Rect{x:137.,y:2.,h: 32., w: 32.}, Color{r: 0.5, g: 0.5, b: 0.5, a: 1.})
-            .rectangle(DrawMode::fill(), Rect{x:104.,y:35.,h: 32., w: 32.}, Color{r: 0.5, g: 0.5, b: 0.5, a: 1.})
-            .rectangle(DrawMode::fill(), Rect{x:137.,y:35.,h: 32., w: 32.}, Color{r: 0.5, g: 0.5, b: 0.5, a: 1.})
+            .rectangle(DrawMode::fill(), Rect{x: 1., y: 1., w: 102., h: 26.}, Color::BLACK)?
+            .rectangle(DrawMode::fill(), Rect{x: 1., y: 29., w: 102., h: 26.}, Color::BLACK)?
+            .rectangle(DrawMode::fill(), Rect{x: 1., y: 57., w: 102., h: 26.}, Color::BLACK)?
+            .rectangle(DrawMode::fill(), Rect{x:104.,y:2.,h: 32., w: 32.}, Color{r: 0.5, g: 0.5, b: 0.5, a: 1.})?
+            .rectangle(DrawMode::fill(), Rect{x:137.,y:2.,h: 32., w: 32.}, Color{r: 0.5, g: 0.5, b: 0.5, a: 1.})?
+            .rectangle(DrawMode::fill(), Rect{x:104.,y:35.,h: 32., w: 32.}, Color{r: 0.5, g: 0.5, b: 0.5, a: 1.})?
+            .rectangle(DrawMode::fill(), Rect{x:137.,y:35.,h: 32., w: 32.}, Color{r: 0.5, g: 0.5, b: 0.5, a: 1.})?
             .build(ctx)?;
 
         let hp_bar = Mesh::new_rectangle(ctx, DrawMode::fill(), Rect{x: 2., y: 2., w: 0., h: 24.}, GREEN)?;
