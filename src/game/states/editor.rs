@@ -40,6 +40,7 @@ enum Insertion {
     Material(u8),
     Intel,
     Enemy{rot: f32},
+    Waypoint(usize),
     Pickup(u8),
     Weapon(&'static str),
     Decal{spr: &'static str, rot: f32},
@@ -52,6 +53,7 @@ impl Insertion {
             Material(_) => panic!("Get it yourself. I don't have the palette"),
             Intel => "common/intel",
             Enemy{..} => "common/enemy",
+            Waypoint(..) => "common/cursor",
             Exit => "common/goal",
             Pickup(i) => PICKUPS[i as usize].spr,
             Weapon(wep) => &*WEAPONS[wep].entity_sprite, 
@@ -79,6 +81,7 @@ impl ::std::cmp::PartialEq for Insertion {
 struct Selection {
     exit: bool,
     enemies: Vec<usize>,
+    waypoints: Vec<(usize, usize)>,
     intels: Vec<usize>,
     pickups: Vec<usize>,
     weapons: Vec<usize>,
@@ -317,7 +320,25 @@ impl GameState for Editor {
             if self.draw_visibility_cones {
                 enemy.draw_visibility_cone(ctx, 512.)?;
             }
+            let mut points_lines = vec![enemy.pl.obj.pos];
+            
             enemy.draw(ctx, &s.assets, Color::WHITE)?;
+            for &waypoint in &enemy.behaviour.path {
+                let img = s.assets.get_img(ctx, "common/crosshair");
+                graphics::draw(ctx, &*img, DrawParam::default().offset(point!(0.5, 0.5)).dest(waypoint).color(Color::YELLOW))?;
+                points_lines.push(waypoint);
+            }
+            if points_lines.len() > 1 {
+                if enemy.behaviour.cyclical_path {
+                    points_lines.push(points_lines[1]);
+                }
+                let mesh = Mesh::new_line(ctx, &points_lines, 2., Color::BLUE)?;
+                graphics::draw(ctx, &mesh, DrawParam::default())?;
+            }
+            if enemy.behaviour.cyclical_path {
+                let img = s.assets.get_img(ctx, "common/cyclic");
+                graphics::draw(ctx, &*img, DrawParam::default().offset(point!(0.5, 0.5)).dest(enemy.pl.obj.pos))?;
+            }
         }
         for (i, decal) in self.level.decals.iter().enumerate() {
             if let Tool::Selector(Selection{ref decals, ..})= self.current {
@@ -418,6 +439,18 @@ impl GameState for Editor {
 
         match self.current {
             Tool::Selector(_) => (),
+            Tool::Inserter(Insertion::Waypoint(i)) => {
+                let img = s.assets.get_img(ctx, "common/crosshair");
+                graphics::draw(ctx, &*img, drawparams.color(Color::BLUE))?;
+
+                let last_waypoint = self.level.enemies[i].behaviour.path.last().copied().unwrap_or_else(|| self.level.enemies[i].pl.obj.pos);
+                let next_pos = self.mousepos(s);
+
+                if last_waypoint != next_pos {
+                    let line = Mesh::new_line(ctx, &[self.mousepos(s) + s.offset, last_waypoint + s.offset], 2., Color::BLUE)?;
+                    graphics::draw(ctx, &line, DrawParam::default())?;
+                }
+            }
             Tool::Inserter(Insertion::Material(_)) => (),
             Tool::Inserter(Insertion::Pickup(index)) => {
                 let img = s.assets.get_img(ctx, PICKUPS[index as usize].spr);
@@ -484,6 +517,7 @@ impl GameState for Editor {
                 #[allow(clippy::unneeded_field_pattern)]
                 let Selection {
                     mut enemies,
+                    mut waypoints,
                     mut intels,
                     mut pickups,
                     mut weapons,
@@ -493,6 +527,10 @@ impl GameState for Editor {
 
                 if exit {
                     self.level.exit = None;
+                }
+                waypoints.sort();
+                for (e, w) in waypoints.into_iter().rev() {
+                    self.level.enemies[e].behaviour.path.remove(w);
                 }
                 enemies.sort();
                 for enemy in enemies.into_iter().rev() {
@@ -534,6 +572,16 @@ impl GameState for Editor {
                         _ => (),
                     }
                 }
+            }
+            Key(H) => if let Tool::Selector(Selection { enemies, waypoints, .. }) = &mut self.current {
+                match (&mut **enemies, &mut **waypoints) {
+                    (&mut [enem], _) | (_, &mut [(enem, _)]) => self.current = Tool::Inserter(Insertion::Waypoint(enem)),
+                    (&mut [enem, ..], _) | (_, &mut [(enem, _), ..]) => { enemies.clear(); enemies.push(enem); waypoints.clear() }
+                    _ => (),
+                }
+            }
+            Key(O) => if let Tool::Inserter(Insertion::Waypoint(enem)) = self.current {
+                self.level.enemies[enem].behaviour.cyclical_path.toggle();
             }
             Key(Up) if ctrl => self.level.grid.shorten(),
             Key(Down) if ctrl => self.level.grid.heighten(),
@@ -685,8 +733,10 @@ impl Editor {
                 Tool::Inserter(Insertion::Enemy{rot}) => {
                     s.mplayer.play(ctx, "reload").unwrap();
                     self.level.enemies.push(Enemy::new(Object::with_rot(mousepos, rot)));
-                    self.level.weapons.push(WEAPONS["glock"].make_drop(mousepos));
                 },
+                Tool::Inserter(Insertion::Waypoint(e)) => {
+                    self.level.enemies[e].behaviour.path.push(mousepos);
+                }
                 Tool::Inserter(Insertion::Decal{spr, rot}) => {
                     self.level.decals.push(Decal::new(Object::with_rot(mousepos, rot), spr));
                 }

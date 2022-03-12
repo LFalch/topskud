@@ -18,6 +18,11 @@ pub fn vec_des<'de, D: Deserializer<'de>>(des: D) -> Result<Vector2, D::Error> {
 fn p(p: &Point2) -> (f32, f32) {
     (p.x, p.y)
 }
+#[inline]
+#[allow(clippy::trivially_copy_pass_by_ref, dead_code)]
+fn pv(pv: &Vec<Point2>) -> Vec<(f32, f32)> {
+    pv.into_iter().map(|p| (p.x, p.y)).collect()
+}
 // #[inline]
 // fn v(v: &Vector2) -> (f32, f32) {
 //     (v.x, v.y)
@@ -33,6 +38,19 @@ pub struct Point2Def {
 impl From<Point2Def> for Point2 {
     fn from(def: Point2Def) -> Self {
         point!(def.coords.0, def.coords.1)
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(remote = "Vec::<Point2>")]
+pub struct Point2DefVec {
+    #[serde(getter = "pv")]
+    coords: Vec<(f32, f32)>
+}
+
+impl From<Point2DefVec> for Vec<Point2> {
+    fn from(def: Point2DefVec) -> Self {
+        def.coords.into_iter().map(|(x, y)| point!(x, y)).collect()
     }
 }
 

@@ -3,7 +3,7 @@ use crate::{
     io::tex::{Assets, },
     obj::{
         player::{Player, WepSlots},
-        enemy::Enemy,
+        enemy::{Enemy, OldEnemy},
         health::Health,
         bullet::Bullet,
         grenade::Grenade,
@@ -181,7 +181,13 @@ impl Level {
                         .map(|(x, y)| point!(x, y))
                         .map_err(|e| GameError::ResourceLoadError(format!("{:?}", e)))?
                 ),
-                "ENEMIES" => ret.enemies = bincode::deserialize_from(&mut reader)
+                "ENEMIES" => {
+                    let old_enemies: Vec<OldEnemy> = bincode::deserialize_from(&mut reader)
+                    .map_err(|e| GameError::ResourceLoadError(format!("{:?}", e)))?;
+
+                    ret.enemies = old_enemies.into_iter().map(From::from).collect();
+                }
+                "ENEMIES2" => ret.enemies = bincode::deserialize_from(&mut reader)
                     .map_err(|e| GameError::ResourceLoadError(format!("{:?}", e)))?,
                 "POINT GOAL" => ret.exit = Some(bincode::deserialize_from(&mut reader)
                     .map(|(x, y)| point!(x, y))
@@ -224,7 +230,7 @@ impl Level {
             .map_err(|e| GameError::ResourceLoadError(format!("{:?}", e)))?;
         }
         if !self.enemies.is_empty() {
-            writeln!(file, "\nENEMIES")?;
+            writeln!(file, "\nENEMIES2")?;
             bincode::serialize_into(&mut file, &self.enemies)
             .map_err(|e| GameError::ResourceLoadError(format!("{:?}", e)))?;
         }

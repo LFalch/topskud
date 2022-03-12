@@ -7,7 +7,17 @@ use crate::{
         ver, hor,
     },
     io::tex::PosText,
-    obj::{Object, bullet::Bullet, decal::Decal, pickup::Pickup, player::{Player, WepSlots, ActiveSlot}, enemy::{Enemy, Chaser}, health::Health, weapon::{self, WeaponInstance}, grenade::GrenadeUpdate},
+    obj::{
+        Object,
+        bullet::Bullet,
+        decal::Decal,
+        pickup::Pickup,
+        player::{Player, WepSlots, ActiveSlot},
+        enemy::{Enemy, },
+        health::Health,
+        weapon::{self, WeaponInstance},
+        grenade::GrenadeUpdate,
+    },
     game::{
         DELTA, State, GameState, StateSwitch, world::{Level, Statistics, World},
         event::{Event::{self, Key, Mouse}, MouseButton, KeyCode, KeyMods}
@@ -27,7 +37,7 @@ use ggez::{
     },
 };
 
-use rand::{thread_rng, prelude::SliceRandom};
+use rand::{thread_rng, prelude::SliceRandom, Rng};
 
 pub fn new_blood(mut obj: Object) -> Decal {
     obj.pos += 16. * angle_to_vec(obj.rot);
@@ -172,9 +182,8 @@ impl GameState for Play {
                             }
                         } else {
                             if !enemy.behaviour.chasing() {
-                                self.world.enemies[i].behaviour = Chaser::LookAround{
-                                    dir: grenade.obj.pos - enemy.pl.obj.pos
-                                };
+                                let cur_pos = enemy.pl.obj.pos;
+                                self.world.enemies[i].behaviour.go_to_then_go_back(cur_pos, grenade.obj.pos);
                             }
                             s.mplayer.play(ctx, "hurt")?;
                         }
@@ -239,9 +248,8 @@ impl GameState for Play {
                         }
                     } else {
                         if !enemy.behaviour.chasing() {
-                            self.world.enemies[e].behaviour = Chaser::LookAround{
-                                dir: bullet.obj.pos - enemy.pl.obj.pos
-                            };
+                            let cur_pos = enemy.pl.obj.pos;
+                            self.world.enemies[e].behaviour.go_to_then_go_back(cur_pos, bullet.obj.pos);
                         }
                         s.mplayer.play(ctx, "hurt")?;
                     }
@@ -283,12 +291,14 @@ impl GameState for Play {
         // Define player velocity here already because enemies need it
         let player_vel = vector!(hor(&ctx), ver(&ctx));
 
-        for enemy in self.world.enemies.iter_mut() {
-            if enemy.can_see(self.world.player.obj.pos, &self.world.palette, &self.world.grid) {
-                enemy.behaviour = Chaser::LastKnown{
-                    pos: self.world.player.obj.pos,
-                    vel: player_vel,
-                };
+        let &mut World {ref grid, ref palette, ref mut enemies, ref player, ref mut bullets, ..} = &mut self.world;
+
+        for enemy in enemies.iter_mut() {
+            if enemy.can_see(player.obj.pos, palette, grid) {
+                // If an enemy can see the player, they will chase them and shoot
+
+                // enemy.behaviour.chase_then_wander(self.world.player.obj.pos);
+                enemy.behaviour.path_then_wander(vec![player.obj.pos, player.obj.pos+16.*player_vel]);
 
                 if let Some(wep) = enemy.pl.wep.get_active_mut() {
                     if let Some(bm) = wep.shoot(ctx, &mut s.mplayer)? {
@@ -297,12 +307,24 @@ impl GameState for Play {
                         bul.rot = enemy.pl.obj.rot;
 
                         for bullet in bm.make(bul) {
-                            self.world.bullets.push(bullet);
+                            bullets.push(bullet);
                         }
                     }
                 }
             }
-            enemy.update(ctx, &mut s.mplayer)?;
+            let from = enemy.pl.obj.pos;
+
+            enemy.update(ctx, &mut s.mplayer, || {
+                let dir = thread_rng().gen_range(0. .. 2. * std::f32::consts::PI);
+                let length = thread_rng().gen_range(0. ..= 1.);
+
+                const MAX_DIST: f32 = 128.;
+
+                let cast = grid.ray_cast(palette, from, MAX_DIST * angle_to_vec(dir), true);
+                let p = cast.into_point();
+
+                from + length * (p - from)
+            })?;
         }
 
         let speed = if !keyboard::is_mod_active(ctx, KeyMods::SHIFT) {
