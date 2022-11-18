@@ -1,8 +1,7 @@
 use std::collections::HashMap;
 use std::cell::{RefCell, Ref};
-use std::ops::{RangeBounds, Bound};
 
-use crate::util::{Point2, Vector2, TRANS};
+use crate::util::{Point2, Vector2};
 
 use ggez::context::Has;
 use ggez::{Context, GameResult, GameError};
@@ -10,7 +9,7 @@ use ggez::graphics::{Canvas, Image, Text, TextFragment, Drawable, DrawParam, Gra
 
 /// All the assets
 pub struct Assets {
-    pre_load_img: Image,
+    missing_img: Image,
     texes: RefCell<HashMap<Box<str>, Image>>,
     load_queue: RefCell<Vec<Box<str>>>,
 }
@@ -23,9 +22,9 @@ impl Assets {
         let font_data = FontData::from_path(ctx, "/common/DroidSansMono.ttf")?;
         ctx.gfx.add_font("droidsansmono", font_data);
         Ok(Assets {
-            pre_load_img: Image::from_solid(ctx, 1, TRANS),
+            missing_img: Image::from_bytes(ctx, include_bytes!("../../resources/materials/missing.png"))?,
             texes: RefCell::new(HashMap::with_capacity(64)),
-            load_queue: RefCell::new(Vec::with_capacity(8)),
+            load_queue: RefCell::new(Vec::with_capacity(10)),
         })
     }
     /// Gets the `Image` to draw from the sprite
@@ -44,45 +43,48 @@ impl Assets {
         self.check_and_queue(s);
 
         // If the texture name is in the load queue, process the load queue now
-        let i = self.load_queue.borrow().iter().position(|t| &**t == s);
-        // NOTE: This needs to be assigned here, otherwise the borrow of load_queue lives on in if statement
-        if let Some(i) = i {
-            self.inner_process_queue(gfx, i..=i)?;
+        if self.load_queue.borrow().iter().any(|t| &**t == s) {
+            self.inner_process_queue(gfx)?;
         }
 
         Ok(self.get_img(s))
     }
+    pub fn preload_imgs<'a>(&'a self, gfx: &impl Has<GraphicsContext>, ss: impl 'a + IntoIterator<Item=&'a str>) -> GameResult<()> {
+        for s in ss {
+            self.check_and_queue(s);
+        }
+
+        // Just load the whole queue, simpler than finding out what to load
+        self.inner_process_queue(gfx)?;
+        Ok(())
+    }
 
     #[inline(always)]
     pub fn process_queue(&mut self, gfx: &impl Has<GraphicsContext>) -> GameResult<()> {
-        self.inner_process_queue(gfx, ..)
+        self.inner_process_queue(gfx)
     }
 
     /// Queues texture if unloaded
     fn check_and_queue(&self, s: &str) {
         if !self.texes.borrow().contains_key(s) {
             self.load_queue.borrow_mut().push(Box::from(s));
-            self.texes.borrow_mut().insert(Box::from(s), self.pre_load_img.clone());
+            self.texes.borrow_mut().insert(Box::from(s), self.missing_img.clone());
         }
     }
 
-    fn inner_process_queue<R: RangeBounds<usize>>(&self, gfx: &impl Has<GraphicsContext>, range: R) -> GameResult<()> {
+    fn inner_process_queue(&self, gfx: &impl Has<GraphicsContext>) -> GameResult<()> {
         #[cfg(debug_assertions)]
         if !self.load_queue.borrow().is_empty() {
             let queue = self.load_queue.borrow();
-            match (range.start_bound(), range.end_bound()) {
-                (Bound::Unbounded, Bound::Unbounded) => debug!("Loading queue (#{} / {}): {:?}", queue.len(), queue.capacity(), queue),
-                (Bound::Included(&s), Bound::Included(&e)) => debug!("Loading part {:?} of queue: {:?}", s..=e, &queue[s..=e]),
-                _ => (),
-            }
+            debug!("Loading textures {:?}", queue);
         }
 
-        for name in self.load_queue.borrow_mut().drain(range) {
+        for name in self.load_queue.borrow_mut().drain(..) {
             let img = match Image::from_path(gfx, &format!("/{name}.png")) {
                 Ok(tex) => tex,
                 Err(GameError::ResourceNotFound(_, _)) => {
                     error!("Couldn't find texture {}. Loading default instead.", name);
-                    Image::from_bytes(gfx, include_bytes!("../../resources/materials/missing.png"))?
+                    self.missing_img.clone()
                 }
                 Err(e) => return Err(e),
             };

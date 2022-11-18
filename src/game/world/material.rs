@@ -2,7 +2,7 @@ use crate::{
     io::tex::Assets,
     util::{Point2, sstr, Sstr},
 };
-use ggez::graphics::{self, Image, Canvas};
+use ggez::{graphics::{self, Image, Canvas, GraphicsContext}, GameResult, context::Has};
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 use std::sync::RwLock;
@@ -118,6 +118,13 @@ impl Palette {
 
         let img = get_img(assets, mat);
         canvas.draw(&*img, dp);
+    }
+    pub fn preload_materials(&self, gfx: &impl Has<GraphicsContext>, assets: &Assets) -> GameResult<()> {
+        assets.preload_imgs(gfx, self.materials.iter().map(|&mat| {
+            ensure(mat);
+
+            MATS.read().unwrap()[mat].spr
+        }))
     }
     pub fn is_solid(&self, i: u8) -> bool {
         is_solid(self.materials[i as usize])

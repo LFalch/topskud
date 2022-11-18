@@ -29,10 +29,10 @@ use ggez::{
         self, Drawable, DrawMode, Rect,
         Color, DrawParam,
         MeshBuilder, Mesh,
-        InstanceArray, Canvas,
+        Canvas,
     },
     input::{
-        keyboard::{KeyMods},
+        keyboard::KeyMods,
         mouse,
     },
 };
@@ -62,7 +62,6 @@ pub struct Play {
     status_text: PosText,
     hud: Hud,
     world: World,
-    holes: InstanceArray,
     cur_pickup: Option<usize>,
     victory_time: f32,
     time: usize,
@@ -79,8 +78,6 @@ impl Play {
         if let Some((h, w)) = pl {
             player = player.with_health(h).with_weapon(w);
         };
-
-        let hole_img = s.assets.get_or_load_img(ctx, "common/hole")?.clone();
 
         Ok(Box::new(
             Play {
@@ -100,13 +97,14 @@ impl Play {
                         enemies: level.enemies,
                         bullets: Vec::new(),
                         grenades: Vec::new(),
+                        decal_queue: level.decals.clone(),
                         weapons: level.weapons,
                         player,
+                        canvas: None,
                         palette: level.palette,
                         grid: level.grid,
                         exit: level.exit,
                         intels: level.intels,
-                        decals: level.decals,
                         pickups: level.pickups.into_iter().map(|(p, i)| Pickup::new(p, i)).collect(),
                     };
                     world.enemy_pickup();
@@ -122,9 +120,11 @@ impl Play {
 
                     world
                 },
-                holes: InstanceArray::new(ctx, hole_img),
             }
         ))
+    }
+    pub fn add_decal(&mut self, decal: Decal) {
+        self.world.decal_queue.push(decal);
     }
 }
 
@@ -153,7 +153,7 @@ impl GameState for Play {
                     s.mplayer.play(ctx, "boom")?;
 
                     if player_hit {
-                        self.world.decals.push(new_blood(self.world.player.obj.clone()));
+                        self.world.decal_queue.push(new_blood(self.world.player.obj.clone()));
                         s.mplayer.play(ctx, "hit")?;
 
                         if self.world.player.health.is_dead() {
@@ -173,7 +173,7 @@ impl GameState for Play {
                         let enemy = &self.world.enemies[i];
                         s.mplayer.play(ctx, "hit")?;
 
-                        self.world.decals.push(new_blood(enemy.pl.obj.clone()));
+                        self.world.decal_queue.push(new_blood(enemy.pl.obj.clone()));
                         if enemy.pl.health.is_dead() {
                             s.mplayer.play(ctx, "death")?;
 
@@ -213,12 +213,15 @@ impl GameState for Play {
                     s.mplayer.play(ctx, &bullet.weapon.impact_snd)?;
                     let dir = angle_to_vec(bullet.obj.rot);
                     bullet.obj.pos += vector!(5.*dir.x.signum(), 5.*dir.y.signum());
-                    self.holes.push(bullet.obj.drawparams());
+                    self.world.decal_queue.push(Decal {
+                        obj: bullet.obj.clone(),
+                        spr: "common/hole",
+                    });
                     deads.push(i);
                 }
                 Hit::Player => {
                     deads.push(i);
-                    self.world.decals.push(new_blood(bullet.obj.clone()));
+                    self.world.decal_queue.push(new_blood(bullet.obj.clone()));
                     s.mplayer.play(ctx, "hit")?;
 
                     if self.world.player.health.is_dead() {
@@ -239,7 +242,7 @@ impl GameState for Play {
                     let enemy = &self.world.enemies[e];
                     s.mplayer.play(ctx, "hit")?;
 
-                    self.world.decals.push(new_blood(bullet.obj.clone()));
+                    self.world.decal_queue.push(new_blood(bullet.obj.clone()));
                     if enemy.pl.health.is_dead() {
                         s.mplayer.play(ctx, "death")?;
 
@@ -387,10 +390,8 @@ impl GameState for Play {
         Ok(())
     }
 
-    fn draw(&mut self, s: &State, canvas: &mut Canvas, _ctx: &mut Context) -> GameResult<()> {
-        self.world.grid.draw(&self.world.palette, canvas, &s.assets);
-
-        self.holes.draw(canvas, DrawParam::default());
+    fn draw(&mut self, s: &State, canvas: &mut Canvas, ctx: &mut Context) -> GameResult<()> {
+        self.world.draw_world(ctx, canvas, &s.assets)?;
 
         for &intel in &self.world.intels {
             let drawparams = graphics::DrawParam::default()
@@ -398,9 +399,6 @@ impl GameState for Play {
                 .offset(point!(0.5, 0.5));
             let img = s.assets.get_img("common/intel");
             canvas.draw(&*img, drawparams);
-        }
-        for decal in &self.world.decals {
-            decal.draw(canvas, &s.assets, Color::WHITE);
         }
 
         for pickup in &self.world.pickups {
@@ -524,7 +522,7 @@ impl GameState for Play {
                         if dist_len < 44. {
                             backstab = angle_to_vec(enemy.pl.obj.rot).dot(&dist) / dist_len < COS_45_D;
 
-                            self.world.decals.push(new_blood(enemy.pl.obj.clone()));
+                            self.world.decal_queue.push(new_blood(enemy.pl.obj.clone()));
                             enemy.pl.health.weapon_damage(if backstab { 165. } else { 33. }, 0.92);
                             if enemy.pl.health.is_dead() {
                                 dead = Some(i);

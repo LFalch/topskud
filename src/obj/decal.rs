@@ -2,7 +2,7 @@ use crate::{
     util::Sstr,
     io::tex::{Assets, },
 };
-use ggez::graphics::{Color, Canvas};
+use ggez::{graphics::{Color, Canvas, GraphicsContext}, context::Has, GameResult};
 
 use super::Object;
 
@@ -55,6 +55,9 @@ impl Decal {
             obj,
             spr,
         }
+    }
+    pub fn preload(&self, gfx: &impl Has<GraphicsContext>, a: &Assets) -> GameResult<()> {
+        a.preload_imgs(gfx, [self.spr])
     }
     #[inline]
     pub fn draw(&self, canvas: &mut Canvas, a: &Assets, color: Color) {

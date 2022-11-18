@@ -1,6 +1,6 @@
 use crate::{
     util::{Point2, Vector2, sstr},
-    io::tex::{Assets, },
+    io::tex::Assets,
     obj::{
         player::{Player, WepSlots},
         enemy::{Enemy, OldEnemy},
@@ -14,7 +14,7 @@ use crate::{
 };
 use ggez::{
     GameResult,
-    error::GameError, graphics::Canvas,
+    error::GameError, graphics::{Canvas, Image, GraphicsContext, Color, DrawParam}, context::{Has, HasMut},
 };
 
 use std::path::Path;
@@ -32,13 +32,14 @@ pub struct World {
     pub player: Player,
     pub palette: Palette,
     pub grid: Grid,
+    pub canvas: Option<Image>,
+    pub decal_queue: Vec<Decal>,
     pub exit: Option<Point2>,
     pub intels: Vec<Point2>,
     pub enemies: Vec<Enemy>,
     pub bullets: Vec<Bullet<'static>>,
     pub grenades: Vec<Grenade>,
     pub weapons: Vec<WeaponDrop<'static>>,
-    pub decals: Vec<Decal>,
     pub pickups: Vec<Pickup>,
 }
 
@@ -104,6 +105,39 @@ impl World {
             let _action_done = pickup.apply(&mut player.health);
         }
         player.wep.init_active();
+    }
+    
+    pub fn draw_world(&mut self, gfx: &mut (impl Has<GraphicsContext> + HasMut<GraphicsContext>), canvas: &mut Canvas, a: &Assets) -> GameResult<()> {
+        let world_canvas = if let Some(img) = &self.canvas {
+            let mut canvas = Canvas::from_image(gfx, img.clone(), None);
+
+            for decal in self.decal_queue.drain(..) {
+                decal.preload(gfx, a)?;
+                decal.draw(&mut canvas, a, Color::WHITE);
+            }
+
+            canvas.finish(gfx)?;
+
+            img
+        } else {
+            self.canvas = Some({
+                self.palette.preload_materials(gfx, a)?;
+
+                let format = Has::<GraphicsContext>::retrieve(gfx).surface_format();
+                let image = Image::new_canvas_image(gfx, format, self.grid.width() as u32 * 32, self.grid.height() as u32 * 32, 1);
+                let mut canvas = Canvas::from_image(gfx, image.clone(), Some(Color::from_rgba(255, 255, 255, 0)));
+                self.grid.draw(&self.palette, &mut canvas, a);
+
+                canvas.finish(gfx)?;
+
+                image
+            });
+            self.canvas.as_ref().unwrap()
+        };
+
+        canvas.draw(world_canvas, DrawParam::default());
+
+        Ok(())
     }
 }
 
