@@ -1,6 +1,6 @@
 use std::{option::IntoIter, iter::{Chain, IntoIterator}};
 
-use ggez::{Context, GameResult, graphics::{self, Color}};
+use ggez::{Context, GameResult, graphics::{Color, Canvas}};
 
 use crate::{
     util::{Point2, angle_to_vec},
@@ -178,10 +178,10 @@ impl Player {
     }
 
     #[inline]
-    pub fn draw_player(&self, ctx: &mut Context, a: &Assets) -> GameResult<()> {
-        self.draw(ctx, a, "common/player", Color::WHITE)
+    pub fn draw_player(&self, ctx: &mut Context, canvas: &mut Canvas, a: &Assets) -> GameResult<()> {
+        self.draw(ctx, canvas, a, "common/player", Color::WHITE)
     }
-    pub fn draw(&self, ctx: &mut Context, a: &Assets, sprite: &str, color: Color) -> GameResult<()> {
+    pub fn draw(&self, ctx: &mut Context, canvas: &mut Canvas, a: &Assets, sprite: &str, color: Color) -> GameResult<()> {
         {
             let hands_sprite = if let Some(wep) = self.wep.get_active() {
                 wep.weapon.hands_sprite
@@ -193,10 +193,10 @@ impl Player {
                 .dest(self.obj.pos+angle_to_vec(self.obj.rot)*16.)
                 .color(color);
             let img = a.get_img(ctx, hands_sprite);
-            graphics::draw(ctx, &*img, dp)?;
+            canvas.draw(&*img, dp);
         }
         let img = a.get_img(ctx, sprite);
-        self.obj.draw(ctx, &*img, color)
+        self.obj.draw(canvas, &*img, color)
     }
     pub fn update(&mut self, ctx: &mut Context, mplayer: &mut MediaPlayer) -> GameResult<()> {
         if let Some(wep) = self.wep.get_active_mut() {

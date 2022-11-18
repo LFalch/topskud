@@ -11,7 +11,7 @@ use crate::{
 };
 use ggez::{
     Context, GameResult,
-    graphics::Rect,
+    graphics::{Rect, Canvas},
 };
 
 /// The state of the game
@@ -80,13 +80,13 @@ impl Menu {
 }
 
 impl GameState for Menu {
-    fn draw_hud(&mut self, _s: &State, ctx: &mut Context) -> GameResult<()> {
-        self.title_txt.draw_center(ctx)?;
+    fn draw_hud(&mut self, _s: &State, canvas: &mut Canvas, ctx: &mut Context) -> GameResult<()> {
+        self.title_txt.draw_center(canvas, ctx);
         if let Some(ref txt) = self.corner_text {
-            txt.draw_text(ctx)?;
+            txt.draw_text(canvas);
         }
         for button in &self.buttons {
-            button.draw(ctx)?;
+            button.draw(canvas, ctx);
         }
         Ok(())
     }

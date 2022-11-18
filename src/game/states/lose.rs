@@ -13,7 +13,7 @@ use crate::{
 };
 use ggez::{
     Context, GameResult,
-    graphics::{Rect, TextFragment},
+    graphics::{Rect, TextFragment, Canvas},
 };
 
 /// The state of the game
@@ -65,15 +65,17 @@ impl Lose {
 }
 
 impl GameState for Lose {
-    fn draw_hud(&mut self, _s: &State, ctx: &mut Context) -> GameResult<()> {
-        self.restart_btn.draw(ctx)?;
+    fn draw_hud(&mut self, _s: &State, canvas: &mut Canvas, ctx: &mut Context) -> GameResult<()> {
+        self.restart_btn.draw(canvas, ctx);
         if let Some(btn) = &self.edit_btn {
-            btn.draw(ctx)?;
+            btn.draw(canvas, ctx);
         }
 
-        self.you_died.draw_center(ctx)?;
-        self.time_text.draw_text(ctx)?;
-        self.enemies_text.draw_text(ctx)
+        self.you_died.draw_center(canvas, ctx);
+        self.time_text.draw_text(canvas);
+        self.enemies_text.draw_text(canvas);
+
+        Ok(())
     }
     fn event_up(&mut self, s: &mut State, _ctx: &mut Context, event: Event) {
         match event {

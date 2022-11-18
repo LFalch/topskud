@@ -26,7 +26,7 @@ pub mod util {
     use std::{collections::HashSet, sync::Mutex};
     use lazy_static::lazy_static;
     use ggez::graphics::Color;
-    use ggez::{Context, input::keyboard::{self, KeyCode}};
+    use ggez::{Context, input::keyboard::{KeyCode}};
     use serde::{Deserializer, Deserialize};
     use nalgebra::base::coordinates::XY;
     pub type Vector2 = nalgebra::Vector2<f32>;
@@ -50,12 +50,12 @@ pub mod util {
     }
 
     pub fn ver(ctx: &Context) -> f32 {
-        <f32>::from((keyboard::is_key_pressed(ctx, KeyCode::S) || keyboard::is_key_pressed(ctx, KeyCode::Down)) as i8 -
-            (keyboard::is_key_pressed(ctx, KeyCode::W) || keyboard::is_key_pressed(ctx, KeyCode::Up)) as i8)
+        <f32>::from((ctx.keyboard.is_key_pressed(KeyCode::S) || ctx.keyboard.is_key_pressed(KeyCode::Down)) as i8 -
+            (ctx.keyboard.is_key_pressed(KeyCode::W) || ctx.keyboard.is_key_pressed(KeyCode::Up)) as i8)
     }
     pub fn hor(ctx: &Context) -> f32 {
-        <f32>::from((keyboard::is_key_pressed(ctx, KeyCode::D) || keyboard::is_key_pressed(ctx, KeyCode::Right)) as i8 -
-            (keyboard::is_key_pressed(ctx, KeyCode::A) || keyboard::is_key_pressed(ctx, KeyCode::Left)) as i8)
+        <f32>::from((ctx.keyboard.is_key_pressed(KeyCode::D) || ctx.keyboard.is_key_pressed(KeyCode::Right)) as i8 -
+            (ctx.keyboard.is_key_pressed(KeyCode::A) || ctx.keyboard.is_key_pressed(KeyCode::Left)) as i8)
     }
 
     lazy_static! {
@@ -116,11 +116,10 @@ fn main() {
     #[cfg(debug_assertions)]
     {
         // Add the workspace directory to the filesystem when running with cargo
-        use ggez::filesystem;
         if let Ok(manifest_dir) = ::std::env::var("CARGO_MANIFEST_DIR") {
             let mut path = ::std::path::PathBuf::from(manifest_dir);
             path.push("resources");
-            filesystem::mount(&mut ctx, &path, true);
+            ctx.fs.mount(&path, true);
         }
     }
 

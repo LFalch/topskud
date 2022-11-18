@@ -10,6 +10,9 @@ use crate::{
     },
     obj::{health::Health, player::WepSlots},
 };
+use ggez::graphics::{Canvas, Drawable};
+use ggez::input::keyboard::{KeyInput, KeyMods};
+use ggez::winit::event::VirtualKeyCode;
 use ggez::{
     Context, GameResult,
     graphics::{self, DrawMode, Rect, Mesh, Text, TextFragment, DrawParam, Color},
@@ -43,7 +46,10 @@ pub enum StateSwitch {
 }
 
 pub mod event {
-    pub use ggez::event::{MouseButton, KeyCode, KeyMods};
+    pub use ggez::input::{
+        mouse::MouseButton,
+        keyboard::KeyCode,
+    };
     pub enum Event {
         Key(KeyCode),
         Mouse(MouseButton),
@@ -59,10 +65,10 @@ pub trait GameState {
     fn logic(&mut self, _: &mut State, _: &mut Context) -> GameResult<()> {
         Ok(())
     }
-    fn draw(&mut self, _: &State, _: &mut Context) -> GameResult<()> {
+    fn draw(&mut self, _: &State, _: &mut Canvas, _: &mut Context) -> GameResult<()> {
         Ok(())
     }
-    fn draw_hud(&mut self, _: &State, _: &mut Context) -> GameResult<()>;
+    fn draw_hud(&mut self, _: &State, _: &mut Canvas, _: &mut Context) -> GameResult<()>;
     fn event_down(&mut self, _: &mut State, _: &mut Context, _: Event) { }
     fn event_up(&mut self, _: &mut State, _: &mut Context, _: Event) { }
 
@@ -215,8 +221,8 @@ impl ConsoleStatus {
     pub fn open(&mut self, ctx: &Context) {
         if let ConsoleStatus::Closed = self {
             *self = ConsoleStatus::Open{
-                cursor: mouse::cursor_type(ctx),
-                cursor_hidden: mouse::cursor_hidden(ctx),
+                cursor: ctx.mouse.cursor_type(),
+                cursor_hidden: ctx.mouse.cursor_hidden(),
             };
         }
     }
@@ -266,8 +272,11 @@ impl Master {
         mplayer.register_music(ctx, "music", true)?;
         mplayer.register_music(ctx, "victory", false)?;
 
+
+        let canvas = Canvas::from_frame(ctx, None);
         // Get the window's dimensions
-        let Rect {w: width, h: height, ..} = graphics::screen_coordinates(ctx);
+        let Rect {w: width, h: height, ..} = canvas.screen_coordinates().unwrap();
+        drop(canvas);
 
         let content;
 
@@ -327,12 +336,12 @@ impl EventHandler for Master {
             }?;
         }
         if self.console_status.is_open() {
-            while timer::check_update_time(ctx, DESIRED_FPS) {}
+            while ctx.time.check_update_time(DESIRED_FPS) {}
 
             for frag in CONSOLE_LOGGER.empty() {
                 self.console.history.add(frag);
             }
-            while self.console.history.height(ctx) > PROMPT_Y {
+            while self.console.history.dimensions(ctx).unwrap().h > PROMPT_Y {
                 let new_history = self.console.history.fragments().iter().skip(1).cloned().fold(self.state.assets.raw_text(18.), |mut text, f| {
                     text.add(f);
                     text
@@ -345,7 +354,7 @@ impl EventHandler for Master {
 
             // Run this for every 1/60 of a second has passed since last update
             // Can in theory become slow
-            while timer::check_update_time(ctx, DESIRED_FPS) {
+            while ctx.time.check_update_time(DESIRED_FPS) {
                 self.gs.update(&mut self.state, ctx)?;
             }
             self.gs.logic(&mut self.state, ctx)
@@ -355,75 +364,79 @@ impl EventHandler for Master {
     // Draws everything
     fn draw(&mut self, ctx: &mut Context) -> GameResult<()> {
         // Clear the screen first
-        graphics::clear(ctx, (33, 33, 255, 255).into());
-
+        let mut canvas = graphics::Canvas::from_frame(ctx, Some((33, 33, 255, 255).into()));
 
         // Save the screen coordinates and make a set with the current offset
-        let sc = graphics::screen_coordinates(ctx);
+        let sc = canvas.screen_coordinates().unwrap();
         let mut sc_offset = sc;
         sc_offset.translate(-self.state.offset);
+        let sc_offset = sc_offset;
 
         // Draw with the offset screen coordinates
-        graphics::set_screen_coordinates(ctx, sc_offset)?;
-        self.gs.draw(&self.state, ctx)?;
-
+        canvas.set_screen_coordinates(sc_offset);
+        self.gs.draw(&self.state, &mut canvas, ctx)?;
+        
         // Restore the previous screen coordinates
-        graphics::set_screen_coordinates(ctx, sc)?;
+        canvas.set_screen_coordinates(sc);
 
-        self.gs.draw_hud(&self.state, ctx)?;
+        self.gs.draw_hud(&self.state, &mut canvas, ctx)?;
 
         if self.console_status.is_open() {
             let console_bg = Mesh::new_rectangle(ctx, DrawMode::fill(), Rect::new(0., 0., self.state.width as f32, self.state.height as f32 / 3.), Color::BLACK)?;
-            graphics::draw(ctx, &console_bg, DrawParam::new())?;
+            canvas.draw(&console_bg, DrawParam::new());
 
 
-            graphics::draw(ctx, &self.console.history, DrawParam::default())?;
-            self.console.prompt.draw_text(ctx)?;
+            canvas.draw(&self.console.history, DrawParam::default());
+            self.console.prompt.draw_text(&mut canvas);
         }
 
         // Flip the buffers to see what we just drew
-        graphics::present(ctx)?;
+        canvas.finish(ctx)?;
 
         // Give the computer some time to do other things
         timer::yield_now();
         Ok(())
     }
     /// Handle key down events
-    fn key_down_event(&mut self, ctx: &mut Context, keycode: KeyCode, km: KeyMods, repeat: bool) {
+    fn key_down_event(&mut self, ctx: &mut Context, key_input: KeyInput, repeat: bool) -> GameResult<()> {
         // If this is a repeat event, we don't care
         if repeat {
-            return
+            return Ok(())
         }
 
-        use self::KeyCode::*;
-        match keycode {
-            Escape if km.contains(KeyMods::SHIFT) => ctx.continuing = false,
-            keycode if !self.console_status.is_open() => self.gs.event_down(&mut self.state, ctx, Event::Key(keycode)),
+        match key_input.keycode {
+            Some(VirtualKeyCode::Escape) if key_input.mods.contains(KeyMods::SHIFT) => ctx.continuing = false,
+            Some(keycode) if !self.console_status.is_open() => self.gs.event_down(&mut self.state, ctx, Event::Key(keycode)),
             _ => (),
         }
+        Ok(())
     }
     /// Handle key release events
-    fn key_up_event(&mut self, ctx: &mut Context, keycode: KeyCode, _: KeyMods) {
+    fn key_up_event(&mut self, ctx: &mut Context, key_input: KeyInput) -> GameResult<()> {
         if !self.console_status.is_open() {
-            match keycode {
-                KeyCode::Tab => self.console_status.open(ctx),
-                keycode => self.gs.event_up(&mut self.state, ctx, Event::Key(keycode))
+            match key_input.keycode {
+                Some(VirtualKeyCode::Tab) => self.console_status.open(ctx),
+                Some(keycode) => self.gs.event_up(&mut self.state, ctx, Event::Key(keycode)),
+                None => ()
             }
         }
+        Ok(())
     }
     /// Handle mouse down event
-    fn mouse_button_down_event(&mut self, ctx: &mut Context, btn: MouseButton, _x: f32, _y: f32) {
+    fn mouse_button_down_event(&mut self, ctx: &mut Context, btn: MouseButton, _x: f32, _y: f32) -> GameResult<()> {
         if !self.console_status.is_open() {
             self.gs.event_down(&mut self.state, ctx, Event::Mouse(btn))
         }
+        Ok(())
     }
     /// Handle mouse release events
-    fn mouse_button_up_event(&mut self, ctx: &mut Context, btn: MouseButton, _x: f32, _y: f32) {
+    fn mouse_button_up_event(&mut self, ctx: &mut Context, btn: MouseButton, _x: f32, _y: f32) -> GameResult<()> {
         if !self.console_status.is_open() {
             self.gs.event_up(&mut self.state, ctx, Event::Mouse(btn))
         }
+        Ok(())
     }
-    fn text_input_event(&mut self, ctx: &mut Context, c: char) {
+    fn text_input_event(&mut self, ctx: &mut Context, c: char) -> GameResult<()> {
         if self.console_status.is_open() {
             if c.is_control() {
                 match c {
@@ -451,9 +464,10 @@ impl EventHandler for Master {
                 self.console.prompt.text.fragments_mut()[1].text.push(c);
             }
         }
+        Ok(())
     }
     /// Handles mouse movement events
-    fn mouse_motion_event(&mut self, ctx: &mut Context, x: f32, y: f32, _: f32, _: f32) {
+    fn mouse_motion_event(&mut self, ctx: &mut Context, x: f32, y: f32, _: f32, _: f32) -> GameResult<()> {
         self.state.mouse = point!(x, y);
         if let ConsoleStatus::Open{cursor, cursor_hidden} = self.console_status {
             if y > PROMPT_Y {
@@ -464,9 +478,10 @@ impl EventHandler for Master {
                 mouse::set_cursor_hidden(ctx, false);
             }
         }
+        Ok(())
     }
-    fn quit_event(&mut self, _ctx: &mut Context) -> bool {
-        false
+    fn quit_event(&mut self, _ctx: &mut Context) -> GameResult<bool> {
+        Ok(false)
     }
 }
 

@@ -12,7 +12,7 @@ use crate::{
 };
 use ggez::{
     Context, GameResult,
-    graphics::Rect,
+    graphics::{Rect, Canvas},
 };
 
 #[allow(clippy::large_enum_variant)]
@@ -94,21 +94,23 @@ impl Win {
 }
 
 impl GameState for Win {
-    fn draw_hud(&mut self, _s: &State, ctx: &mut Context) -> GameResult<()> {
+    fn draw_hud(&mut self, _s: &State, canvas: &mut Canvas, ctx: &mut Context) -> GameResult<()> {
         match &self.buttons {
             WinButtons::FileMode{restart_btn, edit_btn} => {
-                restart_btn.draw(ctx)?;
-                edit_btn.draw(ctx)?;
+                restart_btn.draw(canvas, ctx);
+                edit_btn.draw(canvas, ctx);
             }
             WinButtons::CampaignMode{continue_btn} => {
-                continue_btn.draw(ctx)?;
+                continue_btn.draw(canvas, ctx);
             }
         }
 
-        self.level_complete.draw_center(ctx)?;
-        self.time_text.draw_text(ctx)?;
-        self.enemies_text.draw_text(ctx)?;
-        self.health_text.draw_text(ctx)
+        self.level_complete.draw_center(canvas, ctx);
+        self.time_text.draw_text(canvas);
+        self.enemies_text.draw_text(canvas);
+        self.health_text.draw_text(canvas);
+
+        Ok(())
     }
     fn event_up(&mut self, s: &mut State, _ctx: &mut Context, event: Event) {
         use self::KeyCode::*;

@@ -20,7 +20,7 @@ use crate::{
     },
     game::{
         DELTA, State, GameState, StateSwitch, world::{Level, Statistics, World},
-        event::{Event::{self, Key, Mouse}, MouseButton, KeyCode, KeyMods}
+        event::{Event::{self, Key, Mouse}, MouseButton, KeyCode}
     },
 };
 use ggez::{
@@ -29,10 +29,10 @@ use ggez::{
         self, Drawable, DrawMode, Rect,
         Color, DrawParam,
         MeshBuilder, Mesh,
-        spritebatch::SpriteBatch,
+        InstanceArray, Canvas,
     },
     input::{
-        keyboard,
+        keyboard::{KeyMods},
         mouse,
     },
 };
@@ -62,7 +62,7 @@ pub struct Play {
     status_text: PosText,
     hud: Hud,
     world: World,
-    holes: SpriteBatch,
+    holes: InstanceArray,
     cur_pickup: Option<usize>,
     victory_time: f32,
     time: usize,
@@ -79,6 +79,8 @@ impl Play {
         if let Some((h, w)) = pl {
             player = player.with_health(h).with_weapon(w);
         };
+
+        let hole_img = s.assets.get_img(ctx, "common/hole").clone();
 
         Ok(Box::new(
             Play {
@@ -120,7 +122,7 @@ impl Play {
 
                     world
                 },
-                holes: SpriteBatch::new(s.assets.get_img(ctx, "common/hole").clone()),
+                holes: InstanceArray::new(ctx, hole_img),
             }
         ))
     }
@@ -144,7 +146,7 @@ impl GameState for Play {
 
         let mut deads = Vec::new();
         for (i, grenade) in self.world.grenades.iter_mut().enumerate().rev() {
-            let g_update = grenade.update(ctx, &s.assets, &self.world.palette, &self.world.grid, &mut self.world.player, &mut *self.world.enemies)?;
+            let g_update = grenade.update(ctx, &self.world.palette, &self.world.grid, &mut self.world.player, &mut *self.world.enemies)?;
 
             match g_update {
                 GrenadeUpdate::Explosion{player_hit, enemy_hits} => {
@@ -211,7 +213,7 @@ impl GameState for Play {
                     s.mplayer.play(ctx, &bullet.weapon.impact_snd)?;
                     let dir = angle_to_vec(bullet.obj.rot);
                     bullet.obj.pos += vector!(5.*dir.x.signum(), 5.*dir.y.signum());
-                    self.holes.add(bullet.obj.drawparams());
+                    self.holes.push(bullet.obj.drawparams());
                     deads.push(i);
                 }
                 Hit::Player => {
@@ -327,14 +329,14 @@ impl GameState for Play {
             })?;
         }
 
-        let speed = if !keyboard::is_mod_active(ctx, KeyMods::SHIFT) {
+        let speed = if !ctx.keyboard.is_mod_active(KeyMods::SHIFT) {
             200.
         } else {
             100.
         };
         if let Some(wep) = self.world.player.wep.get_active_mut() {
             wep.update(ctx, &mut s.mplayer)?;
-            if wep.cur_clip > 0 && mouse::button_pressed(ctx, MouseButton::Left) && wep.weapon.fire_mode.is_auto() {
+            if wep.cur_clip > 0 && ctx.mouse.button_pressed(MouseButton::Left) && wep.weapon.fire_mode.is_auto() {
                 if let Some(bm) = wep.shoot(ctx, &mut s.mplayer)? {
                     let pos = self.world.player.obj.pos + 20. * angle_to_vec(self.world.player.obj.rot);
                     let mut bul = Object::new(pos);
@@ -385,20 +387,20 @@ impl GameState for Play {
         Ok(())
     }
 
-    fn draw(&mut self, s: &State, ctx: &mut Context) -> GameResult<()> {
-        self.world.grid.draw(&self.world.palette, ctx, &s.assets)?;
+    fn draw(&mut self, s: &State, canvas: &mut Canvas, ctx: &mut Context) -> GameResult<()> {
+        self.world.grid.draw(&self.world.palette, ctx, canvas, &s.assets)?;
 
-        self.holes.draw(ctx, Default::default())?;
+        self.holes.draw(canvas, DrawParam::default());
 
         for &intel in &self.world.intels {
             let drawparams = graphics::DrawParam::default()
                 .dest(intel)
                 .offset(point!(0.5, 0.5));
             let img = s.assets.get_img(ctx, "common/intel");
-            graphics::draw(ctx, &*img, drawparams)?;
+            canvas.draw(&*img, drawparams);
         }
         for decal in &self.world.decals {
-            decal.draw(ctx, &s.assets, Color::WHITE)?;
+            decal.draw(ctx, canvas, &s.assets, Color::WHITE)?;
         }
 
         for pickup in &self.world.pickups {
@@ -406,68 +408,69 @@ impl GameState for Play {
                 .dest(pickup.pos)
                 .offset(point!(0.5, 0.5));
             let img = s.assets.get_img(ctx, pickup.pickup_type.spr);
-            graphics::draw(ctx, &*img, drawparams)?;
+            canvas.draw(&*img, drawparams);
         }
         for wep in &self.world.weapons {
             let drawparams = graphics::DrawParam::default()
                 .dest(wep.pos)
                 .offset(point!(0.5, 0.5));
             let img = s.assets.get_img(ctx, &wep.weapon.entity_sprite);
-            graphics::draw(ctx, &*img, drawparams)?;
+            canvas.draw(&*img, drawparams);
         }
 
-        self.world.player.draw_player(ctx, &s.assets)?;
+        self.world.player.draw_player(ctx, canvas, &s.assets)?;
 
         for enemy in &self.world.enemies {
-            enemy.draw(ctx, &s.assets, Color::WHITE)?;
+            enemy.draw(ctx, canvas, &s.assets, Color::WHITE)?;
         }
         for bullet in &self.world.bullets {
-            bullet.draw(ctx, &s.assets)?;
+            bullet.draw(ctx, canvas, &s.assets)?;
         }
         for grenade in &self.world.grenades {
-            grenade.draw(ctx, &s.assets)?;
+            grenade.draw(ctx, canvas, &s.assets)?;
         }
 
         Ok(())
     }
-    fn draw_hud(&mut self, s: &State, ctx: &mut Context) -> GameResult<()> {
-        self.hud.draw(ctx)?;
+    fn draw_hud(&mut self, s: &State, canvas: &mut Canvas, ctx: &mut Context) -> GameResult<()> {
+        self.hud.draw(canvas)?;
 
-        self.hp_text.draw_text(ctx)?;
-        self.arm_text.draw_text(ctx)?;
-        self.reload_text.draw_text(ctx)?;
-        self.wep_text.draw_text(ctx)?;
-        self.status_text.draw_center(ctx)?;
+        self.hp_text.draw_text(canvas);
+        self.arm_text.draw_text(canvas);
+        self.reload_text.draw_text(canvas);
+        self.wep_text.draw_text(canvas);
+        self.status_text.draw_center(canvas, ctx);
 
         {
-            let drawparams = DrawParam::from(([104., 2.],));
+            let drawparams = DrawParam::from(point![104., 2.]);
             let img = s.assets.get_img(ctx, "weapons/knife");
-            graphics::draw(ctx, &*img, drawparams)?;
+            canvas.draw(&*img, drawparams);
         }
         if let Some(holster_wep) = &self.world.player.wep.holster {
-            let drawparams = DrawParam::from(([137., 2.],));
+            let drawparams = DrawParam::from(point![137., 2.]);
             let img = s.assets.get_img(ctx, &holster_wep.weapon.entity_sprite);
-            graphics::draw(ctx, &*img, drawparams)?;
+            canvas.draw(&*img, drawparams);
         }
         if let Some(holster_wep) = &self.world.player.wep.holster2 {
-            let drawparams = DrawParam::from(([104., 35.],));
+            let drawparams = DrawParam::from(point![104., 35.]);
             let img = s.assets.get_img(ctx, &holster_wep.weapon.entity_sprite);
-            graphics::draw(ctx, &*img, drawparams)?;
+            canvas.draw(&*img, drawparams);
         }
         if let Some(sling_wep) = &self.world.player.wep.sling {
-            let drawparams = DrawParam::from(([153., 35.],)).offset(point!(0.5, 0.));
+            let drawparams = DrawParam::from(point![153., 35.]).offset(point!(0.5, 0.));
             let img = s.assets.get_img(ctx, &sling_wep.weapon.entity_sprite);
-            graphics::draw(ctx, &*img, drawparams)?;
+            canvas.draw(&*img, drawparams);
         }
         let selection = Mesh::new_rectangle(ctx, DrawMode::stroke(2.), RECTS[self.world.player.wep.active as u8 as usize], Color{r: 1., g: 1., b: 0., a: 1.})?;
-        graphics::draw(ctx, &selection, DrawParam::default())?;
+        canvas.draw(&selection, DrawParam::default());
 
         let drawparams = graphics::DrawParam::default()
             .dest(s.mouse)
             .offset(point!(0.5, 0.5))
             .color(RED);
         let img = s.assets.get_img(ctx, "common/crosshair");
-        graphics::draw(ctx, &*img, drawparams)
+        canvas.draw(&*img, drawparams);
+        Ok(())
     }
     fn event_up(&mut self, s: &mut State, ctx: &mut Context, event: Event) {
         use self::KeyCode::*;
@@ -580,7 +583,8 @@ const RECTS: [Rect; 4] = [
 
 impl Hud {
     pub fn new(ctx: &mut Context) -> GameResult<Self> {
-        let hud_bar = MeshBuilder::new()
+        let mut hud_bar_builder = MeshBuilder::new();
+        hud_bar_builder
             .rectangle(DrawMode::fill(), Rect{x: 1., y: 1., w: 102., h: 26.}, Color::BLACK)?
             .rectangle(DrawMode::fill(), Rect{x: 1., y: 29., w: 102., h: 26.}, Color::BLACK)?
             .rectangle(DrawMode::fill(), Rect{x: 1., y: 57., w: 102., h: 26.}, Color::BLACK)?
@@ -588,7 +592,9 @@ impl Hud {
             .rectangle(DrawMode::fill(), Rect{x:137.,y:2.,h: 32., w: 32.}, Color{r: 0.5, g: 0.5, b: 0.5, a: 1.})?
             .rectangle(DrawMode::fill(), Rect{x:104.,y:35.,h: 32., w: 32.}, Color{r: 0.5, g: 0.5, b: 0.5, a: 1.})?
             .rectangle(DrawMode::fill(), Rect{x:137.,y:35.,h: 32., w: 32.}, Color{r: 0.5, g: 0.5, b: 0.5, a: 1.})?
-            .build(ctx)?;
+            ;
+
+        let hud_bar = Mesh::from_data(ctx, hud_bar_builder.build());
 
         let hp_bar = Mesh::new_rectangle(ctx, DrawMode::fill(), Rect{x: 2., y: 2., w: 0., h: 24.}, GREEN)?;
         let armour_bar = Mesh::new_rectangle(ctx, DrawMode::fill(), Rect{x: 2., y: 30., w: 0., h: 24.}, BLUE)?;
@@ -608,10 +614,11 @@ impl Hud {
 
         Ok(())
     }
-    pub fn draw(&self, ctx: &mut Context) -> GameResult<()> {
-        self.hud_bar.draw(ctx, Default::default())?;
-        self.hp_bar.draw(ctx, Default::default())?;
-        self.armour_bar.draw(ctx, Default::default())?;
-        self.loading_bar.draw(ctx, Default::default())
+    pub fn draw(&self, canvas: &mut Canvas) -> GameResult<()> {
+        self.hud_bar.draw(canvas, DrawParam::default());
+        self.hp_bar.draw(canvas, DrawParam::default());
+        self.armour_bar.draw(canvas, DrawParam::default());
+        self.loading_bar.draw(canvas, DrawParam::default());
+        Ok(())
     }
 }

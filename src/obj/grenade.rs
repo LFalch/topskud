@@ -1,4 +1,4 @@
-use ggez::{Context, GameResult, graphics::{self, Color, Mesh, DrawParam}};
+use ggez::{Context, GameResult, graphics::{self, Color, Mesh, DrawParam, Canvas, MeshData}};
 use std::{iter, f32::consts::{PI, FRAC_PI_2 as HALF_PI}};
 use rand::{thread_rng, Rng};
 
@@ -53,15 +53,15 @@ impl Grenade {
         health.weapon_damage(if high { 105.} else {55.}, 0.85);
     }
     #[inline]
-    pub fn draw(&self, ctx: &mut Context, a: &Assets) -> GameResult<()> {
+    pub fn draw(&self, ctx: &mut Context, canvas: &mut Canvas, a: &Assets) -> GameResult<()> {
         match &self.state {
             GrenadeState::Fused{..} => {
                 let img = a.get_img(ctx, "weapons/pineapple");
-                self.obj.draw(ctx, &*img, Color::WHITE)
+                self.obj.draw(canvas, &*img, Color::WHITE)?;
             }
             GrenadeState::Explosion { mesh, alive_time } => {
                 const EXPANDING_TIME: f32 = 0.1;
-                let mut dp = DrawParam::from((self.obj.pos,));
+                let mut dp = DrawParam::from(self.obj.pos);
 
                 if *alive_time <= EXPANDING_TIME {
                     let scale = alive_time / EXPANDING_TIME;
@@ -71,18 +71,21 @@ impl Grenade {
                     dp = dp.color(Color{r: colour, g: colour, b: colour, a: 0.5+0.5*colour});
                 }
 
-                graphics::draw(ctx, mesh, dp)
+                let image = (a.get_img(ctx, "weapons/explosion1")).clone();
+
+                canvas.draw_textured_mesh(mesh.clone(), image, dp);
             }
         }
+        Ok(())
     }
-    fn make_mesh(&self, ctx: &mut Context, a: &Assets, palette: &Palette, grid: &Grid) -> GameResult<Mesh> {
+    fn make_mesh(&self, ctx: &mut Context, palette: &Palette, grid: &Grid) -> Mesh {
         const NUM_VERTICES: u32 = 120;
         const RADIANS_PER_VERT: f32 = (360. / NUM_VERTICES as f32) * PI/180.;
 
         let random_offset = thread_rng().gen_range(0. ..= PI_MUL_2);
 
         let centre = graphics::Vertex {
-            pos: [0., 0.],
+            position: [0., 0.],
             uv: [0.5, 0.5],
             color: [1.0, 1.0, 1.0, 1.0],
         };
@@ -91,15 +94,19 @@ impl Grenade {
             let angle_uv = 0.5 * angle_to_vec(i as f32 * RADIANS_PER_VERT + random_offset);
             let cast = grid.ray_cast(palette, self.obj.pos, angle, true);
             graphics::Vertex{
-                pos: (cast.into_point() - self.obj.pos).into(),
+                position: (cast.into_point() - self.obj.pos).into(),
                 uv: (vector!(0.5, 0.5) + (cast.clip().norm()-RANGE)/RANGE * angle_uv).into(),
                 color: [1.0, 1.0, 1.0, 1.0],
             }
         }).chain(iter::once(centre)).collect();
         
         let indices = (0..NUM_VERTICES).flat_map(|i| iter::once(NUM_VERTICES).chain(iter::once(i)).chain(iter::once((i + 1) % NUM_VERTICES))).collect::<Vec<_>>();
-        let expl_img = (a.get_img(ctx, "weapons/explosion1")).clone();
-        Mesh::from_raw(ctx, &vertices, &indices, Some(expl_img))
+        let raw = MeshData {
+            vertices: &vertices,
+            indices: &indices,
+        };
+
+        Mesh::from_data(ctx, raw)
     }
     pub fn update_fused(obj: &mut Object, vel: &mut Vector2, fuse: &mut f32, palette: &Palette, grid: &Grid, player: &mut Player, enemies: &mut [Enemy]) -> GrenadeUpdate {
         let start = obj.pos;
@@ -163,7 +170,7 @@ impl Grenade {
         GrenadeUpdate::None
     }
 
-    pub fn update(&mut self, ctx: &mut Context, a: &Assets, palette: &Palette, grid: &Grid, player: &mut Player, enemies: &mut [Enemy]) -> GameResult<GrenadeUpdate> {
+    pub fn update(&mut self, ctx: &mut Context, palette: &Palette, grid: &Grid, player: &mut Player, enemies: &mut [Enemy]) -> GameResult<GrenadeUpdate> {
         let update = match self.state {
             GrenadeState::Explosion{ref mut alive_time, ..} => {
                 *alive_time += DELTA;
@@ -180,7 +187,7 @@ impl Grenade {
         if let GrenadeUpdate::Explosion{..} = update {
             self.state = GrenadeState::Explosion {
                 alive_time: 0.,
-                mesh: self.make_mesh(ctx, a, palette, grid)?
+                mesh: self.make_mesh(ctx, palette, grid)
             };
         }
         Ok(update)

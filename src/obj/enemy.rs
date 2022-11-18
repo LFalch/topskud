@@ -2,7 +2,7 @@ use crate::util::{BLUE, Vector2, Point2};
 
 use ggez::{
     Context, GameResult,
-    graphics::{self, Mesh, Color, DrawMode, DrawParam},
+    graphics::{Color, DrawMode, DrawParam, Canvas, Mesh},
 };
 use rand::{thread_rng, Rng};
 
@@ -85,18 +85,19 @@ impl Enemy {
         }
     }
     /// Draws two lines from the enemy indicating the field of vision
-    pub fn draw_visibility_cone(&self, ctx: &mut Context, length: f32) -> GameResult<()> {
+    pub fn draw_visibility_cone(&self, ctx: &mut Context, canvas: &mut Canvas, length: f32) -> GameResult<()> {
         let Object{pos, rot} = self.pl.obj;
         let dir1 = angle_to_vec(rot - VISIBILITY);
         let dir2 = angle_to_vec(rot + VISIBILITY);
 
         let mesh = Mesh::new_polyline(ctx, DrawMode::stroke(1.5), &[pos + (length * dir1), pos, pos + (length * dir2)], BLUE)?;
 
-        graphics::draw(ctx, &mesh, DrawParam::default())
+        canvas.draw(&mesh, DrawParam::default());
+        Ok(())
     }
     #[inline]
-    pub fn draw(&self, ctx: &mut Context, a: &Assets, color: Color) -> GameResult<()> {
-        self.pl.draw(ctx, a, "common/enemy", color)
+    pub fn draw(&self, ctx: &mut Context, canvas: &mut Canvas, a: &Assets, color: Color) -> GameResult<()> {
+        self.pl.draw(ctx, canvas, a, "common/enemy", color)
     }
     /// Look in the direction of a given vector
     /// ### Returns

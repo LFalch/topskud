@@ -11,17 +11,16 @@ use crate::{
     game::{
         DELTA, Content, GameState, State, StateSwitch,
         world::{Grid, Level, Palette},
-        event::{Event::{self, Key, Mouse}, MouseButton as Mb, KeyCode, KeyMods}
+        event::{Event::{self, Key, Mouse}, MouseButton as Mb, KeyCode}
     },
     obj::{Object, enemy::Enemy, decal::Decal, pickup::PICKUPS, weapon::WEAPONS}
 };
 use ggez::{
     Context, GameResult,
-    graphics::{self, Color, Rect, DrawMode, DrawParam, Mesh},
+    graphics::{self, Color, Rect, DrawMode, DrawParam, Mesh, Canvas},
     error::GameError,
     input::{
-        keyboard,
-        mouse,
+        keyboard::{KeyMods},
     },
 };
 
@@ -129,7 +128,7 @@ impl InsertionBar {
             palette
         }
     }
-    fn draw(&self, ctx: &mut Context, s: &State, cur: Option<Insertion>) -> GameResult<()> {
+    fn draw(&self, ctx: &mut Context, canvas: &mut Canvas, s: &State, cur: Option<Insertion>) -> GameResult<()> {
         let mut dest = self.ent_text.pos + vector!(98., 16.);
 
         let mut drawparams = graphics::DrawParam::default()
@@ -140,11 +139,11 @@ impl InsertionBar {
             if let Some(cur) = cur {
                 if ins == &cur {
                     let mesh = Mesh::new_circle(ctx, DrawMode::fill(), dest, 17., 0.5, YELLOW)?;
-                    graphics::draw(ctx, &mesh, DrawParam::default())?;
+                    canvas.draw(&mesh, DrawParam::default());
                 }
             }
             let img = s.assets.get_img(ctx, ins.get_spr());
-            graphics::draw(ctx, &*img, drawparams)?;
+            canvas.draw(&*img, drawparams);
             dest.x += 34.; 
             drawparams = drawparams.dest(dest);
         }
@@ -240,7 +239,7 @@ const YELLOW: Color = Color{r: 1., g: 1., b: 0., a: 1.};
 
 impl GameState for Editor {
     fn update(&mut self, _s: &mut State, ctx: &mut Context) -> GameResult<()> {
-        let speed = if keyboard::is_mod_active(ctx, KeyMods::SHIFT) { 315. } else { 175. };
+        let speed = if ctx.keyboard.is_mod_active(KeyMods::SHIFT) { 315. } else { 175. };
         let v = speed * vector!(hor(ctx), ver(ctx));
         self.pos += v * DELTA;
 
@@ -252,7 +251,7 @@ impl GameState for Editor {
         Ok(())
     }
     fn logic(&mut self, s: &mut State, ctx: &mut Context) -> GameResult<()> {
-        if mouse::button_pressed(ctx, Mb::Left) && s.mouse.y > 64. {
+        if ctx.mouse.button_pressed(Mb::Left) && s.mouse.y > 64. {
             if let Tool::Inserter(Insertion::Material(mat)) = self.current {
                 let (mx, my) = Grid::snap(s.mouse - s.offset);
                 self.level.grid.insert(mx, my, mat);
@@ -264,14 +263,14 @@ impl GameState for Editor {
     }
 
     #[allow(clippy::cognitive_complexity)]
-    fn draw(&mut self, s: &State, ctx: &mut Context) -> GameResult<()> {
-        self.level.grid.draw(&self.level.palette, ctx, &s.assets)?;
+    fn draw(&mut self, s: &State, canvas: &mut Canvas, ctx: &mut Context) -> GameResult<()> {
+        self.level.grid.draw(&self.level.palette, ctx, canvas, &s.assets)?;
 
         if let Tool::Inserter(Insertion::Material(mat)) = self.current {
             let (x, y) = Grid::snap(s.mouse-s.offset);
             let x = f32::from(x) * 32.;
             let y = f32::from(y) * 32.;
-            self.level.palette.draw_mat(mat, ctx, &s.assets, x, y, graphics::DrawParam {
+            self.level.palette.draw_mat(mat, ctx, canvas, &s.assets, x, y, graphics::DrawParam {
                 color: TRANS,
                 .. Default::default()
             })?;
@@ -279,27 +278,27 @@ impl GameState for Editor {
 
         if let Some(start) = self.level.start_point {
             let img = s.assets.get_img(ctx, "common/start");
-            graphics::draw(ctx, &*img, graphics::DrawParam::default()
+            canvas.draw(&*img, graphics::DrawParam::default()
                 .dest(start)
-                .offset(point!(0.5, 0.5)))?;
+                .offset(point!(0.5, 0.5)));
         }
         if let Some(exit) = self.level.exit {
             if let Tool::Selector(Selection{exit: true, ..}) = self.current {
                 let mesh = Mesh::new_circle(ctx, DrawMode::fill(), exit, 17., 0.5, YELLOW)?;
-                graphics::draw(ctx, &mesh, DrawParam::default())?;
+                canvas.draw(&mesh, DrawParam::default());
             }
             let drawparams = graphics::DrawParam::default()
                 .dest(exit)
                 .offset(point!(0.5, 0.5));
             let img = s.assets.get_img(ctx, "common/goal");
-            graphics::draw(ctx, &*img, drawparams)?;
+            canvas.draw(&*img, drawparams);
         }
 
         for (i, &intel) in self.level.intels.iter().enumerate() {
             if let Tool::Selector(Selection{ref intels, ..}) = self.current {
                 if intels.contains(&i) {
                     let mesh = Mesh::new_circle(ctx, DrawMode::fill(), intel, 17., 0.5, YELLOW)?;
-                    graphics::draw(ctx, &mesh, DrawParam::default())?;
+                    canvas.draw(&mesh, DrawParam::default());
                 }
             }
             let drawparams = graphics::DrawParam::default()
@@ -307,25 +306,25 @@ impl GameState for Editor {
                 .offset(point!(0.5, 0.5));
 
             let img = s.assets.get_img(ctx, "common/intel");
-            graphics::draw(ctx, &*img, drawparams)?;
+            canvas.draw(&*img, drawparams);
         }
 
         for (i, enemy) in self.level.enemies.iter().enumerate() {
             if let Tool::Selector(Selection{ref enemies, ..})= self.current {
                 if enemies.contains(&i) {
                     let mesh = Mesh::new_circle(ctx, DrawMode::fill(), enemy.pl.obj.pos, 17., 0.5, YELLOW)?;
-                    graphics::draw(ctx, &mesh, DrawParam::default())?;
+                    canvas.draw(&mesh, DrawParam::default());
                 }
             }
             if self.draw_visibility_cones {
-                enemy.draw_visibility_cone(ctx, 512.)?;
+                enemy.draw_visibility_cone(ctx, canvas, 512.)?;
             }
             let mut points_lines = vec![enemy.pl.obj.pos];
             
-            enemy.draw(ctx, &s.assets, Color::WHITE)?;
+            enemy.draw(ctx, canvas, &s.assets, Color::WHITE)?;
             for &waypoint in &enemy.behaviour.path {
                 let img = s.assets.get_img(ctx, "common/crosshair");
-                graphics::draw(ctx, &*img, DrawParam::default().offset(point!(0.5, 0.5)).dest(waypoint).color(Color::YELLOW))?;
+                canvas.draw(&*img, DrawParam::default().offset(point!(0.5, 0.5)).dest(waypoint).color(Color::YELLOW));
                 points_lines.push(waypoint);
             }
             if points_lines.len() > 1 {
@@ -333,21 +332,21 @@ impl GameState for Editor {
                     points_lines.push(points_lines[1]);
                 }
                 let mesh = Mesh::new_line(ctx, &points_lines, 2., Color::BLUE)?;
-                graphics::draw(ctx, &mesh, DrawParam::default())?;
+                canvas.draw(&mesh, DrawParam::default());
             }
             if enemy.behaviour.cyclical_path {
                 let img = s.assets.get_img(ctx, "common/cyclic");
-                graphics::draw(ctx, &*img, DrawParam::default().offset(point!(0.5, 0.5)).dest(enemy.pl.obj.pos))?;
+                canvas.draw(&*img, DrawParam::default().offset(point!(0.5, 0.5)).dest(enemy.pl.obj.pos));
             }
         }
         for (i, decal) in self.level.decals.iter().enumerate() {
             if let Tool::Selector(Selection{ref decals, ..})= self.current {
                 if decals.contains(&i) {
                     let mesh = Mesh::new_circle(ctx, DrawMode::fill(), decal.obj.pos, 17., 0.5, YELLOW)?;
-                    graphics::draw(ctx, &mesh, DrawParam::default())?;
+                    canvas.draw(&mesh, DrawParam::default());
                 }
             }
-            decal.draw(ctx, &s.assets, Color::WHITE)?;
+            decal.draw(ctx, canvas, &s.assets, Color::WHITE)?;
         }
 
         // Draw init pick-up-ables on top of enemies so they're visible
@@ -355,16 +354,16 @@ impl GameState for Editor {
             if let Tool::Selector(Selection{ref pickups, ..}) = self.current {
                 if pickups.contains(&i) {
                     let mesh = Mesh::new_circle(ctx, DrawMode::fill(), pickup.0, 17., 0.5, YELLOW)?;
-                    graphics::draw(ctx, &mesh, DrawParam::default())?;
+                    canvas.draw(&mesh, DrawParam::default());
                 }
             }
-            PICKUPS[pickup.1 as usize].draw(pickup.0, ctx, &s.assets)?;
+            PICKUPS[pickup.1 as usize].draw(pickup.0, ctx, canvas, &s.assets)?;
         }
         for (i, weapon) in self.level.weapons.iter().enumerate() {
             if let Tool::Selector(Selection{ref weapons, ..}) = self.current {
                 if weapons.contains(&i) {
                     let mesh = Mesh::new_circle(ctx, DrawMode::fill(), weapon.pos, 17., 0.5, YELLOW)?;
-                    graphics::draw(ctx, &mesh, DrawParam::default())?;
+                    canvas.draw(&mesh, DrawParam::default());
                 }
             }
             let drawparams = graphics::DrawParam::default()
@@ -372,7 +371,7 @@ impl GameState for Editor {
                 .offset(point!(0.5, 0.5));
 
             let img = s.assets.get_img(ctx, &weapon.weapon.entity_sprite);
-            graphics::draw(ctx, &*img, drawparams)?;
+            canvas.draw(&*img, drawparams);
         }
 
         // Draw moving objects shadows
@@ -383,7 +382,7 @@ impl GameState for Editor {
             for &i in &selection.enemies {
                 let mut enem = self.level.enemies[i].clone();
                 enem.pl.obj.pos += dist;
-                enem.draw(ctx, &s.assets, TRANS)?;
+                enem.draw(ctx, canvas, &s.assets, TRANS)?;
             }
             for &i in &selection.intels {
                 let drawparams = graphics::DrawParam::default()
@@ -392,12 +391,12 @@ impl GameState for Editor {
                     .color(TRANS);
 
                 let img = s.assets.get_img(ctx, "common/intel");
-                graphics::draw(ctx, &*img, drawparams)?;
+                canvas.draw(&*img, drawparams);
             }
             for &i in &selection.decals {
                 let mut dec = self.level.decals[i].clone();
                 dec.obj.pos += dist;
-                dec.draw(ctx, &s.assets, TRANS)?;
+                dec.draw(ctx, canvas, &s.assets, TRANS)?;
             }
             for &i in &selection.pickups {
                 let pickup = self.level.pickups[i];
@@ -406,7 +405,7 @@ impl GameState for Editor {
                     .offset(point!(0.5, 0.5))
                     .color(TRANS);
                 let img = s.assets.get_img(ctx, PICKUPS[pickup.1 as usize].spr);
-                graphics::draw(ctx, &*img, drawparams)?;
+                canvas.draw(&*img, drawparams);
             }
             for &i in &selection.weapons {
                 let drawparams = graphics::DrawParam::default()
@@ -414,7 +413,7 @@ impl GameState for Editor {
                     .offset(point!(0.5, 0.5))
                     .color(TRANS);
                 let img = s.assets.get_img(ctx, &self.level.weapons[i].weapon.entity_sprite);
-                graphics::draw(ctx, &*img, drawparams)?;
+                canvas.draw(&*img, drawparams);
             }
             if selection.exit {
                 if let Some(exit) = self.level.exit {
@@ -423,14 +422,14 @@ impl GameState for Editor {
                         .offset(point!(0.5, 0.5))
                         .color(TRANS);
                     let img = s.assets.get_img(ctx, "common/goal");
-                    graphics::draw(ctx, &*img, drawparams)?;
+                    canvas.draw(&*img, drawparams);
                 }
             }
         }
 
         Ok(())
     }
-    fn draw_hud(&mut self, s: &State, ctx: &mut Context) -> GameResult<()> {
+    fn draw_hud(&mut self, s: &State, canvas: &mut Canvas, ctx: &mut Context) -> GameResult<()> {
         let drawparams = graphics::DrawParam::default()
             .dest(self.mousepos(s) + s.offset)
             .rotation(0.)
@@ -441,67 +440,69 @@ impl GameState for Editor {
             Tool::Selector(_) => (),
             Tool::Inserter(Insertion::Waypoint(i)) => {
                 let img = s.assets.get_img(ctx, "common/crosshair");
-                graphics::draw(ctx, &*img, drawparams.color(Color::BLUE))?;
+                canvas.draw(&*img, drawparams.color(Color::BLUE));
 
                 let last_waypoint = self.level.enemies[i].behaviour.path.last().copied().unwrap_or_else(|| self.level.enemies[i].pl.obj.pos);
                 let next_pos = self.mousepos(s);
 
                 if last_waypoint != next_pos {
                     let line = Mesh::new_line(ctx, &[self.mousepos(s) + s.offset, last_waypoint + s.offset], 2., Color::BLUE)?;
-                    graphics::draw(ctx, &line, DrawParam::default())?;
+                    canvas.draw(&line, DrawParam::default());
                 }
             }
             Tool::Inserter(Insertion::Material(_)) => (),
             Tool::Inserter(Insertion::Pickup(index)) => {
                 let img = s.assets.get_img(ctx, PICKUPS[index as usize].spr);
-                graphics::draw(ctx, &*img, drawparams)?;
+                canvas.draw(&*img, drawparams);
             }
             Tool::Inserter(Insertion::Weapon(id)) => {
                 let img = s.assets.get_img(ctx, &WEAPONS[id].entity_sprite);
-                graphics::draw(ctx, &*img, drawparams)?;
+                canvas.draw(&*img, drawparams);
             }
             Tool::Inserter(Insertion::Enemy{rot}) => {
                 let img = s.assets.get_img(ctx, "common/enemy");
-                graphics::draw(ctx, &*img, drawparams.rotation(rot))?;
+                canvas.draw(&*img, drawparams.rotation(rot));
             }
             Tool::Inserter(Insertion::Decal{spr, rot}) => {
                 let img = s.assets.get_img(ctx, spr);
-                graphics::draw(ctx, &*img, drawparams.rotation(rot))?;
+                canvas.draw(&*img, drawparams.rotation(rot));
             }
             Tool::Inserter(Insertion::Exit) => {
                 let img = s.assets.get_img(ctx, "common/goal");
-                graphics::draw(ctx, &*img, drawparams)?;
+                canvas.draw(&*img, drawparams);
             }
             Tool::Inserter(Insertion::Intel) => {
                 let img = s.assets.get_img(ctx, "common/intel");
-                graphics::draw(ctx, &*img, drawparams)?;
+                canvas.draw(&*img, drawparams);
             }
         }
 
         let mesh = Mesh::new_rectangle(ctx, DrawMode::fill(), Rect{x:0.,y:0.,h: 64., w: s.width as f32}, Color{r: 0.5, g: 0.5, b: 0.5, a: 1.})?;
-        graphics::draw(ctx, &mesh, DrawParam::default())?;
+        canvas.draw(&mesh, DrawParam::default());
 
         for mat in 0..self.level.palette.len() as u8 {
             let x = START_X + f32::from(mat) * 36.;
 
             if Tool::Inserter(Insertion::Material(mat)) == self.current {
                 let mesh = Mesh::new_rectangle(ctx, DrawMode::fill(), Rect{x: x - 1., y: 15., w: 34., h: 34.}, YELLOW)?;
-                graphics::draw(ctx, &mesh, DrawParam::default())?;
+                canvas.draw(&mesh, DrawParam::default());
             }
-            self.level.palette.draw_mat(mat, ctx, &s.assets, x, 16., DrawParam::default())?;
+            self.level.palette.draw_mat(mat, ctx, canvas, &s.assets, x, 16., DrawParam::default())?;
         }
 
-        self.entities_bar.draw(ctx, s, if let Tool::Inserter(ins) = self.current{Some(ins)}else{None})?;
-        self.extra_bar.draw(ctx, s, if let Tool::Inserter(ins) = self.current{Some(ins)}else{None})?;
+        self.entities_bar.draw(ctx, canvas, s, if let Tool::Inserter(ins) = self.current{Some(ins)}else{None})?;
+        self.extra_bar.draw(ctx, canvas, s, if let Tool::Inserter(ins) = self.current{Some(ins)}else{None})?;
 
-        self.mat_text.draw_text(ctx)?;
-        self.entities_bar.ent_text.draw_text(ctx)?;
-        self.extra_bar.ent_text.draw_text(ctx)
+        self.mat_text.draw_text(canvas);
+        self.entities_bar.ent_text.draw_text(canvas);
+        self.extra_bar.ent_text.draw_text(canvas);
+
+        Ok(())
     }
     #[allow(clippy::cognitive_complexity)]
     fn event_up(&mut self, s: &mut State, ctx: &mut Context, event: Event) {
-        let shift = keyboard::is_mod_active(ctx, KeyMods::SHIFT);
-        let ctrl = keyboard::is_mod_active(ctx, KeyMods::CTRL);
+        let shift = ctx.keyboard.is_mod_active(KeyMods::SHIFT);
+        let ctrl = ctx.keyboard.is_mod_active(KeyMods::CTRL);
 
         use self::KeyCode::*;
         match event {
@@ -595,7 +596,7 @@ impl GameState for Editor {
     fn event_down(&mut self, s: &mut State, ctx: &mut Context, event: Event) {
         use self::KeyCode::*;
 
-        let shift = keyboard::is_mod_active(ctx, KeyMods::SHIFT);
+        let shift = ctx.keyboard.is_mod_active(KeyMods::SHIFT);
         let mousepos = self.mousepos(&s);
 
         match event {
@@ -685,7 +686,7 @@ impl Editor {
                         }
                         selection.moving = None;
                     } else {
-                        if !keyboard::is_mod_active(ctx, KeyMods::CTRL) {
+                        if !ctx.keyboard.is_mod_active(KeyMods::CTRL) {
                             *selection = Selection::default();
                         }
                         for (i, enemy) in self.level.enemies.iter().enumerate() {

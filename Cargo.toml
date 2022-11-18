@@ -2,10 +2,10 @@
 name = "topskud"
 version = "0.1.9"
 authors = ["LFalch <lucas@wasd.dk>"]
-edition = "2018"
+edition = "2021"
 
 [dependencies]
-ggez = "0.7.0"
+ggez = "0.8.1"
 bincode = "1"
 serde_derive = "1"
 serde = "1"
@@ -16,7 +16,7 @@ toml = "0.5"
 lazy_static = "1"
 log = "0.4"
 [dependencies.nalgebra]
-version = "0.30"
+version = "0.31"
 features = ["mint"]
 
 [profile.dev]
