@@ -3,7 +3,7 @@ use crate::{
     io::tex::{Assets, },
 };
 use ggez::{
-    GameResult, Context,
+    Context,
     graphics::{self, Canvas},
 };
 
@@ -31,8 +31,8 @@ impl Pickup {
         (self.pickup_type.ability)(health)
     }
     #[inline]
-    pub fn draw(&self, ctx: &mut Context, canvas: &mut Canvas, assets: &Assets) -> GameResult<()> {
-        self.pickup_type.draw(self.pos, ctx, canvas, assets)
+    pub fn draw(&self, ctx: &mut Context, canvas: &mut Canvas, assets: &Assets) {
+        self.pickup_type.draw(self.pos, ctx, canvas, assets);
     }
 }
 
@@ -44,13 +44,12 @@ pub struct PickupType {
 
 impl PickupType {
     #[inline]
-    pub fn draw(&self, pos: Point2, ctx: &mut Context, canvas: &mut Canvas, assets: &Assets) -> GameResult<()> {
+    pub fn draw(&self, pos: Point2, ctx: &mut Context, canvas: &mut Canvas, assets: &Assets) {
         let drawparams = graphics::DrawParam::default()
             .dest( pos)
             .offset( point!(0.5, 0.5));
         let img = assets.get_img(ctx, self.spr);
         canvas.draw(&*img, drawparams);
-        Ok(())
     }
 }
 

@@ -178,10 +178,10 @@ impl Player {
     }
 
     #[inline]
-    pub fn draw_player(&self, ctx: &mut Context, canvas: &mut Canvas, a: &Assets) -> GameResult<()> {
+    pub fn draw_player(&self, ctx: &mut Context, canvas: &mut Canvas, a: &Assets) {
         self.draw(ctx, canvas, a, "common/player", Color::WHITE)
     }
-    pub fn draw(&self, ctx: &mut Context, canvas: &mut Canvas, a: &Assets, sprite: &str, color: Color) -> GameResult<()> {
+    pub fn draw(&self, ctx: &mut Context, canvas: &mut Canvas, a: &Assets, sprite: &str, color: Color) {
         {
             let hands_sprite = if let Some(wep) = self.wep.get_active() {
                 wep.weapon.hands_sprite

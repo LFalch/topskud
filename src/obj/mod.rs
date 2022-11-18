@@ -1,6 +1,5 @@
 use crate::util::{Vector2, Point2};
 
-use ggez::{GameResult};
 use ggez::graphics::{self, Image, Color, Canvas};
 // use ggez::nalgebra as na;
 
@@ -48,10 +47,9 @@ impl Object {
             .offset(point!(0.5, 0.5))
     }
     /// Draw the object
-    pub fn draw(&self, canvas: &mut Canvas, img: &Image, color: Color) -> GameResult<()> {
+    pub fn draw(&self, canvas: &mut Canvas, img: &Image, color: Color) {
         let drawparams = self.drawparams().color(color);
         canvas.draw(img, drawparams);
-        Ok(())
     }
     pub fn is_on_solid(&self, pal: &Palette, grid: &Grid) -> bool {
         let (x, y) = Grid::snap(self.pos);

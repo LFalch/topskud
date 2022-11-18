@@ -53,11 +53,11 @@ impl Grenade {
         health.weapon_damage(if high { 105.} else {55.}, 0.85);
     }
     #[inline]
-    pub fn draw(&self, ctx: &mut Context, canvas: &mut Canvas, a: &Assets) -> GameResult<()> {
+    pub fn draw(&self, ctx: &mut Context, canvas: &mut Canvas, a: &Assets) {
         match &self.state {
             GrenadeState::Fused{..} => {
                 let img = a.get_img(ctx, "weapons/pineapple");
-                self.obj.draw(canvas, &*img, Color::WHITE)?;
+                self.obj.draw(canvas, &*img, Color::WHITE);
             }
             GrenadeState::Explosion { mesh, alive_time } => {
                 const EXPANDING_TIME: f32 = 0.1;
@@ -76,7 +76,6 @@ impl Grenade {
                 canvas.draw_textured_mesh(mesh.clone(), image, dp);
             }
         }
-        Ok(())
     }
     fn make_mesh(&self, ctx: &mut Context, palette: &Palette, grid: &Grid) -> Mesh {
         const NUM_VERTICES: u32 = 120;

@@ -388,7 +388,7 @@ impl GameState for Play {
     }
 
     fn draw(&mut self, s: &State, canvas: &mut Canvas, ctx: &mut Context) -> GameResult<()> {
-        self.world.grid.draw(&self.world.palette, ctx, canvas, &s.assets)?;
+        self.world.grid.draw(&self.world.palette, ctx, canvas, &s.assets);
 
         self.holes.draw(canvas, DrawParam::default());
 
@@ -400,7 +400,7 @@ impl GameState for Play {
             canvas.draw(&*img, drawparams);
         }
         for decal in &self.world.decals {
-            decal.draw(ctx, canvas, &s.assets, Color::WHITE)?;
+            decal.draw(ctx, canvas, &s.assets, Color::WHITE);
         }
 
         for pickup in &self.world.pickups {
@@ -418,16 +418,16 @@ impl GameState for Play {
             canvas.draw(&*img, drawparams);
         }
 
-        self.world.player.draw_player(ctx, canvas, &s.assets)?;
+        self.world.player.draw_player(ctx, canvas, &s.assets);
 
         for enemy in &self.world.enemies {
-            enemy.draw(ctx, canvas, &s.assets, Color::WHITE)?;
+            enemy.draw(ctx, canvas, &s.assets, Color::WHITE);
         }
         for bullet in &self.world.bullets {
-            bullet.draw(ctx, canvas, &s.assets)?;
+            bullet.draw(ctx, canvas, &s.assets);
         }
         for grenade in &self.world.grenades {
-            grenade.draw(ctx, canvas, &s.assets)?;
+            grenade.draw(ctx, canvas, &s.assets);
         }
 
         Ok(())

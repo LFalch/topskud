@@ -2,7 +2,7 @@ use crate::{
     io::tex::Assets,
     util::{Point2, sstr, Sstr},
 };
-use ggez::{graphics::{self, Image, Canvas}, Context, GameResult};
+use ggez::{graphics::{self, Image, Canvas}, Context};
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 use std::sync::RwLock;
@@ -108,7 +108,7 @@ impl Palette {
             materials: mats.into_boxed_slice(),
         }
     }
-    pub fn draw_mat(&self, i: u8, ctx: &mut Context, canvas: &mut Canvas, assets: &Assets, x: f32, y: f32, mut dp: graphics::DrawParam) -> GameResult<()> {
+    pub fn draw_mat(&self, i: u8, ctx: &mut Context, canvas: &mut Canvas, assets: &Assets, x: f32, y: f32, mut dp: graphics::DrawParam) {
         let mat = self.materials[i as usize];
 
         match &mut dp.transform {
@@ -118,7 +118,6 @@ impl Palette {
 
         let img = get_img(ctx, assets, mat);
         canvas.draw(&*img, dp);
-        Ok(())
     }
     pub fn is_solid(&self, i: u8) -> bool {
         is_solid(self.materials[i as usize])

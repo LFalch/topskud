@@ -96,8 +96,8 @@ impl Enemy {
         Ok(())
     }
     #[inline]
-    pub fn draw(&self, ctx: &mut Context, canvas: &mut Canvas, a: &Assets, color: Color) -> GameResult<()> {
-        self.pl.draw(ctx, canvas, a, "common/enemy", color)
+    pub fn draw(&self, ctx: &mut Context, canvas: &mut Canvas, a: &Assets, color: Color) {
+        self.pl.draw(ctx, canvas, a, "common/enemy", color);
     }
     /// Look in the direction of a given vector
     /// ### Returns
