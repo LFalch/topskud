@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 use std::cell::{RefCell, Ref};
+use std::ops::{RangeBounds, Bound};
 
-use crate::util::{Point2, Vector2};
+use crate::util::{Point2, Vector2, TRANS};
 
 use ggez::context::Has;
 use ggez::{Context, GameResult, GameError};
@@ -9,10 +10,11 @@ use ggez::graphics::{Canvas, Image, Text, TextFragment, Drawable, DrawParam, Gra
 
 /// All the assets
 pub struct Assets {
-    texes: RefCell<HashMap<String, Image>>,
+    pre_load_img: Image,
+    texes: RefCell<HashMap<Box<str>, Image>>,
+    load_queue: RefCell<Vec<Box<str>>>,
 }
 
-const MISSING_TEXTURE: &str = "materials/missing";
 const FONT_PATH: &str = "droidsansmono";
 
 impl Assets {
@@ -21,24 +23,73 @@ impl Assets {
         let font_data = FontData::from_path(ctx, "/common/DroidSansMono.ttf")?;
         ctx.gfx.add_font("droidsansmono", font_data);
         Ok(Assets {
+            pre_load_img: Image::from_solid(ctx, 1, TRANS),
             texes: RefCell::new(HashMap::with_capacity(64)),
+            load_queue: RefCell::new(Vec::with_capacity(8)),
         })
     }
     /// Gets the `Image` to draw from the sprite
+    /// 
+    /// ## Note
+    /// 
+    /// The return value might be tentative, if you need the image to be useful use `get_or_load_img`
     #[inline]
-    pub fn get_img(&self, ctx: &mut Context, s: &str) -> Ref<Image> {
+    pub fn get_img(&self, s: &str) -> Ref<Image> {
+        self.check_and_queue(s);
+        Ref::map(self.texes.borrow(), |ts| &ts[s])
+    }
+    /// Gets the `Image` to draw from sprite name but makes sure it's fully loaded.
+    /// This is neccesary if you're storing the Image someplace e.g. in an InstanceArray.
+    pub fn get_or_load_img(&self, gfx: &impl Has<GraphicsContext>, s: &str) -> GameResult<Ref<Image>> {
+        self.check_and_queue(s);
+
+        // If the texture name is in the load queue, process the load queue now
+        let i = self.load_queue.borrow().iter().position(|t| &**t == s);
+        // NOTE: This needs to be assigned here, otherwise the borrow of load_queue lives on in if statement
+        if let Some(i) = i {
+            self.inner_process_queue(gfx, i..=i)?;
+        }
+
+        Ok(self.get_img(s))
+    }
+
+    #[inline(always)]
+    pub fn process_queue(&mut self, gfx: &impl Has<GraphicsContext>) -> GameResult<()> {
+        self.inner_process_queue(gfx, ..)
+    }
+
+    /// Queues texture if unloaded
+    fn check_and_queue(&self, s: &str) {
         if !self.texes.borrow().contains_key(s) {
-            if let Ok(tex) = Image::from_path(ctx, &format!("/{}.png", s)) {
-                self.texes.borrow_mut().insert(s.to_owned(), tex);
-            } else if s != MISSING_TEXTURE {
-                let img = self.get_img(ctx, MISSING_TEXTURE).clone();
-                error!("Couldn't find texture {}. Loading default instead.", s);
-                self.texes.borrow_mut().insert(s.to_owned(), img);
-            } else {
-                panic!("Missing texture not found");
+            self.load_queue.borrow_mut().push(Box::from(s));
+            self.texes.borrow_mut().insert(Box::from(s), self.pre_load_img.clone());
+        }
+    }
+
+    fn inner_process_queue<R: RangeBounds<usize>>(&self, gfx: &impl Has<GraphicsContext>, range: R) -> GameResult<()> {
+        #[cfg(debug_assertions)]
+        if !self.load_queue.borrow().is_empty() {
+            let queue = self.load_queue.borrow();
+            match (range.start_bound(), range.end_bound()) {
+                (Bound::Unbounded, Bound::Unbounded) => debug!("Loading queue (#{} / {}): {:?}", queue.len(), queue.capacity(), queue),
+                (Bound::Included(&s), Bound::Included(&e)) => debug!("Loading part {:?} of queue: {:?}", s..=e, &queue[s..=e]),
+                _ => (),
             }
         }
-        Ref::map(self.texes.borrow(), |ts| &ts[s])
+
+        for name in self.load_queue.borrow_mut().drain(range) {
+            let img = match Image::from_path(gfx, &format!("/{name}.png")) {
+                Ok(tex) => tex,
+                Err(GameError::ResourceNotFound(_, _)) => {
+                    error!("Couldn't find texture {}. Loading default instead.", name);
+                    Image::from_bytes(gfx, include_bytes!("../../resources/materials/missing.png"))?
+                }
+                Err(e) => return Err(e),
+            };
+
+            self.texes.borrow_mut().insert(name, img);
+        }
+        Ok(())
     }
 }
 

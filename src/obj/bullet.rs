@@ -1,4 +1,4 @@
-use ggez::{Context, graphics::{Color, Canvas}};
+use ggez::graphics::{Color, Canvas};
 
 use crate::{
     util::{Vector2},
@@ -24,8 +24,8 @@ impl Bullet<'_> {
         health.weapon_damage(dmg, self.weapon.penetration);
     }
     #[inline]
-    pub fn draw(&self, ctx: &mut Context, canvas: &mut Canvas, a: &Assets) {
-        let img = a.get_img(ctx, self.weapon.get_bullet_spr());
+    pub fn draw(&self, canvas: &mut Canvas, a: &Assets) {
+        let img = a.get_img(self.weapon.get_bullet_spr());
         self.obj.draw(canvas, &*img, Color::WHITE)
     }
     pub fn update(&mut self, palette: &Palette, grid: &Grid, player: &mut Player, enemies: &mut [Enemy]) -> Hit {

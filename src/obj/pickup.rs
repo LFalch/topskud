@@ -2,10 +2,7 @@ use crate::{
     util::Point2,
     io::tex::{Assets, },
 };
-use ggez::{
-    Context,
-    graphics::{self, Canvas},
-};
+use ggez::graphics::{self, Canvas};
 
 use std::fmt::{self, Debug};
 
@@ -31,8 +28,8 @@ impl Pickup {
         (self.pickup_type.ability)(health)
     }
     #[inline]
-    pub fn draw(&self, ctx: &mut Context, canvas: &mut Canvas, assets: &Assets) {
-        self.pickup_type.draw(self.pos, ctx, canvas, assets);
+    pub fn draw(&self, canvas: &mut Canvas, assets: &Assets) {
+        self.pickup_type.draw(self.pos, canvas, assets);
     }
 }
 
@@ -44,11 +41,11 @@ pub struct PickupType {
 
 impl PickupType {
     #[inline]
-    pub fn draw(&self, pos: Point2, ctx: &mut Context, canvas: &mut Canvas, assets: &Assets) {
+    pub fn draw(&self, pos: Point2, canvas: &mut Canvas, assets: &Assets) {
         let drawparams = graphics::DrawParam::default()
             .dest( pos)
             .offset( point!(0.5, 0.5));
-        let img = assets.get_img(ctx, self.spr);
+        let img = assets.get_img(self.spr);
         canvas.draw(&*img, drawparams);
     }
 }

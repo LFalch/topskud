@@ -2,7 +2,7 @@ use crate::{
     io::tex::Assets,
     util::{Point2, sstr, Sstr},
 };
-use ggez::{graphics::{self, Image, Canvas}, Context};
+use ggez::graphics::{self, Image, Canvas};
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 use std::sync::RwLock;
@@ -51,10 +51,10 @@ pub fn is_solid(mat: &str) -> bool {
 }
 
 #[inline]
-pub fn get_img<'a>(ctx: &mut Context, assets: &'a Assets, mat: &str) -> Ref<'a, Image> {
+pub fn get_img<'a>(assets: &'a Assets, mat: &str) -> Ref<'a, Image> {
     ensure(mat);
 
-    assets.get_img(ctx, &MATS.read().unwrap()[mat].spr)
+    assets.get_img(&MATS.read().unwrap()[mat].spr)
 }
 
 #[derive(Debug, Clone)]
@@ -108,7 +108,7 @@ impl Palette {
             materials: mats.into_boxed_slice(),
         }
     }
-    pub fn draw_mat(&self, i: u8, ctx: &mut Context, canvas: &mut Canvas, assets: &Assets, x: f32, y: f32, mut dp: graphics::DrawParam) {
+    pub fn draw_mat(&self, i: u8, canvas: &mut Canvas, assets: &Assets, x: f32, y: f32, mut dp: graphics::DrawParam) {
         let mat = self.materials[i as usize];
 
         match &mut dp.transform {
@@ -116,7 +116,7 @@ impl Palette {
             _ => panic!("Oopsie"),
         }
 
-        let img = get_img(ctx, assets, mat);
+        let img = get_img(assets, mat);
         canvas.draw(&*img, dp);
     }
     pub fn is_solid(&self, i: u8) -> bool {

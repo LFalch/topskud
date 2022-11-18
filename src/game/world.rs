@@ -13,7 +13,7 @@ use crate::{
     }
 };
 use ggez::{
-    Context, GameResult,
+    GameResult,
     error::GameError, graphics::Canvas,
 };
 
@@ -471,12 +471,12 @@ impl Grid {
     pub fn dist_line_circle(line_start: Point2, line_dist: Vector2, circle_center: Point2) -> f32 {
         Self::distance_line_circle(line_start, line_dist, circle_center).norm()
     }
-    pub fn draw(&self, pal: &Palette, ctx: &mut Context, canvas: &mut Canvas, assets: &Assets) {
+    pub fn draw(&self, pal: &Palette, canvas: &mut Canvas, assets: &Assets) {
         for (i, &mat) in self.mats.iter().enumerate() {
             let x = f32::from(i as u16 % self.width) * 32.;
             let y = f32::from(i as u16 / self.width) * 32.;
 
-            pal.draw_mat(mat, ctx, canvas, assets, x, y, Default::default());
+            pal.draw_mat(mat, canvas, assets, x, y, Default::default());
         }
     }
 }

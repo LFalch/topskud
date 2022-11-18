@@ -178,10 +178,10 @@ impl Player {
     }
 
     #[inline]
-    pub fn draw_player(&self, ctx: &mut Context, canvas: &mut Canvas, a: &Assets) {
-        self.draw(ctx, canvas, a, "common/player", Color::WHITE)
+    pub fn draw_player(&self, canvas: &mut Canvas, a: &Assets) {
+        self.draw(canvas, a, "common/player", Color::WHITE)
     }
-    pub fn draw(&self, ctx: &mut Context, canvas: &mut Canvas, a: &Assets, sprite: &str, color: Color) {
+    pub fn draw(&self, canvas: &mut Canvas, a: &Assets, sprite: &str, color: Color) {
         {
             let hands_sprite = if let Some(wep) = self.wep.get_active() {
                 wep.weapon.hands_sprite
@@ -192,10 +192,10 @@ impl Player {
             let dp = self.obj.drawparams()
                 .dest(self.obj.pos+angle_to_vec(self.obj.rot)*16.)
                 .color(color);
-            let img = a.get_img(ctx, hands_sprite);
+            let img = a.get_img(hands_sprite);
             canvas.draw(&*img, dp);
         }
-        let img = a.get_img(ctx, sprite);
+        let img = a.get_img(sprite);
         self.obj.draw(canvas, &*img, color)
     }
     pub fn update(&mut self, ctx: &mut Context, mplayer: &mut MediaPlayer) -> GameResult<()> {

@@ -363,6 +363,9 @@ impl EventHandler for Master {
 
     // Draws everything
     fn draw(&mut self, ctx: &mut Context) -> GameResult<()> {
+        // Load any new assets
+        self.state.assets.process_queue(ctx)?;
+
         // Clear the screen first
         let mut canvas = graphics::Canvas::from_frame(ctx, Some((33, 33, 255, 255).into()));
 

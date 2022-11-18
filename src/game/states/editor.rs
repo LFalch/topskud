@@ -142,7 +142,7 @@ impl InsertionBar {
                     canvas.draw(&mesh, DrawParam::default());
                 }
             }
-            let img = s.assets.get_img(ctx, ins.get_spr());
+            let img = s.assets.get_img(ins.get_spr());
             canvas.draw(&*img, drawparams);
             dest.x += 34.; 
             drawparams = drawparams.dest(dest);
@@ -264,20 +264,20 @@ impl GameState for Editor {
 
     #[allow(clippy::cognitive_complexity)]
     fn draw(&mut self, s: &State, canvas: &mut Canvas, ctx: &mut Context) -> GameResult<()> {
-        self.level.grid.draw(&self.level.palette, ctx, canvas, &s.assets);
+        self.level.grid.draw(&self.level.palette, canvas, &s.assets);
 
         if let Tool::Inserter(Insertion::Material(mat)) = self.current {
             let (x, y) = Grid::snap(s.mouse-s.offset);
             let x = f32::from(x) * 32.;
             let y = f32::from(y) * 32.;
-            self.level.palette.draw_mat(mat, ctx, canvas, &s.assets, x, y, graphics::DrawParam {
+            self.level.palette.draw_mat(mat, canvas, &s.assets, x, y, graphics::DrawParam {
                 color: TRANS,
                 .. Default::default()
             });
         }
 
         if let Some(start) = self.level.start_point {
-            let img = s.assets.get_img(ctx, "common/start");
+            let img = s.assets.get_img("common/start");
             canvas.draw(&*img, graphics::DrawParam::default()
                 .dest(start)
                 .offset(point!(0.5, 0.5)));
@@ -290,7 +290,7 @@ impl GameState for Editor {
             let drawparams = graphics::DrawParam::default()
                 .dest(exit)
                 .offset(point!(0.5, 0.5));
-            let img = s.assets.get_img(ctx, "common/goal");
+            let img = s.assets.get_img("common/goal");
             canvas.draw(&*img, drawparams);
         }
 
@@ -305,7 +305,7 @@ impl GameState for Editor {
                 .dest(intel)
                 .offset(point!(0.5, 0.5));
 
-            let img = s.assets.get_img(ctx, "common/intel");
+            let img = s.assets.get_img("common/intel");
             canvas.draw(&*img, drawparams);
         }
 
@@ -321,9 +321,9 @@ impl GameState for Editor {
             }
             let mut points_lines = vec![enemy.pl.obj.pos];
             
-            enemy.draw(ctx, canvas, &s.assets, Color::WHITE);
+            enemy.draw(canvas, &s.assets, Color::WHITE);
             for &waypoint in &enemy.behaviour.path {
-                let img = s.assets.get_img(ctx, "common/crosshair");
+                let img = s.assets.get_img("common/crosshair");
                 canvas.draw(&*img, DrawParam::default().offset(point!(0.5, 0.5)).dest(waypoint).color(Color::YELLOW));
                 points_lines.push(waypoint);
             }
@@ -335,7 +335,7 @@ impl GameState for Editor {
                 canvas.draw(&mesh, DrawParam::default());
             }
             if enemy.behaviour.cyclical_path {
-                let img = s.assets.get_img(ctx, "common/cyclic");
+                let img = s.assets.get_img("common/cyclic");
                 canvas.draw(&*img, DrawParam::default().offset(point!(0.5, 0.5)).dest(enemy.pl.obj.pos));
             }
         }
@@ -346,7 +346,7 @@ impl GameState for Editor {
                     canvas.draw(&mesh, DrawParam::default());
                 }
             }
-            decal.draw(ctx, canvas, &s.assets, Color::WHITE);
+            decal.draw(canvas, &s.assets, Color::WHITE);
         }
 
         // Draw init pick-up-ables on top of enemies so they're visible
@@ -357,7 +357,7 @@ impl GameState for Editor {
                     canvas.draw(&mesh, DrawParam::default());
                 }
             }
-            PICKUPS[pickup.1 as usize].draw(pickup.0, ctx, canvas, &s.assets);
+            PICKUPS[pickup.1 as usize].draw(pickup.0, canvas, &s.assets);
         }
         for (i, weapon) in self.level.weapons.iter().enumerate() {
             if let Tool::Selector(Selection{ref weapons, ..}) = self.current {
@@ -370,7 +370,7 @@ impl GameState for Editor {
                 .dest(weapon.pos)
                 .offset(point!(0.5, 0.5));
 
-            let img = s.assets.get_img(ctx, &weapon.weapon.entity_sprite);
+            let img = s.assets.get_img(&weapon.weapon.entity_sprite);
             canvas.draw(&*img, drawparams);
         }
 
@@ -382,7 +382,7 @@ impl GameState for Editor {
             for &i in &selection.enemies {
                 let mut enem = self.level.enemies[i].clone();
                 enem.pl.obj.pos += dist;
-                enem.draw(ctx, canvas, &s.assets, TRANS);
+                enem.draw(canvas, &s.assets, TRANS);
             }
             for &i in &selection.intels {
                 let drawparams = graphics::DrawParam::default()
@@ -390,13 +390,13 @@ impl GameState for Editor {
                     .offset(point!(0.5, 0.5))
                     .color(TRANS);
 
-                let img = s.assets.get_img(ctx, "common/intel");
+                let img = s.assets.get_img("common/intel");
                 canvas.draw(&*img, drawparams);
             }
             for &i in &selection.decals {
                 let mut dec = self.level.decals[i].clone();
                 dec.obj.pos += dist;
-                dec.draw(ctx, canvas, &s.assets, TRANS);
+                dec.draw(canvas, &s.assets, TRANS);
             }
             for &i in &selection.pickups {
                 let pickup = self.level.pickups[i];
@@ -404,7 +404,7 @@ impl GameState for Editor {
                     .dest(pickup.0 + dist)
                     .offset(point!(0.5, 0.5))
                     .color(TRANS);
-                let img = s.assets.get_img(ctx, PICKUPS[pickup.1 as usize].spr);
+                let img = s.assets.get_img(PICKUPS[pickup.1 as usize].spr);
                 canvas.draw(&*img, drawparams);
             }
             for &i in &selection.weapons {
@@ -412,7 +412,7 @@ impl GameState for Editor {
                     .dest(self.level.weapons[i].pos + dist)
                     .offset(point!(0.5, 0.5))
                     .color(TRANS);
-                let img = s.assets.get_img(ctx, &self.level.weapons[i].weapon.entity_sprite);
+                let img = s.assets.get_img(&self.level.weapons[i].weapon.entity_sprite);
                 canvas.draw(&*img, drawparams);
             }
             if selection.exit {
@@ -421,7 +421,7 @@ impl GameState for Editor {
                         .dest(exit + dist)
                         .offset(point!(0.5, 0.5))
                         .color(TRANS);
-                    let img = s.assets.get_img(ctx, "common/goal");
+                    let img = s.assets.get_img("common/goal");
                     canvas.draw(&*img, drawparams);
                 }
             }
@@ -439,7 +439,7 @@ impl GameState for Editor {
         match self.current {
             Tool::Selector(_) => (),
             Tool::Inserter(Insertion::Waypoint(i)) => {
-                let img = s.assets.get_img(ctx, "common/crosshair");
+                let img = s.assets.get_img("common/crosshair");
                 canvas.draw(&*img, drawparams.color(Color::BLUE));
 
                 let last_waypoint = self.level.enemies[i].behaviour.path.last().copied().unwrap_or_else(|| self.level.enemies[i].pl.obj.pos);
@@ -452,27 +452,27 @@ impl GameState for Editor {
             }
             Tool::Inserter(Insertion::Material(_)) => (),
             Tool::Inserter(Insertion::Pickup(index)) => {
-                let img = s.assets.get_img(ctx, PICKUPS[index as usize].spr);
+                let img = s.assets.get_img(PICKUPS[index as usize].spr);
                 canvas.draw(&*img, drawparams);
             }
             Tool::Inserter(Insertion::Weapon(id)) => {
-                let img = s.assets.get_img(ctx, &WEAPONS[id].entity_sprite);
+                let img = s.assets.get_img(&WEAPONS[id].entity_sprite);
                 canvas.draw(&*img, drawparams);
             }
             Tool::Inserter(Insertion::Enemy{rot}) => {
-                let img = s.assets.get_img(ctx, "common/enemy");
+                let img = s.assets.get_img("common/enemy");
                 canvas.draw(&*img, drawparams.rotation(rot));
             }
             Tool::Inserter(Insertion::Decal{spr, rot}) => {
-                let img = s.assets.get_img(ctx, spr);
+                let img = s.assets.get_img(spr);
                 canvas.draw(&*img, drawparams.rotation(rot));
             }
             Tool::Inserter(Insertion::Exit) => {
-                let img = s.assets.get_img(ctx, "common/goal");
+                let img = s.assets.get_img("common/goal");
                 canvas.draw(&*img, drawparams);
             }
             Tool::Inserter(Insertion::Intel) => {
-                let img = s.assets.get_img(ctx, "common/intel");
+                let img = s.assets.get_img("common/intel");
                 canvas.draw(&*img, drawparams);
             }
         }
@@ -487,7 +487,7 @@ impl GameState for Editor {
                 let mesh = Mesh::new_rectangle(ctx, DrawMode::fill(), Rect{x: x - 1., y: 15., w: 34., h: 34.}, YELLOW)?;
                 canvas.draw(&mesh, DrawParam::default());
             }
-            self.level.palette.draw_mat(mat, ctx, canvas, &s.assets, x, 16., DrawParam::default());
+            self.level.palette.draw_mat(mat, canvas, &s.assets, x, 16., DrawParam::default());
         }
 
         self.entities_bar.draw(ctx, canvas, s, if let Tool::Inserter(ins) = self.current{Some(ins)}else{None})?;

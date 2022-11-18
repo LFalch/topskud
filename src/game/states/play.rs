@@ -80,7 +80,7 @@ impl Play {
             player = player.with_health(h).with_weapon(w);
         };
 
-        let hole_img = s.assets.get_img(ctx, "common/hole").clone();
+        let hole_img = s.assets.get_or_load_img(ctx, "common/hole")?.clone();
 
         Ok(Box::new(
             Play {
@@ -387,8 +387,8 @@ impl GameState for Play {
         Ok(())
     }
 
-    fn draw(&mut self, s: &State, canvas: &mut Canvas, ctx: &mut Context) -> GameResult<()> {
-        self.world.grid.draw(&self.world.palette, ctx, canvas, &s.assets);
+    fn draw(&mut self, s: &State, canvas: &mut Canvas, _ctx: &mut Context) -> GameResult<()> {
+        self.world.grid.draw(&self.world.palette, canvas, &s.assets);
 
         self.holes.draw(canvas, DrawParam::default());
 
@@ -396,38 +396,38 @@ impl GameState for Play {
             let drawparams = graphics::DrawParam::default()
                 .dest(intel)
                 .offset(point!(0.5, 0.5));
-            let img = s.assets.get_img(ctx, "common/intel");
+            let img = s.assets.get_img("common/intel");
             canvas.draw(&*img, drawparams);
         }
         for decal in &self.world.decals {
-            decal.draw(ctx, canvas, &s.assets, Color::WHITE);
+            decal.draw(canvas, &s.assets, Color::WHITE);
         }
 
         for pickup in &self.world.pickups {
             let drawparams = graphics::DrawParam::default()
                 .dest(pickup.pos)
                 .offset(point!(0.5, 0.5));
-            let img = s.assets.get_img(ctx, pickup.pickup_type.spr);
+            let img = s.assets.get_img(pickup.pickup_type.spr);
             canvas.draw(&*img, drawparams);
         }
         for wep in &self.world.weapons {
             let drawparams = graphics::DrawParam::default()
                 .dest(wep.pos)
                 .offset(point!(0.5, 0.5));
-            let img = s.assets.get_img(ctx, &wep.weapon.entity_sprite);
+            let img = s.assets.get_img(&wep.weapon.entity_sprite);
             canvas.draw(&*img, drawparams);
         }
 
-        self.world.player.draw_player(ctx, canvas, &s.assets);
+        self.world.player.draw_player(canvas, &s.assets);
 
         for enemy in &self.world.enemies {
-            enemy.draw(ctx, canvas, &s.assets, Color::WHITE);
+            enemy.draw(canvas, &s.assets, Color::WHITE);
         }
         for bullet in &self.world.bullets {
-            bullet.draw(ctx, canvas, &s.assets);
+            bullet.draw(canvas, &s.assets);
         }
         for grenade in &self.world.grenades {
-            grenade.draw(ctx, canvas, &s.assets);
+            grenade.draw(canvas, &s.assets);
         }
 
         Ok(())
@@ -443,22 +443,22 @@ impl GameState for Play {
 
         {
             let drawparams = DrawParam::from(point![104., 2.]);
-            let img = s.assets.get_img(ctx, "weapons/knife");
+            let img = s.assets.get_img("weapons/knife");
             canvas.draw(&*img, drawparams);
         }
         if let Some(holster_wep) = &self.world.player.wep.holster {
             let drawparams = DrawParam::from(point![137., 2.]);
-            let img = s.assets.get_img(ctx, &holster_wep.weapon.entity_sprite);
+            let img = s.assets.get_img(&holster_wep.weapon.entity_sprite);
             canvas.draw(&*img, drawparams);
         }
         if let Some(holster_wep) = &self.world.player.wep.holster2 {
             let drawparams = DrawParam::from(point![104., 35.]);
-            let img = s.assets.get_img(ctx, &holster_wep.weapon.entity_sprite);
+            let img = s.assets.get_img(&holster_wep.weapon.entity_sprite);
             canvas.draw(&*img, drawparams);
         }
         if let Some(sling_wep) = &self.world.player.wep.sling {
             let drawparams = DrawParam::from(point![153., 35.]).offset(point!(0.5, 0.));
-            let img = s.assets.get_img(ctx, &sling_wep.weapon.entity_sprite);
+            let img = s.assets.get_img(&sling_wep.weapon.entity_sprite);
             canvas.draw(&*img, drawparams);
         }
         let selection = Mesh::new_rectangle(ctx, DrawMode::stroke(2.), RECTS[self.world.player.wep.active as u8 as usize], Color{r: 1., g: 1., b: 0., a: 1.})?;
@@ -468,7 +468,7 @@ impl GameState for Play {
             .dest(s.mouse)
             .offset(point!(0.5, 0.5))
             .color(RED);
-        let img = s.assets.get_img(ctx, "common/crosshair");
+        let img = s.assets.get_img("common/crosshair");
         canvas.draw(&*img, drawparams);
         Ok(())
     }

@@ -2,7 +2,7 @@ use crate::{
     util::Sstr,
     io::tex::{Assets, },
 };
-use ggez::{Context, graphics::{Color, Canvas}};
+use ggez::graphics::{Color, Canvas};
 
 use super::Object;
 
@@ -57,8 +57,8 @@ impl Decal {
         }
     }
     #[inline]
-    pub fn draw(&self, ctx: &mut Context, canvas: &mut Canvas, a: &Assets, color: Color) {
-        let img = a.get_img(ctx, &self.spr);
+    pub fn draw(&self, canvas: &mut Canvas, a: &Assets, color: Color) {
+        let img = a.get_img(&self.spr);
         self.obj.draw(canvas, &*img, color);
     }
 }
