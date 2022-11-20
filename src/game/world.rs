@@ -1,5 +1,5 @@
 use crate::{
-    util::{Point2, Vector2, sstr},
+    util::{Point2, Vector2, sstr, iterate_and_kill_one},
     io::tex::Assets,
     obj::{
         player::{Player, WepSlots},
@@ -46,29 +46,21 @@ pub struct World {
 impl World {
     pub fn enemy_pickup(&mut self) {
         for enemy in &mut self.enemies {
-            let mut dead = None;
-            for (w, weapon) in self.weapons.iter().enumerate() {
-                if (weapon.pos - enemy.pl.obj.pos).norm() <= 16. {
-                    dead = Some(w);
-                    break;
-                }
-            }
-            if let Some(i) = dead {
-                let weapon_slot = enemy.pl.wep.insert(&self.weapons[i].weapon);
+            let picked_up = iterate_and_kill_one(&mut self.weapons, |wd| {
+                (wd.pos - enemy.pl.obj.pos).norm() <= 16.
+            });
+            if let Some(wep_drop) = picked_up {
+                let weapon_slot = enemy.pl.wep.insert(&wep_drop.weapon);
 
                 if weapon_slot.is_none() {
-                    *weapon_slot = Some(WeaponInstance::from_drop(self.weapons.remove(i)));
+                    *weapon_slot = Some(WeaponInstance::from_drop(wep_drop));
                 }
             }
-            let mut deads = Vec::new();
-            for (p, pickup) in self.pickups.iter().enumerate() {
-                if (pickup.pos - enemy.pl.obj.pos).norm() <= 16. {
-                    deads.push(p);
-                    break;
-                }
-            }
-            for i in deads.into_iter() {
-                let pickup = self.pickups.remove(i);
+
+            let pickup = iterate_and_kill_one(&mut self.pickups, |pickup| {
+                (pickup.pos - enemy.pl.obj.pos).norm() <= 16.
+            });
+            if let Some(pickup) = pickup {
                 let _action_done = pickup.apply(&mut enemy.pl.health);
             }
             enemy.pl.wep.init_active();
@@ -77,31 +69,22 @@ impl World {
     pub fn player_pickup(&mut self) {
         let player = &mut self.player;
         {
-            let mut deads = vec![];
-            for (w, weapon) in self.weapons.iter().enumerate() {
-                if (weapon.pos - player.obj.pos).norm() <= 16. {
-                    deads.push(w);
-                    break;
-                }
-            }
-            for i in deads {
-                let weapon_slot = player.wep.insert(&self.weapons[i].weapon);
+            let picked_up = iterate_and_kill_one(&mut self.weapons, |wd| {
+                (wd.pos - player.obj.pos).norm() <= 16.
+            });
+            if let Some(wep_drop) = picked_up {
+                let weapon_slot = player.wep.insert(&wep_drop.weapon);
 
                 if weapon_slot.is_none() {
-                    *weapon_slot = Some(WeaponInstance::from_drop(self.weapons.remove(i)));
+                    *weapon_slot = Some(WeaponInstance::from_drop(wep_drop));
                 }
             }
         }
 
-        let mut deads = Vec::new();
-        for (p, pickup) in self.pickups.iter().enumerate() {
-            if (pickup.pos - player.obj.pos).norm() <= 16. {
-                deads.push(p);
-                break;
-            }
-        }
-        for i in deads.into_iter() {
-            let pickup = self.pickups.remove(i);
+        let pickup = iterate_and_kill_one(&mut self.pickups, |pickup| {
+            (pickup.pos - player.obj.pos).norm() <= 16.
+        });
+        if let Some(pickup) = pickup {
             let _action_done = pickup.apply(&mut player.health);
         }
         player.wep.init_active();

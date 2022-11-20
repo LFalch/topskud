@@ -4,7 +4,7 @@ use crate::{
     util::{
         BLUE, GREEN, RED,
         angle_to_vec, angle_from_vec,
-        ver, hor,
+        ver, hor, iterate_and_kill_afterwards, iterate_and_kill_afterwards_mut, iterate_and_kill_one_mut,
     },
     io::tex::PosText,
     obj::{
@@ -144,11 +144,10 @@ impl GameState for Play {
             self.status_text.update(0, "")?;
         }
 
-        let mut deads = Vec::new();
-        for (i, grenade) in self.world.grenades.iter_mut().enumerate().rev() {
+        iterate_and_kill_afterwards_mut(&mut self.world.grenades, |grenade| {
             let g_update = grenade.update(ctx, &self.world.palette, &self.world.grid, &mut self.world.player, &mut *self.world.enemies)?;
 
-            match g_update {
+            Ok(match g_update {
                 GrenadeUpdate::Explosion{player_hit, enemy_hits} => {
                     s.mplayer.play(ctx, "boom")?;
 
@@ -190,21 +189,17 @@ impl GameState for Play {
                             s.mplayer.play(ctx, "hurt")?;
                         }
                     }
+                    false
                 }
-                GrenadeUpdate::Dead => {
-                    deads.push(i);
-                }
-                GrenadeUpdate::None => (),
-            }
-        }
-        for i in deads {
-            self.world.grenades.remove(i);
-        }
+                GrenadeUpdate::Dead => true,
+                GrenadeUpdate::None => false
+            })
+        })?;
 
-        let mut deads = Vec::new();
-        for (i, bullet) in self.world.bullets.iter_mut().enumerate().rev() {
+        iterate_and_kill_afterwards_mut(&mut self.world.bullets, |bullet| {
             let hit = bullet.update(&self.world.palette, &self.world.grid, &mut self.world.player, &mut *self.world.enemies);
-            
+            let mut dead = false;
+
             use crate::obj::bullet::Hit;
 
             match hit {
@@ -217,10 +212,10 @@ impl GameState for Play {
                         obj: bullet.obj.clone(),
                         spr: "common/hole",
                     });
-                    deads.push(i);
+                    dead = true;
                 }
                 Hit::Player => {
-                    deads.push(i);
+                    dead = true;
                     self.world.decal_queue.push(new_blood(bullet.obj.clone()));
                     s.mplayer.play(ctx, "hit")?;
 
@@ -238,7 +233,7 @@ impl GameState for Play {
                     }
                 }
                 Hit::Enemy(e) => {
-                    deads.push(i);
+                    dead = true;
                     let enemy = &self.world.enemies[e];
                     s.mplayer.play(ctx, "hit")?;
 
@@ -260,31 +255,21 @@ impl GameState for Play {
                     }
                 }
             }
-        }
-        for i in deads {
-            self.world.bullets.remove(i);
-        }
+            Ok(dead)
+        })?;
 
-        let mut deads = Vec::new();
-        for (i, &intel) in self.world.intels.iter().enumerate().rev() {
-            if (intel-self.world.player.obj.pos).norm() <= 15. {
-                deads.push(i);
+        iterate_and_kill_afterwards(&mut self.world.intels, |&intel| {
+            Ok(if (intel-self.world.player.obj.pos).norm() <= 15. {
                 s.mplayer.play(ctx, "hit")?;
-            }
-        }
-        for i in deads {
-            self.world.intels.remove(i);
-        }
-        let mut deads = Vec::new();
-        for (i, pickup) in self.world.pickups.iter().enumerate().rev() {
-            if (pickup.pos-self.world.player.obj.pos).norm() <= 15. && pickup.apply(&mut self.world.player.health) {
-                deads.push(i);
+                true
+            } else { false })
+        })?;
+        iterate_and_kill_afterwards(&mut self.world.pickups, |pickup| {
+            Ok(if (pickup.pos-self.world.player.obj.pos).norm() <= 15. && pickup.apply(&mut self.world.player.health) {
                 s.mplayer.play(ctx, "hit")?;
-            }
-        }
-        for i in deads {
-            self.world.pickups.remove(i);
-        }
+                true
+            } else { false })
+        })?;
         self.cur_pickup = None;
         for (i, weapon) in self.world.weapons.iter().enumerate().rev() {
             if (weapon.pos-self.world.player.obj.pos).norm() <= 29. {
@@ -514,9 +499,8 @@ impl GameState for Play {
                     // TODO do knives with bullets too
                     let player = &mut self.world.player;
                     let mut backstab = false;
-                    let mut dead = None;
 
-                    for (i, enemy) in self.world.enemies.iter_mut().enumerate() {
+                    let killed_enemy = iterate_and_kill_one_mut(&mut self.world.enemies, |enemy| {
                         let dist = player.obj.pos-enemy.pl.obj.pos;
                         let dist_len = dist.norm();
                         if dist_len < 44. {
@@ -524,17 +508,14 @@ impl GameState for Play {
 
                             self.world.decal_queue.push(new_blood(enemy.pl.obj.clone()));
                             enemy.pl.health.weapon_damage(if backstab { 165. } else { 33. }, 0.92);
-                            if enemy.pl.health.is_dead() {
-                                dead = Some(i);
-                                break;
-                            }
-                        }
-                    }
-                    if let Some(i) = dead {
+
+                            // Kill enemy if dead
+                            enemy.pl.health.is_dead()
+                        } else { false }
+                    });
+                    if let Some(Enemy{pl: Player{wep, obj: Object{pos, ..}, ..}, ..}) = killed_enemy {
                         s.mplayer.play(ctx, "death").unwrap();
 
-                        let Enemy{pl: Player{wep, obj: Object{pos, ..}, ..}, ..}
-                            = self.world.enemies.remove(i);
                         for wep in wep {
                             self.world.weapons.push(wep.into_drop(pos));
                         }

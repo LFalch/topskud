@@ -24,6 +24,7 @@ pub mod game;
 
 pub mod util {
     use std::{collections::HashSet, sync::Mutex};
+    use ggez::GameResult;
     use lazy_static::lazy_static;
     use ggez::graphics::Color;
     use ggez::{Context, input::keyboard::{KeyCode}};
@@ -95,6 +96,65 @@ pub mod util {
         let lock = STATIC_STRINGS.lock().unwrap();
 
         info!("{:?}", *lock);
+    }
+
+    /// For each element where `f` returns `true`, it will be removed from the vector
+    pub fn iterate_and_kill_one<T, F: for<'a> FnMut(&'a T) -> bool>(vec: &mut Vec<T>, mut f: F) -> Option<T> {
+        let mut dead = None;
+
+        for (i, element) in vec.iter().enumerate() {
+            if f(element) {
+                dead = Some(i);
+                break;
+            }
+        }
+
+        dead.map(|i| vec.remove(i))
+    }
+    /// For each element where `f` returns `true`, it will be removed from the vector
+    pub fn iterate_and_kill_one_mut<T, F: for<'a> FnMut(&'a mut T) -> bool>(vec: &mut Vec<T>, mut f: F) -> Option<T> {
+        let mut dead = None;
+
+        for (i, element) in vec.iter_mut().enumerate() {
+            if f(element) {
+                dead = Some(i);
+                break;
+            }
+        }
+
+        dead.map(|i| vec.remove(i))
+    }
+    /// For each element where `f` returns `true`, it will be removed from the vector
+    pub fn iterate_and_kill_afterwards<T, F: for<'a> FnMut(&'a T) -> GameResult<bool>>(vec: &mut Vec<T>, mut f: F) -> GameResult<()> {
+        let mut deads = Vec::new();
+
+        for (i, element) in vec.iter().enumerate().rev() {
+            if f(element)? {
+                deads.push(i);
+            }
+        }
+
+        for index in deads.into_iter() {
+            vec.remove(index);
+        }
+
+        Ok(())
+    }
+    /// For each element where `f` returns `true`, it will be removed from the vector
+    pub fn iterate_and_kill_afterwards_mut<T, F: for<'a> FnMut(&'a mut T) -> GameResult<bool>>(vec: &mut Vec<T>, mut f: F) -> GameResult<()> {
+        let mut deads = Vec::new();
+
+        for (i, element) in vec.iter_mut().enumerate().rev() {
+            if f(element)? {
+                deads.push(i);
+            }
+        }
+
+        for index in deads.into_iter() {
+            vec.remove(index);
+        }
+
+        Ok(())
     }
 }
 
