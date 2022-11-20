@@ -32,7 +32,7 @@ impl Lose {
     #[allow(clippy::new_ret_no_self, clippy::needless_pass_by_value)]
     pub fn new(ctx: &mut Context, s: &mut State, stats: Statistics) -> GameResult<Box<dyn GameState>> {
         let w = s.width as f32;
-        let you_died = s.assets.text(point!(s.width as f32/ 2., 10.)).and_text(TextFragment::from("You died!").color(RED));
+        let you_died = s.assets.text(point!(s.width as f32/ 2., 10.)).and_text(TextFragment::from("You died!").color(RED)).centered();
         let time_text = s.assets.text(point!(4., 20.)).and_text(format!("Time: {:.0}s", stats.time as f32 * DELTA));
         let enemy_total = stats.level.enemies.len();
         let enemies_text = s.assets.text(point!(4., 36.)).and_text(format!("Enemies killed: {} / {}", enemy_total - stats.enemies_left, enemy_total));
@@ -65,13 +65,13 @@ impl Lose {
 }
 
 impl GameState for Lose {
-    fn draw_hud(&mut self, _s: &State, canvas: &mut Canvas, ctx: &mut Context) -> GameResult<()> {
-        self.restart_btn.draw(canvas, ctx);
+    fn draw_hud(&mut self, _s: &State, canvas: &mut Canvas, _ctx: &mut Context) -> GameResult<()> {
+        self.restart_btn.draw(canvas);
         if let Some(btn) = &self.edit_btn {
-            btn.draw(canvas, ctx);
+            btn.draw(canvas);
         }
 
-        self.you_died.draw_center(canvas, ctx);
+        self.you_died.draw_text(canvas);
         self.time_text.draw_text(canvas);
         self.enemies_text.draw_text(canvas);
 

@@ -87,7 +87,7 @@ impl Play {
                 arm_text: s.assets.text(point!(4., 33.)).and_text("100"),
                 reload_text: s.assets.text(point!(4., 62.)).and_text("0.0").and_text("s"),
                 wep_text: WeaponInstance::weapon_text(point!(2., 87.), &s.assets),
-                status_text: s.assets.text(point!(s.width as f32 / 2., s.height as f32 / 2. + 32.)).and_text(""),
+                status_text: s.assets.text(point!(s.width as f32 / 2., s.height as f32 / 2. + 32.)).and_text("").centered(),
                 hud: Hud::new(ctx)?,
                 time: 0,
                 victory_time: 0.,
@@ -437,7 +437,7 @@ impl GameState for Play {
         self.arm_text.draw_text(canvas);
         self.reload_text.draw_text(canvas);
         self.wep_text.draw_text(canvas);
-        self.status_text.draw_center(canvas, ctx);
+        self.status_text.draw_text(canvas);
 
         {
             let drawparams = DrawParam::from(point![104., 2.]);

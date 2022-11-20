@@ -43,7 +43,7 @@ impl Win {
     pub fn new(ctx: &mut Context, s: &mut State, stats: Statistics) -> GameResult<Box<dyn GameState>> {
         let w = s.width as f32;
 
-        let level_complete = s.assets.text(point!(s.width as f32/ 2., 10.)).and_text("LEVEL COMPLETE");
+        let level_complete = s.assets.text(point!(s.width as f32/ 2., 10.)).and_text("LEVEL COMPLETE").centered();
         let time_text = s.assets.text(point!(4., 20.)).and_text(format!("Time: {:.1}s", stats.time as f32 * DELTA));
         let enemy_total = stats.level.enemies.len();
         let enemies_text = s.assets.text(point!(4., 36.)).and_text(format!("Enemies killed: {} / {}", enemy_total - stats.enemies_left, enemy_total));
@@ -94,18 +94,18 @@ impl Win {
 }
 
 impl GameState for Win {
-    fn draw_hud(&mut self, _s: &State, canvas: &mut Canvas, ctx: &mut Context) -> GameResult<()> {
+    fn draw_hud(&mut self, _s: &State, canvas: &mut Canvas, _ctx: &mut Context) -> GameResult<()> {
         match &self.buttons {
             WinButtons::FileMode{restart_btn, edit_btn} => {
-                restart_btn.draw(canvas, ctx);
-                edit_btn.draw(canvas, ctx);
+                restart_btn.draw(canvas);
+                edit_btn.draw(canvas);
             }
             WinButtons::CampaignMode{continue_btn} => {
-                continue_btn.draw(canvas, ctx);
+                continue_btn.draw(canvas);
             }
         }
 
-        self.level_complete.draw_center(canvas, ctx);
+        self.level_complete.draw_text(canvas);
         self.time_text.draw_text(canvas);
         self.enemies_text.draw_text(canvas);
         self.health_text.draw_text(canvas);

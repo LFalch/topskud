@@ -1,9 +1,8 @@
 use crate::util::Point2;
 use super::tex::{Assets, PosText};
 
-use ggez::context::Has;
 use ggez::{GameResult, Context};
-use ggez::graphics::{Drawable, Color, Rect, Mesh, DrawMode, DrawParam, Canvas, GraphicsContext};
+use ggez::graphics::{Drawable, Color, Rect, Mesh, DrawMode, DrawParam, Canvas};
 use nalgebra::coordinates::XY;
 
 pub struct Button<T> {
@@ -17,7 +16,7 @@ pub struct Button<T> {
 impl<T> Button<T> {
     pub fn new(ctx: &mut Context, assets: &Assets, rect: Rect, text: &str, callback: T) -> GameResult<Self> {
         let mesh = Mesh::new_rectangle(ctx, DrawMode::fill(), rect, Color{r: 0.5, g: 0.5, b: 0.75, a: 1.})?;
-        let text = assets.text(point!(rect.x + rect.w / 2., rect.y + rect.h / 2.)).and_text(text);
+        let text = assets.text(point!(rect.x + rect.w / 2., rect.y + rect.h / 2.)).and_text(text).centered();
 
         Ok(Button{
             text,
@@ -27,9 +26,9 @@ impl<T> Button<T> {
             height: rect.h,
         })
     }
-    pub fn draw(&self, canvas: &mut Canvas, gfx: &impl Has<GraphicsContext>) {
+    pub fn draw(&self, canvas: &mut Canvas) {
         self.mesh.draw(canvas, DrawParam::new());
-        self.text.draw_center(canvas, gfx);
+        self.text.draw_text(canvas);
     }
     pub fn in_bounds(&self, p: Point2) -> bool {
         let XY{x, y} = *self.text.pos;

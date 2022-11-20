@@ -60,6 +60,17 @@ pub(super) fn commands() -> HashMap<String, Command> {
             }
             Ok(())
         },
+        "list" => {
+            let s = console.commands.keys().map(|s| &**s).collect::<Vec<_>>().join(", ");
+            info!("{s}");
+            Ok(())
+        },
+        "redraw_world" => {
+            let world = gs.get_mut_world().ok_or(NoWorld)?;
+            world.canvas = None;
+            info!("Canvas cleared");
+            Ok(())
+        },
         "godarmour", "ga" => {
             let world = gs.get_mut_world().ok_or(NoWorld)?;
             if world.player.health.armour.is_finite() {

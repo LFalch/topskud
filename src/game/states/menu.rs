@@ -72,7 +72,7 @@ impl Menu {
         };
 
         Ok(Box::new(Menu {
-            title_txt: s.assets.text_sized(point!(w / 2., 16.), 32.).and_text("Main Menu"),
+            title_txt: s.assets.text_sized(point!(w / 2., 16.), 32.).and_text("Main Menu").centered(),
             buttons,
             corner_text,
         }))
@@ -80,13 +80,13 @@ impl Menu {
 }
 
 impl GameState for Menu {
-    fn draw_hud(&mut self, _s: &State, canvas: &mut Canvas, ctx: &mut Context) -> GameResult<()> {
-        self.title_txt.draw_center(canvas, ctx);
+    fn draw_hud(&mut self, _s: &State, canvas: &mut Canvas, _ctx: &mut Context) -> GameResult<()> {
+        self.title_txt.draw_text(canvas);
         if let Some(ref txt) = self.corner_text {
             txt.draw_text(canvas);
         }
         for button in &self.buttons {
-            button.draw(canvas, ctx);
+            button.draw(canvas);
         }
         Ok(())
     }

@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 use std::cell::{RefCell, Ref};
 
-use crate::util::{Point2, Vector2};
+use crate::util::Point2;
 
 use ggez::context::Has;
 use ggez::{Context, GameResult, GameError};
-use ggez::graphics::{Canvas, Image, Text, TextFragment, Drawable, DrawParam, GraphicsContext, FontData};
+use ggez::graphics::{Canvas, Image, Text, TextFragment, Drawable, DrawParam, GraphicsContext, FontData, TextLayout};
 
 /// All the assets
 pub struct Assets {
@@ -141,14 +141,13 @@ impl PosText {
         self.text.add(t);
         self
     }
+    pub fn centered(mut self) -> Self {
+        self.text.set_layout(TextLayout::center());
+        self
+    }
     /// Draw the text
     pub fn draw_text(&self, canvas: &mut Canvas) {
         self.text.draw(canvas, DrawParam::default().dest(self.pos))
-    }
-    pub fn draw_center(&self, canvas: &mut Canvas, gfx: &impl Has<GraphicsContext>) {
-        let dims: Vector2 = self.text.measure(gfx).unwrap().into();
-        let drawparams = DrawParam::new().dest(self.pos - 0.5 * dims);
-        self.text.draw(canvas, drawparams)
     }
     pub fn update<T: Into<TextFragment>>(&mut self, fragment_index: usize, new_text: T) -> GameResult<&mut Self> {
         self.text.fragments_mut().get_mut(fragment_index).map(|t| *t = new_text.into()).ok_or_else(|| GameError::RenderError("Fragment did not exist".to_owned()))?;
