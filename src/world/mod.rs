@@ -1,3 +1,6 @@
+
+//! Stuff related to things in the world
+
 use crate::{
     util::{Point2, Vector2, sstr, iterate_and_kill_one},
     io::tex::Assets,

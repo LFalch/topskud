@@ -12,7 +12,8 @@ use crate::{
         snd::MediaPlayer,
         tex::{Assets, },
     },
-    game::{DELTA, world::{Grid, Palette}},
+    DELTA,
+    world::{Grid, Palette},
 };
 
 use super::{Object, player::Player};

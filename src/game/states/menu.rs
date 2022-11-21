@@ -1,13 +1,14 @@
 use std::path::PathBuf;
-use crate::{
+use topskud::{
     io::{
         tex::PosText,
         btn::Button,
     },
-    game::{
-        Campaign, Content, State, GameState, StateSwitch, world::Level,
-        event::{Event::{self, Mouse}, MouseButton}
-    },
+    world::Level,
+};
+use crate::game::{
+    Campaign, Content, State, GameState, StateSwitch,
+    event::{Event::{self, Mouse}, MouseButton}
 };
 use ggez::{
     Context, GameResult,

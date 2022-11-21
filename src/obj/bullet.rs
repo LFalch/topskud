@@ -2,10 +2,8 @@ use ggez::graphics::{Color, Canvas};
 
 use crate::{
     util::{Vector2},
-    game::{
-        DELTA,
-        world::{Grid, Palette},
-    },
+    DELTA,
+    world::{Grid, Palette},
     io::tex::{Assets, }
 };
 use super::{Object, player::Player, enemy::Enemy, health::Health, weapon::Weapon};

@@ -12,8 +12,8 @@ pub mod pickup;
 pub mod decal;
 pub mod grenade;
 
-use crate::game::world::{Grid, Palette};
-use crate::game::DELTA;
+use crate::world::{Grid, Palette};
+use crate::DELTA;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 /// A simple object that can be drawn to the screen

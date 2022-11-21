@@ -2,8 +2,10 @@ use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::fmt::{self, Display};
 use std::collections::HashMap;
-use crate::{
+use topskud::{
+    DESIRED_FPS,
     util::{Vector2, Point2, RED, GREEN, BLUE},
+    world::{World, Level, Statistics},
     io::{
         snd::MediaPlayer,
         tex::{Assets, PosText},
@@ -21,16 +23,12 @@ use ggez::{
     event::EventHandler
 };
 use clipboard::{ClipboardContext, ClipboardProvider};
-use self::world::Level;
 use log::{Log, Metadata, Record, Level as LogLevel};
 use lazy_static::lazy_static;
 
-/// Stuff related to things in the world
-pub mod world;
 pub mod states;
 
 use self::states::menu::Menu;
-use self::world::Statistics;
 
 pub enum StateSwitch {
     Menu,
@@ -72,10 +70,10 @@ pub trait GameState {
     fn event_down(&mut self, _: &mut State, _: &mut Context, _: Event) { }
     fn event_up(&mut self, _: &mut State, _: &mut Context, _: Event) { }
 
-    fn get_world(&self) -> Option<&world::World> {
+    fn get_world(&self) -> Option<&World> {
         None
     }
-    fn get_mut_world(&mut self) -> Option<&mut world::World> {
+    fn get_mut_world(&mut self) -> Option<&mut World> {
         None
     }
 }
@@ -258,10 +256,6 @@ pub struct State {
     switch_state: Option<StateSwitch>,
     content: Content,
 }
-
-const DESIRED_FPS: u32 = 60;
-
-pub(crate) const DELTA: f32 = 1. / DESIRED_FPS as f32;
 
 impl Master {
     /// Make a new state object

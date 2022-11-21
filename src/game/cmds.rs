@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use super::{Console, State, GameState, Command, CommandError, Content, StateSwitch};
 
-use crate::{
+use topskud::{
     util::dbg_strs,
     obj::{health::Health, weapon::WEAPONS},
 };

@@ -1,14 +1,15 @@
-use crate::{
+use topskud::{
+    DELTA,
+    world::{Level, Statistics},
     io::{
         tex::PosText,
         btn::Button,
     },
     obj::{health::Health, player::WepSlots},
-    game::{
-        DELTA,
-        State, Content, GameState, StateSwitch, world::{Level, Statistics},
-        event::{Event::{self, Key, Mouse}, MouseButton, KeyCode},
-    }
+};
+use crate::game::{
+    State, Content, GameState, StateSwitch,
+    event::{Event::{self, Key, Mouse}, MouseButton, KeyCode},
 };
 use ggez::{
     Context, GameResult,

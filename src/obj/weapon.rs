@@ -3,7 +3,7 @@ use std::fmt::{self, Display};
 
 use crate::{
     util::{Point2, angle_to_vec, Sstr},
-    game::DELTA,
+    DELTA,
     io::{
         snd::MediaPlayer,
         tex::{PosText, Assets},

@@ -6,10 +6,8 @@ const PI_MUL_2: f32 = 2. * PI;
 
 use crate::{
     util::{angle_to_vec, Vector2},
-    game::{
-        DELTA,
-        world::{Grid, Palette},
-    },
+    DELTA,
+    world::{Grid, Palette},
     io::{
         snd::MediaPlayer,
         tex::{Assets, },

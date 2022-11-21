@@ -1,4 +1,4 @@
-use crate::{
+use topskud::{
     util::{
         ver,
         hor,
@@ -6,14 +6,15 @@ use crate::{
         TRANS,
         Point2
     },
+    world::{Grid, Level, Palette},
     io::tex::PosText,
     ext::BoolExt,
-    game::{
-        DELTA, Content, GameState, State, StateSwitch,
-        world::{Grid, Level, Palette},
-        event::{Event::{self, Key, Mouse}, MouseButton as Mb, KeyCode}
-    },
+    DELTA,
     obj::{Object, enemy::Enemy, decal::Decal, pickup::PICKUPS, weapon::WEAPONS}
+};
+use crate::game::{
+    Content, GameState, State, StateSwitch,
+    event::{Event::{self, Key, Mouse}, MouseButton as Mb, KeyCode}
 };
 use ggez::{
     Context, GameResult,

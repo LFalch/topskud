@@ -1,5 +1,6 @@
 use std::f32::consts::FRAC_1_SQRT_2 as COS_45_D;
-use crate::{
+use topskud::{
+    DELTA,
     ext::FloatExt,
     util::{
         BLUE, GREEN, RED,
@@ -13,15 +14,16 @@ use crate::{
         decal::Decal,
         pickup::Pickup,
         player::{Player, WepSlots, ActiveSlot},
-        enemy::{Enemy, },
+        enemy::Enemy,
         health::Health,
         weapon::{self, WeaponInstance},
         grenade::GrenadeUpdate,
     },
-    game::{
-        DELTA, State, GameState, StateSwitch, world::{Level, Statistics, World},
-        event::{Event::{self, Key, Mouse}, MouseButton, KeyCode}
-    },
+    world::{Level, Statistics, World},
+};
+use crate::game::{
+    State, GameState, StateSwitch,
+    event::{Event::{self, Key, Mouse}, MouseButton, KeyCode}
 };
 use ggez::{
     Context, GameResult,
@@ -200,7 +202,7 @@ impl GameState for Play {
             let hit = bullet.update(&self.world.palette, &self.world.grid, &mut self.world.player, &mut *self.world.enemies);
             let mut dead = false;
 
-            use crate::obj::bullet::Hit;
+            use topskud::obj::bullet::Hit;
 
             match hit {
                 Hit::None => (),
