@@ -24,7 +24,7 @@ use ggez::{
     },
 };
 
-use std::path::PathBuf;
+use std::{path::PathBuf, iter};
 use std::io::Read;
 use std::fs::File;
 
@@ -231,6 +231,19 @@ impl Editor {
             mp.y = (mp.y / 32.).floor() * 32. + 16.;
         }
         mp
+    }
+    fn displace<F: FnMut(&mut Point2)>(&mut self, f: F) {
+        self.level.enemies
+            .iter_mut()
+            .flat_map(|e| iter::once(&mut e.pl.obj.pos).chain(&mut e.behaviour.path))
+            .chain(self.level.exit.as_mut())
+            .chain(self.level.start_point.as_mut())
+            .chain(iter::once(&mut self.pos))
+            .chain(self.level.intels.iter_mut())
+            .chain(self.level.weapons.iter_mut().map(|w| &mut w.pos))
+            .chain(self.level.pickups.iter_mut().map(|p| &mut p.0))
+            .chain(self.level.decals.iter_mut().map(|d| &mut d.obj.pos))
+            .for_each(f)
     }
 }
 
@@ -583,6 +596,22 @@ impl GameState for Editor {
             }
             Key(O) => if let Tool::Inserter(Insertion::Waypoint(enem)) = self.current {
                 self.level.enemies[enem].behaviour.cyclical_path.toggle();
+            }
+            Key(Up) if ctrl && shift => {
+                self.level.grid.stretch_up();
+                self.displace(|pos| *pos += vector![0., 32.]);
+            }
+            Key(Down) if ctrl && shift => {
+                self.level.grid.unstretch_up();
+                self.displace(|pos| *pos -= vector![0., 32.]);
+            }
+            Key(Left) if ctrl && shift => {
+                self.level.grid.stretch_left();
+                self.displace(|pos| *pos += vector![32., 0.]);
+            }
+            Key(Right) if ctrl && shift => {
+                self.level.grid.unstretch_left();
+                self.displace(|pos| *pos -= vector![32., 0.]);
             }
             Key(Up) if ctrl => self.level.grid.shorten(),
             Key(Down) if ctrl => self.level.grid.heighten(),

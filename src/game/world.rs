@@ -317,6 +317,32 @@ impl Grid {
     pub fn height(&self) -> u16 {
         self.mats.len() as u16 / self.width
     }
+    pub fn stretch_up(&mut self) {
+        let mut v = Vec::with_capacity(self.mats.capacity() + self.width as usize);
+        v.resize(self.width as usize, 0);
+        v.append(&mut self.mats);
+        self.mats = v;
+    }
+    pub fn stretch_left(&mut self) {
+        let height = self.height() as usize;
+        self.width += 1;
+        let width = self.width as usize;
+        self.mats.reserve_exact(height);
+        for i in (0..height).map(|i| i * width) {
+            self.mats.insert(i, 0);
+        }
+    }
+    pub fn unstretch_up(&mut self) {
+        self.mats.drain(0..self.width as usize);
+    }
+    pub fn unstretch_left(&mut self) {
+        let height = self.height() as usize;
+        let width = self.width as usize;
+        for i in (0..height).map(|i| i * width).rev() {
+            self.mats.remove(i);
+        }
+        self.width -= 1;
+    }
     pub fn widen(&mut self) {
         let width = self.width as usize;
         let height = self.height() as usize;
