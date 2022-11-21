@@ -153,6 +153,10 @@ impl GameState for Play {
                 GrenadeUpdate::Explosion{player_hit, enemy_hits} => {
                     s.mplayer.play(ctx, "boom")?;
 
+                    self.world.decal_queue.push(Decal {
+                        obj: grenade.obj.clone(),
+                        spr: "common/blast",
+                    });
                     if player_hit {
                         self.world.decal_queue.push(new_blood(self.world.player.obj.clone()));
                         s.mplayer.play(ctx, "hit")?;
