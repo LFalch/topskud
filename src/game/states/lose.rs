@@ -4,13 +4,13 @@ use topskud::{
     io::{
         tex::PosText,
         btn::Button,
+        ctrl::Input,
     },
     world::{Statistics, Level},
     obj::{health::Health, player::WepSlots},
 };
 use crate::game::{
     State, Content, GameState, StateSwitch,
-    event::{Event::{self, *}, MouseButton as Mb, KeyCode as Key}
 };
 use ggez::{
     Context, GameResult,
@@ -78,10 +78,10 @@ impl GameState for Lose {
 
         Ok(())
     }
-    fn event_up(&mut self, s: &mut State, _ctx: &mut Context, event: Event) {
-        match event {
-            Key(Key::Return) | Key(Key::R) => self.restart(s),
-            Mouse(Mb::Left) => {
+    fn event_up(&mut self, s: &mut State, _ctx: &mut Context, input: Input) {
+        match input {
+            Input::Confirm | Input::Restart => self.restart(s),
+            Input::LeftClick => {
                 if self.restart_btn.in_bounds(s.mouse) {
                     self.restart(s);
                 }

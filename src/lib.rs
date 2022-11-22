@@ -23,7 +23,6 @@ pub mod util {
     use ggez::GameResult;
     use lazy_static::lazy_static;
     use ggez::graphics::Color;
-    use ggez::{Context, input::keyboard::{KeyCode}};
     use serde::{Deserializer, Deserialize};
     use nalgebra::base::coordinates::XY;
     pub type Vector2 = nalgebra::Vector2<f32>;
@@ -44,15 +43,6 @@ pub mod util {
     pub fn angle_from_vec(v: Vector2) -> f32 {
         let XY{x, y} = *v;
         y.atan2(x)
-    }
-
-    pub fn ver(ctx: &Context) -> f32 {
-        <f32>::from((ctx.keyboard.is_key_pressed(KeyCode::S) || ctx.keyboard.is_key_pressed(KeyCode::Down)) as i8 -
-            (ctx.keyboard.is_key_pressed(KeyCode::W) || ctx.keyboard.is_key_pressed(KeyCode::Up)) as i8)
-    }
-    pub fn hor(ctx: &Context) -> f32 {
-        <f32>::from((ctx.keyboard.is_key_pressed(KeyCode::D) || ctx.keyboard.is_key_pressed(KeyCode::Right)) as i8 -
-            (ctx.keyboard.is_key_pressed(KeyCode::A) || ctx.keyboard.is_key_pressed(KeyCode::Left)) as i8)
     }
 
     lazy_static! {

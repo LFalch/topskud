@@ -3,12 +3,12 @@ use topskud::{
     io::{
         tex::PosText,
         btn::Button,
+        ctrl::Input
     },
     world::Level,
 };
 use crate::game::{
     Campaign, Content, State, GameState, StateSwitch,
-    event::{Event::{self, Mouse}, MouseButton}
 };
 use ggez::{
     Context, GameResult,
@@ -99,8 +99,8 @@ impl GameState for Menu {
     //         _ => (),
     //     }
     // }
-    fn event_up(&mut self, s: &mut State, ctx: &mut Context, event: Event) {
-        if let Mouse(MouseButton::Left) = event {
+    fn event_up(&mut self, s: &mut State, ctx: &mut Context, input: Input) {
+        if let Input::LeftClick = input {
             for button in &self.buttons {
                 if button.in_bounds(s.mouse) {
                     s.mplayer.stop(ctx, "music").unwrap();

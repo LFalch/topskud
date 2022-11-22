@@ -4,12 +4,12 @@ use topskud::{
     io::{
         tex::PosText,
         btn::Button,
+        ctrl::Input,
     },
     obj::{health::Health, player::WepSlots},
 };
 use crate::game::{
     State, Content, GameState, StateSwitch,
-    event::{Event::{self, Key, Mouse}, MouseButton, KeyCode},
 };
 use ggez::{
     Context, GameResult,
@@ -113,11 +113,10 @@ impl GameState for Win {
 
         Ok(())
     }
-    fn event_up(&mut self, s: &mut State, _ctx: &mut Context, event: Event) {
-        use self::KeyCode::*;
-        match event {
-            Key(Return) => self.continue_play(s),
-            Mouse(MouseButton::Left) => match &self.buttons {
+    fn event_up(&mut self, s: &mut State, _ctx: &mut Context, input: Input) {
+        match input {
+            Input::Confirm => self.continue_play(s),
+            Input::LeftClick => match &self.buttons {
                 WinButtons::FileMode{restart_btn, edit_btn} => {
                     if restart_btn.in_bounds(s.mouse) {
                         self.restart(s)

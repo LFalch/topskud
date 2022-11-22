@@ -1,28 +1,23 @@
 use topskud::{
     util::{
-        ver,
-        hor,
         sstr,
         TRANS,
         Point2
     },
     world::{Grid, Level, Palette},
     io::tex::PosText,
+    io::ctrl::{Input, KeyMods, Axis},
     ext::BoolExt,
     DELTA,
     obj::{Object, enemy::Enemy, decal::Decal, pickup::PICKUPS, weapon::WEAPONS}
 };
 use crate::game::{
     Content, GameState, State, StateSwitch,
-    event::{Event::{self, Key, Mouse}, MouseButton as Mb, KeyCode}
 };
 use ggez::{
     Context, GameResult,
     graphics::{self, Color, Rect, DrawMode, DrawParam, Mesh, Canvas},
     error::GameError,
-    input::{
-        keyboard::{KeyMods},
-    },
 };
 
 use std::{path::PathBuf, iter};
@@ -252,9 +247,10 @@ const START_X: f32 = 103.;
 const YELLOW: Color = Color{r: 1., g: 1., b: 0., a: 1.};
 
 impl GameState for Editor {
-    fn update(&mut self, _s: &mut State, ctx: &mut Context) -> GameResult<()> {
-        let speed = if ctx.keyboard.is_mod_active(KeyMods::SHIFT) { 315. } else { 175. };
-        let v = speed * vector!(hor(ctx), ver(ctx));
+    fn update(&mut self, s: &mut State, ctx: &mut Context) -> GameResult<()> {
+        let ctrls = s.controls.ctx(ctx);
+        let speed = if ctrls.is_mod_active(KeyMods::SHIFT) { 315. } else { 175. };
+        let v = speed * vector!(ctrls.axis(Axis::RightLeft), ctrls.axis(Axis::DownUp));
         self.pos += v * DELTA;
 
         match self.current {
@@ -265,7 +261,7 @@ impl GameState for Editor {
         Ok(())
     }
     fn logic(&mut self, s: &mut State, ctx: &mut Context) -> GameResult<()> {
-        if ctx.mouse.button_pressed(Mb::Left) && s.mouse.y > 64. {
+        if s.controls.ctx(ctx).is_pressed(Input::LeftClick) && s.mouse.y > 64. {
             if let Tool::Inserter(Insertion::Material(mat)) = self.current {
                 let (mx, my) = Grid::snap(s.mouse - s.offset);
                 self.level.grid.insert(mx, my, mat);
@@ -514,21 +510,20 @@ impl GameState for Editor {
         Ok(())
     }
     #[allow(clippy::cognitive_complexity)]
-    fn event_up(&mut self, s: &mut State, ctx: &mut Context, event: Event) {
-        let shift = ctx.keyboard.is_mod_active(KeyMods::SHIFT);
-        let ctrl = ctx.keyboard.is_mod_active(KeyMods::CTRL);
+    fn event_up(&mut self, s: &mut State, ctx: &mut Context, input: Input) {
+        let shift = s.controls.ctx(ctx).is_mod_active(KeyMods::SHIFT);
+        let ctrl = s.controls.ctx(ctx).is_mod_active(KeyMods::CTRL);
 
-        use self::KeyCode::*;
-        match event {
-            Key(Z) => self.level.save(&self.save).unwrap(),
-            Key(X) => self.level = Level::load(&self.save).unwrap(),
-            Key(C) => self.draw_visibility_cones.toggle(),
-            Key(G) => self.snap_on_grid.toggle(),
-            Key(P) => {
+        match input {
+            Input::SaveLevel => self.level.save(&self.save).unwrap(),
+            Input::LoadLevel => self.level = Level::load(&self.save).unwrap(),
+            Input::ToggleVisibilityCones => self.draw_visibility_cones.toggle(),
+            Input::ToggleGridSnap => self.snap_on_grid.toggle(),
+            Input::PlayLevel => {
                 s.switch(StateSwitch::Play(self.level.clone()));
             }
-            Key(T) => self.current = Tool::Selector(Selection::default()),
-            Key(Delete) | Key(Back) => if let Tool::Selector(ref mut selection) = self.current {
+            Input::Deselect => self.current = Tool::Selector(Selection::default()),
+            Input::DeleteObject => if let Tool::Selector(ref mut selection) = self.current {
                 #[allow(clippy::unneeded_field_pattern)]
                 let Selection {
                     mut enemies,
@@ -568,7 +563,7 @@ impl GameState for Editor {
                     self.level.weapons.remove(weapon);
                 }
             }
-            Key(Q) => {
+            Input::RotateLeft => {
                 self.rotation_speed = 0.;
                 if shift {
                     match self.current {
@@ -578,7 +573,7 @@ impl GameState for Editor {
                     }
                 }
             }
-            Key(E) => {
+            Input::RotateRight => {
                 self.rotation_speed = 0.;
                 if shift {
                     match self.current {
@@ -588,49 +583,47 @@ impl GameState for Editor {
                     }
                 }
             }
-            Key(H) => if let Tool::Selector(Selection { enemies, waypoints, .. }) = &mut self.current {
+            Input::MakeWaypoints => if let Tool::Selector(Selection { enemies, waypoints, .. }) = &mut self.current {
                 match (&mut **enemies, &mut **waypoints) {
                     (&mut [enem], _) | (_, &mut [(enem, _)]) => self.current = Tool::Inserter(Insertion::Waypoint(enem)),
                     (&mut [enem, ..], _) | (_, &mut [(enem, _), ..]) => { enemies.clear(); enemies.push(enem); waypoints.clear() }
                     _ => (),
                 }
             }
-            Key(O) => if let Tool::Inserter(Insertion::Waypoint(enem)) = self.current {
+            Input::ToggleCyclicPath => if let Tool::Inserter(Insertion::Waypoint(enem)) = self.current {
                 self.level.enemies[enem].behaviour.cyclical_path.toggle();
             }
-            Key(Up) if ctrl && shift => {
+            Input::DragUp if ctrl && shift => {
                 self.level.grid.stretch_up();
                 self.displace(|pos| *pos += vector![0., 32.]);
             }
-            Key(Down) if ctrl && shift => {
+            Input::DragDown if ctrl && shift => {
                 self.level.grid.unstretch_up();
                 self.displace(|pos| *pos -= vector![0., 32.]);
             }
-            Key(Left) if ctrl && shift => {
+            Input::DragLeft if ctrl && shift => {
                 self.level.grid.stretch_left();
                 self.displace(|pos| *pos += vector![32., 0.]);
             }
-            Key(Right) if ctrl && shift => {
+            Input::DragRight if ctrl && shift => {
                 self.level.grid.unstretch_left();
                 self.displace(|pos| *pos -= vector![32., 0.]);
             }
-            Key(Up) if ctrl => self.level.grid.shorten(),
-            Key(Down) if ctrl => self.level.grid.heighten(),
-            Key(Left) if ctrl => self.level.grid.thin(),
-            Key(Right) if ctrl => self.level.grid.widen(),
-            Mouse(Mb::Middle) | Key(Home) => self.level.start_point = Some(self.mousepos(&s)),
-            Mouse(Mb::Left) => self.click(s, ctx),
+            Input::DragUp if ctrl => self.level.grid.shorten(),
+            Input::DragDown if ctrl => self.level.grid.heighten(),
+            Input::DragLeft if ctrl => self.level.grid.thin(),
+            Input::DragRight if ctrl => self.level.grid.widen(),
+            Input::PlaceStart => self.level.start_point = Some(self.mousepos(&s)),
+            Input::LeftClick => self.click(s, ctx),
             _ => ()
         }
     }
-    fn event_down(&mut self, s: &mut State, ctx: &mut Context, event: Event) {
-        use self::KeyCode::*;
-
-        let shift = ctx.keyboard.is_mod_active(KeyMods::SHIFT);
+    fn event_down(&mut self, s: &mut State, ctx: &mut Context, input: Input) {
+        let shift = s.controls.ctx(ctx).is_mod_active(KeyMods::SHIFT);
         let mousepos = self.mousepos(&s);
 
-        match event {
-            Mouse(Mb::Left) => if let Tool::Selector(ref mut selection) = self.current {
+        match input {
+            Input::LeftClick => if let Tool::Selector(ref mut selection) = self.current {
                 for &i in &selection.enemies {
                     if (self.level.enemies[i].pl.obj.pos - mousepos).norm() <= 16. {
                         return selection.moving = Some(mousepos);
@@ -664,8 +657,8 @@ impl GameState for Editor {
                     }
                 }
             }
-            Key(Q) if !shift => self.rotation_speed -= 6.,
-            Key(E) if !shift => self.rotation_speed += 6.,
+            Input::RotateLeft if !shift => self.rotation_speed -= 6.,
+            Input::RotateRight if !shift => self.rotation_speed += 6.,
             _ => (),
         }
     }
@@ -716,7 +709,7 @@ impl Editor {
                         }
                         selection.moving = None;
                     } else {
-                        if !ctx.keyboard.is_mod_active(KeyMods::CTRL) {
+                        if !s.controls.ctx(ctx).is_mod_active(KeyMods::CTRL) {
                             *selection = Selection::default();
                         }
                         for (i, enemy) in self.level.enemies.iter().enumerate() {

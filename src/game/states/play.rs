@@ -5,9 +5,9 @@ use topskud::{
     util::{
         BLUE, GREEN, RED,
         angle_to_vec, angle_from_vec,
-        ver, hor, iterate_and_kill_afterwards, iterate_and_kill_afterwards_mut, iterate_and_kill_one_mut,
+        iterate_and_kill_afterwards, iterate_and_kill_afterwards_mut, iterate_and_kill_one_mut,
     },
-    io::tex::PosText,
+    io::{tex::PosText, ctrl::{Input, Axis, KeyMods}},
     obj::{
         Object,
         bullet::Bullet,
@@ -21,10 +21,7 @@ use topskud::{
     },
     world::{Level, Statistics, World},
 };
-use crate::game::{
-    State, GameState, StateSwitch,
-    event::{Event::{self, Key, Mouse}, MouseButton, KeyCode}
-};
+use crate::game::{State, GameState, StateSwitch};
 use ggez::{
     Context, GameResult,
     graphics::{
@@ -33,10 +30,7 @@ use ggez::{
         MeshBuilder, Mesh,
         Canvas,
     },
-    input::{
-        keyboard::KeyMods,
-        mouse,
-    },
+    input::mouse,
 };
 
 use rand::{thread_rng, prelude::SliceRandom, Rng};
@@ -284,8 +278,9 @@ impl GameState for Play {
             }
         }
 
+        let ctrls = s.controls.ctx(ctx);
         // Define player velocity here already because enemies need it
-        let player_vel = vector!(hor(&ctx), ver(&ctx));
+        let player_vel = vector!(ctrls.axis(Axis::RightLeft), ctrls.axis(Axis::DownUp));
 
         let &mut World {ref grid, ref palette, ref mut enemies, ref player, ref mut bullets, ..} = &mut self.world;
 
@@ -323,14 +318,14 @@ impl GameState for Play {
             })?;
         }
 
-        let speed = if !ctx.keyboard.is_mod_active(KeyMods::SHIFT) {
+        let speed = if !s.controls.ctx(ctx).is_mod_active(KeyMods::SHIFT) {
             200.
         } else {
             100.
         };
         if let Some(wep) = self.world.player.wep.get_active_mut() {
             wep.update(ctx, &mut s.mplayer)?;
-            if wep.cur_clip > 0 && ctx.mouse.button_pressed(MouseButton::Left) && wep.weapon.fire_mode.is_auto() {
+            if wep.cur_clip > 0 && s.controls.ctx(ctx).is_pressed(Input::Shoot) && wep.weapon.fire_mode.is_auto() {
                 if let Some(bm) = wep.shoot(ctx, &mut s.mplayer)? {
                     let pos = self.world.player.obj.pos + 20. * angle_to_vec(self.world.player.obj.rot);
                     let mut bul = Object::new(pos);
@@ -461,20 +456,19 @@ impl GameState for Play {
         canvas.draw(&*img, drawparams);
         Ok(())
     }
-    fn event_up(&mut self, s: &mut State, ctx: &mut Context, event: Event) {
-        use self::KeyCode::*;
-        match event {
-            Key(Q) => self.world.player.wep.switch(self.world.player.wep.last_active),
-            Key(Key1) | Key(Numpad1) => self.world.player.wep.switch(ActiveSlot::Knife),
-            Key(Key2) | Key(Numpad2) => self.world.player.wep.switch(ActiveSlot::Holster),
-            Key(Key3) | Key(Numpad3) => self.world.player.wep.switch(ActiveSlot::Holster2),
-            Key(Key4) | Key(Numpad4) => self.world.player.wep.switch(ActiveSlot::Sling),
-            Key(G) => {
+    fn event_up(&mut self, s: &mut State, ctx: &mut Context, input: Input) {
+        match input {
+            Input::WeaponLast => self.world.player.wep.switch(self.world.player.wep.last_active),
+            Input::Weapon1 => self.world.player.wep.switch(ActiveSlot::Knife),
+            Input::Weapon2 => self.world.player.wep.switch(ActiveSlot::Holster),
+            Input::Weapon3 => self.world.player.wep.switch(ActiveSlot::Holster2),
+            Input::Weapon4 => self.world.player.wep.switch(ActiveSlot::Sling),
+            Input::DropWeapon => {
                 if let Some(wep) = self.world.player.wep.take_active() {
                     self.world.weapons.push(wep.into_drop(self.world.player.obj.pos));
                 }
             }
-            Key(R) => {
+            Input::Reload => {
                 if let Some(wep) = self.world.player.wep.get_active_mut() {
                     wep.reload(ctx, &mut s.mplayer).unwrap()
                 } else {
@@ -482,7 +476,7 @@ impl GameState for Play {
                     self.world.bullets.push(Bullet{obj: self.world.player.obj.clone(), vel: vector!(weapon.bullet_speed, 0.), weapon});
                 }
             },
-            Key(F) => {
+            Input::PickupWeapon => {
                 if let Some(i) = self.cur_pickup {
                     if let Some(new_drop) = self.world.player.wep.add_weapon(WeaponInstance::from_drop(self.world.weapons.remove(i))) {
                         self.world.weapons.push(new_drop.into_drop(self.world.player.obj.pos));
@@ -490,7 +484,7 @@ impl GameState for Play {
                     self.cur_pickup = None;
                 }
             },
-            Mouse(MouseButton::Left) | Key(Space) => {
+            Input::Shoot => {
                 if let Some(wep) = self.world.player.wep.get_active_mut() {
                     if let Some(bm) = wep.shoot(ctx, &mut s.mplayer).unwrap() {
                         let pos = self.world.player.obj.pos + 20. * angle_to_vec(self.world.player.obj.rot);
@@ -530,7 +524,7 @@ impl GameState for Play {
                     s.mplayer.play(ctx, if backstab {"shuk"} else {"hling"}).unwrap();
                 }
             }
-            Mouse(MouseButton::Right) => {
+            Input::ThrowGrenade => {
                 if let Some(gm) = self.world.player.wep.utilities.throw_grenade(ctx, &mut s.mplayer).unwrap() {
                     let pos = self.world.player.obj.pos + 20. * angle_to_vec(self.world.player.obj.rot);
                     let mut gren = Object::new(pos);

@@ -2,6 +2,8 @@ use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::fmt::{self, Display};
 use std::collections::HashMap;
+use ggez::event::MouseButton;
+use topskud::io::ctrl::{Controls, Input};
 use topskud::{
     DESIRED_FPS,
     util::{Vector2, Point2, RED, GREEN, BLUE},
@@ -13,8 +15,7 @@ use topskud::{
     obj::{health::Health, player::WepSlots},
 };
 use ggez::graphics::{Canvas, Drawable};
-use ggez::input::keyboard::{KeyInput, KeyMods};
-use ggez::winit::event::VirtualKeyCode;
+use ggez::input::keyboard::{KeyCode, KeyInput, KeyMods};
 use ggez::{
     Context, GameResult,
     graphics::{self, DrawMode, Rect, Mesh, Text, TextFragment, DrawParam, Color},
@@ -43,19 +44,6 @@ pub enum StateSwitch {
     Win(Box<Statistics>),
 }
 
-pub mod event {
-    pub use ggez::input::{
-        mouse::MouseButton,
-        keyboard::KeyCode,
-    };
-    pub enum Event {
-        Key(KeyCode),
-        Mouse(MouseButton),
-    }
-}
-
-use event::*;
-
 pub trait GameState {
     fn update(&mut self, _: &mut State, _: &mut Context) -> GameResult<()> {
         Ok(())
@@ -67,8 +55,8 @@ pub trait GameState {
         Ok(())
     }
     fn draw_hud(&mut self, _: &State, _: &mut Canvas, _: &mut Context) -> GameResult<()>;
-    fn event_down(&mut self, _: &mut State, _: &mut Context, _: Event) { }
-    fn event_up(&mut self, _: &mut State, _: &mut Context, _: Event) { }
+    fn event_down(&mut self, _: &mut State, _: &mut Context, _: Input) { }
+    fn event_up(&mut self, _: &mut State, _: &mut Context, _: Input) { }
 
     fn get_world(&self) -> Option<&World> {
         None
@@ -253,6 +241,7 @@ pub struct State {
     height: f32,
     mouse: Point2,
     offset: Vector2,
+    controls: Controls,
     switch_state: Option<StateSwitch>,
     content: Content,
 }
@@ -280,8 +269,59 @@ impl Master {
             content = Content::File(arg.to_owned().into())
         }
 
+        let mut controls = Controls::default();
+
+        controls.bind(Input::GoLeft, KeyCode::Left);
+        controls.bind(Input::GoLeft, KeyCode::A);
+        controls.bind(Input::GoRight, KeyCode::Right);
+        controls.bind(Input::GoRight, KeyCode::D);
+        controls.bind(Input::GoDown, KeyCode::Down);
+        controls.bind(Input::GoDown, KeyCode::S);
+        controls.bind(Input::GoUp, KeyCode::Up);
+        controls.bind(Input::GoUp, KeyCode::W);
+        
+        // Gameplay
+        controls.bind(Input::Shoot, MouseButton::Left);
+        controls.bind(Input::Shoot, KeyCode::Space);
+        controls.bind(Input::ThrowGrenade, MouseButton::Right);
+        controls.bind(Input::Reload, KeyCode::R);
+        controls.bind(Input::WeaponLast, KeyCode::Q);
+        controls.bind(Input::Weapon1, KeyCode::Key1);
+        controls.bind(Input::Weapon2, KeyCode::Key2);
+        controls.bind(Input::Weapon3, KeyCode::Key3);
+        controls.bind(Input::Weapon4, KeyCode::Key4);
+        controls.bind(Input::DropWeapon, KeyCode::G);
+        controls.bind(Input::PickupWeapon, KeyCode::F);
+
+        // Editor bindings
+        controls.bind(Input::SaveLevel, KeyCode::Z);
+        controls.bind(Input::LoadLevel, KeyCode::X);
+        controls.bind(Input::ToggleVisibilityCones, KeyCode::C);
+        controls.bind(Input::ToggleGridSnap, KeyCode::G);
+        controls.bind(Input::PlayLevel, KeyCode::P);
+        controls.bind(Input::Deselect, KeyCode::T);
+        controls.bind(Input::DeleteObject, KeyCode::Back);
+        controls.bind(Input::DeleteObject, KeyCode::Delete);
+        controls.bind(Input::RotateLeft, KeyCode::Q);
+        controls.bind(Input::RotateRight, KeyCode::E);
+        controls.bind(Input::MakeWaypoints, KeyCode::H);
+        controls.bind(Input::ToggleCyclicPath, KeyCode::O);
+        controls.bind(Input::DragUp, KeyCode::Up);
+        controls.bind(Input::DragDown, KeyCode::Down);
+        controls.bind(Input::DragLeft, KeyCode::Left);
+        controls.bind(Input::DragRight, KeyCode::Right);
+        controls.bind(Input::PlaceStart, MouseButton::Middle);
+        controls.bind(Input::PlaceStart, KeyCode::Home);
+
+        // For menus, editor, ...
+        controls.bind(Input::LeftClick, MouseButton::Left);
+        controls.bind(Input::RightClick, MouseButton::Right);
+        controls.bind(Input::Confirm, KeyCode::Return);
+        controls.bind(Input::Restart, KeyCode::R);
+
         let mut state = State {
             content,
+            controls,
             switch_state: None,
             assets,
             mplayer,
@@ -402,9 +442,12 @@ impl EventHandler for Master {
         }
 
         match key_input.keycode {
-            Some(VirtualKeyCode::Escape) if key_input.mods.contains(KeyMods::SHIFT) => ctx.continuing = false,
-            Some(keycode) if !self.console_status.is_open() => self.gs.event_down(&mut self.state, ctx, Event::Key(keycode)),
-            _ => (),
+            Some(KeyCode::Escape) if key_input.mods.contains(KeyMods::SHIFT) => ctx.continuing = false,
+            _ => if !self.console_status.is_open() {
+                for input in self.state.controls.key_down(key_input) {
+                    self.gs.event_down(&mut self.state, ctx, input);
+                }
+            }
         }
         Ok(())
     }
@@ -412,9 +455,12 @@ impl EventHandler for Master {
     fn key_up_event(&mut self, ctx: &mut Context, key_input: KeyInput) -> GameResult<()> {
         if !self.console_status.is_open() {
             match key_input.keycode {
-                Some(VirtualKeyCode::Tab) => self.console_status.open(ctx),
-                Some(keycode) => self.gs.event_up(&mut self.state, ctx, Event::Key(keycode)),
-                None => ()
+                Some(KeyCode::Tab) => self.console_status.open(ctx),
+                _ => {
+                    for input in self.state.controls.key_up(key_input) {
+                        self.gs.event_up(&mut self.state, ctx, input);
+                    }
+                }
             }
         }
         Ok(())
@@ -422,14 +468,18 @@ impl EventHandler for Master {
     /// Handle mouse down event
     fn mouse_button_down_event(&mut self, ctx: &mut Context, btn: MouseButton, _x: f32, _y: f32) -> GameResult<()> {
         if !self.console_status.is_open() {
-            self.gs.event_down(&mut self.state, ctx, Event::Mouse(btn))
+            for input in self.state.controls.mouse_down(btn) {
+                self.gs.event_down(&mut self.state, ctx, input);
+            }
         }
         Ok(())
     }
     /// Handle mouse release events
     fn mouse_button_up_event(&mut self, ctx: &mut Context, btn: MouseButton, _x: f32, _y: f32) -> GameResult<()> {
         if !self.console_status.is_open() {
-            self.gs.event_up(&mut self.state, ctx, Event::Mouse(btn))
+            for input in self.state.controls.mouse_up(btn) {
+                self.gs.event_up(&mut self.state, ctx, input);
+            }
         }
         Ok(())
     }
