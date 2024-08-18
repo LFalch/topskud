@@ -5,18 +5,18 @@ authors = ["LFalch <lucas@wasd.dk>"]
 edition = "2021"
 
 [dependencies]
-ggez = "0.8.1"
+ggez = "0.9.3"
 bincode = "1"
 serde_derive = "1"
 serde = "1"
 self-compare = "0.2"
 rand = "0.8"
 clipboard = "0.5"
-toml = "0.5"
+toml = "0.8"
 lazy_static = "1"
 log = "0.4"
 [dependencies.nalgebra]
-version = "0.31"
+version = "0.33"
 features = ["mint"]
 
 [profile.dev]
